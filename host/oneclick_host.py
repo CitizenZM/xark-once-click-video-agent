@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """Chrome native-messaging host: receives {"url": ...}, runs engine, replies {"ok":..., "file"/"error":...}."""
-import json, os, struct, subprocess, sys
+import json, os, struct, subprocess, sys, time
 from urllib.parse import urlparse
 
 engine = os.environ.get("ONECLICK_ENGINE") or os.path.expanduser("~/.local/bin/engine")
@@ -52,5 +52,17 @@ def handle(msg):
     return {"ok": True, "file": out[-1] if out else OUT_DIR}
 
 
+def log(line):
+    try:
+        with open(os.path.expanduser("~/Library/Logs/oneclick-host.log"), "a") as f:
+            f.write(time.strftime("%F %T ") + line + "\n")
+    except OSError:
+        pass
+
+
 if __name__ == "__main__":
-    send_msg(handle(read_msg()))
+    msg = read_msg()
+    log("request " + json.dumps(msg))
+    res = handle(msg)
+    log("result " + json.dumps(res))
+    send_msg(res)
