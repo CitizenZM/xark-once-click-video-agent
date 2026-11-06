@@ -10,6 +10,9 @@ After the first upload, put the store-assigned extension ID in `host/EXTENSION_I
 - nativeMessaging: talks to the local helper that runs engine. The extension cannot download streams without it.
 - activeTab + scripting: read the links on the current page only when the user clicks, for "download all videos on this page".
 - contextMenus: right-click actions.  notifications: show saved/failed results.
-- storage + unlimitedStorage: keep the user's list of saved videos for the dashboard.
+- storage: keep the user's list of saved videos (capped at 5000) and settings.
+- alarms: weekly engine update check.
+- optional host access to tiktok.com, instagram.com, youtube.com, x.com, twitter.com: requested at runtime only if the user turns on the in-page button (content script registered then).
+- scripting: read links on the current page when the user clicks, and register the optional content script.
 **Data use**: no collection or transmission of user data (see PRIVACY.md). Host the privacy policy at a public URL (raw GitHub link works once the repo is public).
 **Review note**: the extension requires a companion helper installed by the user (`install.sh`); explain this plainly in the description.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.0
+- Release: all of 2.1-2.9 together; verified by 14 helper tests, 7 extension tests (wiring included), an independent security review and a cold-install test.
+
 ## 2.9.0
 - Security hardening after an independent review (see docs/SECURITY.md).
 - Portability: Linux log path, Windows installer (experimental, untested), log rotation.
