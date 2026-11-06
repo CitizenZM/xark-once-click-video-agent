@@ -15,3 +15,8 @@
 - 完成: 10 improvement rounds -> v3.0.1: real-Chrome log review, live queue, options, retry/auto-update, in-page button, profile download, library search/notes, outliers, independent security review + fixes, TikTok handle fix; pushed + tagged v3.0.1
 - 验证: 15 helper tests + 8 extension tests pass; GitHub Actions ci success on badc62e; real TikTok download via helper ok; cold install via curl|bash path ok
 - 下一步: Reload extension once in Chrome (picks up 3.0.1, dev auto-reload then keeps it current); try one real TikTok + IG click; decide Web Store submission
+
+### 2026-11-06 15:22 · claude-sonnet-5-5
+- 完成: v3.1.0: select-videos mode (checkbox overlay) + in-flight duplicate guard; verified rapid-click queue
+- 验证: node tests 8 pass (dedupe test fails without fix), host 15 pass, select.js rendered in browser stub, payload correct
+- 下一步: User: right-click page > Select videos on this page on real TikTok/IG

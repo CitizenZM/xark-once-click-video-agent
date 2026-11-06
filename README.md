@@ -18,6 +18,7 @@ Open the dashboard (right-click the toolbar icon → "Open library & insights").
 
 ## Use
 - **One click**: toolbar icon or `Alt+Shift+D` on a video page.
+- **Pick videos on a page**: right-click the page or the icon → "Select videos on this page…", tick the ones you want (or Select all), press Download.
 - **Whole page**: right-click the icon or the page → "Download all videos on this page" (up to 50; already-saved videos are skipped).
 - **Latest from a profile**: dashboard → paste a profile, channel or hashtag link → download the newest 10/25/50/100.
 - **Paste links**: dashboard → Download.
