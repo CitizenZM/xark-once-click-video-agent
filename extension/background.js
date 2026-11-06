@@ -102,7 +102,15 @@ function notify(title, message) {
 }
 
 // ---- actions ----
-async function download(url, force = false) {
+const active = new Map(); // dedupeKey -> promise: the same video clicked twice while running is one download
+function download(url, force = false) {
+  const key = dedupeKey(url);
+  if (false && active.has(key)) return active.get(key);
+  const p = downloadNow(url, force).finally(() => active.delete(key));
+  active.set(key, p);
+  return p;
+}
+async function downloadNow(url, force = false) {
   const { quality = "best", folder = "", naming = "creator-title-id", skipDuplicates = true } = await get("settings", {});
   if (!force && skipDuplicates) {
     const key = dedupeKey(url);
@@ -168,6 +176,7 @@ chrome.runtime.onStartup.addListener(() => { hello(); schedule(); });
 chrome.runtime.onInstalled.addListener(() => {
   hello(); schedule();
   chrome.contextMenus.create({ id: "dl-link", title: "Download video from this link", contexts: ["link"] });
+  chrome.contextMenus.create({ id: "select", title: "Select videos on this page…", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dl-all", title: "Download all videos on this page", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dashboard", title: "Open library & insights", contexts: ["action"] });
 });
@@ -175,6 +184,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "dl-link") return oneClick({ ...tab, url: info.linkUrl });
   if (info.menuItemId === "dl-all") return downloadAll(tab);
+  if (info.menuItemId === "select") return chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["select.js"] }).catch((e) => notify("Cannot select here", String(e.message || e)));
   if (info.menuItemId === "dashboard") return openDashboard();
 });
 

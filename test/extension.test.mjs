@@ -105,7 +105,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
     contextMenus: { create() {}, onClicked: { addListener: (f) => (L.menu = f) } },
     notifications: { create: (o) => notes.push(o) },
     storage: { local: { get: async (k) => { await new Promise((r) => setTimeout(r, 2)); return { [k]: structuredClone(store[k]) }; }, set: async (o) => { await new Promise((r) => setTimeout(r, 2)); Object.assign(store, o); } } },
-    scripting: { registerContentScripts: async (a) => (L.registered = a), unregisterContentScripts: async () => { L.unregistered = true; }, executeScript: async () => [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
+    scripting: { registerContentScripts: async (a) => (L.registered = a), unregisterContentScripts: async () => { L.unregistered = true; }, executeScript: async (o) => o.files ? (L.injected = o) : [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
     tabs: { create() {} },
   };
   await import("../extension/background.js");
@@ -193,6 +193,18 @@ test("background: one-click and batch reach the host and fill the library", asyn
   L.expandUrls = ["http://127.0.0.1:8080/x", "https://www.tiktok.com/@e/video/601"];
   assert.deepEqual(await ask({ type: "expand-download", url: "https://www.tiktok.com/@e", limit: 2 }), { found: 1, ok: 1, skipped: 0, failed: 0 });
   assert.ok(posted.slice(hostile).every((m) => !String(m.url).includes("127.0.0.1")));
+
+  // rapid clicks: the same video clicked 3x while running is ONE host call; 10 different videos are 10 calls, none lost
+  const n0 = posted.length, lib0 = store.library.length;
+  await Promise.all([1, 2, 3].map(() => L.click({ id: 1, url: "https://www.tiktok.com/@d/video/slow-dup" })));
+  assert.equal(posted.length - n0, 1);
+  await Promise.all(Array.from({ length: 10 }, (_, i) => L.click({ id: 1, url: `https://www.tiktok.com/@r/video/${9000 + i}` })));
+  assert.equal(posted.length - n0, 11); assert.equal(store.library.length - lib0, 11);
+  // select mode: the menu injects select.js; the ticked links come back as page-download with no page href
+  await L.menu({ menuItemId: "select" }, { id: 7 });
+  assert.deepEqual(L.injected, { target: { tabId: 7 }, files: ["select.js"] });
+  const sel = ["https://www.tiktok.com/@q/video/701", "https://www.tiktok.com/@q/video/702"];
+  assert.deepEqual(await ask({ type: "page-download", href: "", hrefs: sel }), { ok: 2, skipped: 0, failed: 0 });
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
