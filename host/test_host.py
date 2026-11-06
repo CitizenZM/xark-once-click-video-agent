@@ -87,6 +87,15 @@ class T(unittest.TestCase):
         r = session([{"id": 2, "url": "https://www.tiktok.com/@a/video/2"}], {**env, "ONECLICK_ENGINE": perm, "ONECLICK_OUT": d2})[2]
         self.assertFalse(r["ok"]); self.assertEqual(open(os.path.join(d2, "n")).read().strip(), "1")  # no retry
 
+    def test_expand_lists_urls_and_clamps_limit(self):
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; printf "https://www.tiktok.com/@a/video/1\\nnot-a-url\\nhttps://www.tiktok.com/@a/video/2\\n"')
+        r = session([{"id": 4, "type": "expand", "url": "https://www.tiktok.com/@a", "limit": 500}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[4]
+        self.assertEqual(r["urls"], ["https://www.tiktok.com/@a/video/1", "https://www.tiktok.com/@a/video/2"])
+        with open(os.path.join(d, "args")) as f:
+            self.assertIn("--playlist-end 100", f.read())
+        bad = session([{"id": 5, "type": "expand", "url": "javascript:alert(1)"}], {})[5]
+        self.assertFalse(bad["ok"])
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]

@@ -65,6 +65,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
           postMessage(m) {
             posted.push(m);
             if (m.url && m.url.includes("slow")) return setTimeout(() => { ls.forEach((f) => f({ id: m.id, type: "progress", pct: 40 })); setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok" } })), 400); }, 0);
+            if (m.type === "expand") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "expanded", ok: true, urls: ["https://www.tiktok.com/@e/video/501", "https://www.tiktok.com/@e/video/502", "https://www.tiktok.com/@e/video/503"] })), 0);
             if (m.type === "update") { L.updates = (L.updates || 0) + 1; L.healed = true; return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "updated", ok: true, output: "upgraded" })), 0); }
             if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update engine from the dashboard" })), 0);
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
@@ -143,6 +144,10 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(posted.length, before2 + 2);
   await ask({ type: "buttons", on: true });
   assert.deepEqual([L.registered[0].id, L.registered[0].js[0], L.registered[0].matches.includes("https://www.instagram.com/*")], ["oneclick-button", "content.js", true]);
+
+  // latest-N-from-profile: expand then download each (one already saved is skipped)
+  await L.click({ id: 1, url: "https://www.tiktok.com/@e/video/501" });
+  assert.deepEqual(await ask({ type: "expand-download", url: "https://www.tiktok.com/@e", limit: 3 }), { found: 3, ok: 2, skipped: 1, failed: 0 });
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host

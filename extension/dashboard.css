@@ -52,5 +52,6 @@ th { color: var(--mute); font-weight: 500; }
 .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: end; }
 .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--mute); } .settings label:has(input[type=checkbox]) { flex-direction: row; align-items: center; color: var(--ink); }
 .settings .wide { grid-column: 1 / -1; } .settings input:not([type=checkbox]) { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+.grow { flex: 1 1 280px; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
 .empty { color: var(--mute); font-size: 13px; }
 @media (max-width: 480px) { .bar { grid-template-columns: 70px 1fr 30px; } }

@@ -112,6 +112,15 @@ $("#go").onclick = async () => {
   load();
 };
 
+$("#pgo").onclick = async () => {
+  const url = $("#profile").value.trim();
+  if (!/^https?:\/\//.test(url)) return ($("#pStatus").textContent = "Enter a full https:// link");
+  $("#pStatus").textContent = "Finding videos…";
+  const r = await send({ type: "expand-download", url, limit: Number($("#plimit").value) });
+  $("#pStatus").textContent = r.error ? r.error : `Found ${r.found}: ${r.ok} saved, ${r.skipped} already saved, ${r.failed} failed`;
+  load();
+};
+
 renderSetup();
 load();
 chrome.storage.onChanged.addListener((c) => {

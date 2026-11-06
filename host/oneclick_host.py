@@ -143,6 +143,32 @@ def ping():
     return {"type": "pong", "engine": v, "ffmpeg": bool(shutil.which("ffmpeg", path=PATH)), "outDir": OUT_DIR}
 
 
+def expand(msg):
+    """List the newest video URLs of a profile / channel / hashtag page (no download)."""
+    url = msg.get("url", "")
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not u.netloc:
+        return {"type": "expanded", "ok": False, "error": "invalid url"}
+    limit = max(1, min(int(msg.get("limit") or 25), 100))
+
+    def listing(cookies):
+        cmd = [engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", "%(url)s"]
+        if cookies:
+            cmd += ["--cookies-from-browser", "chrome"]
+        return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=180, env={**os.environ, "PATH": PATH})
+
+    try:
+        p = listing(False)
+        if p.returncode != 0 and u.netloc.endswith(COOKIE_HOSTS):
+            p = listing(True)
+    except Exception as e:
+        return {"type": "expanded", "ok": False, "error": str(e)}
+    if p.returncode != 0:
+        return {"type": "expanded", "ok": False, "error": friendly(p.stderr)}
+    urls = [l.strip() for l in p.stdout.splitlines() if l.strip().startswith(("http://", "https://"))]
+    return {"type": "expanded", "ok": True, "urls": urls[:limit]}
+
+
 def update():
     pipx = shutil.which("pipx", path=PATH)
     cmd = [pipx, "upgrade", "engine"] if pipx else [engine, "-U"]
@@ -178,6 +204,8 @@ def handle(msg, on_pct=None):
         return ping()
     if kind == "update":
         return update()
+    if kind == "expand":
+        return expand(msg)
     return download(msg or {}, on_pct)
 
 

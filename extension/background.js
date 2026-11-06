@@ -198,10 +198,19 @@ async function pageDownload({ href, hrefs }) {
   return { ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length };
 }
 
+// "Latest N from this profile": the helper lists the URLs, then each goes through the normal download path.
+async function expandDownload({ url, limit }) {
+  const r = await call({ type: "expand", url, limit });
+  if (!r.ok) return { error: r.error };
+  const rs = await Promise.all(r.urls.map((u) => download(u)));
+  return { found: r.urls.length, ok: rs.filter((x) => x.ok && !x.skipped).length, skipped: rs.filter((x) => x.skipped).length, failed: rs.filter((x) => !x.ok).length };
+}
+
 // dashboard / content script -> background
 chrome.runtime.onMessage.addListener((m, _sender, send) => {
   if (m.type === "page-state") { send(pageState(m)); return false; }
   const run = m.type === "page-download" ? pageDownload(m)
+    : m.type === "expand-download" ? expandDownload(m)
     : m.type === "buttons" ? setButtons(!!m.on)
     : m.type === "ping" || m.type === "update" ? call({ type: m.type })
     : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map((u) => download(u))).then((rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length }))
