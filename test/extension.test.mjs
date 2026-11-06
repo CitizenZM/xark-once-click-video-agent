@@ -74,7 +74,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   globalThis.chrome = {
     alarms: { create(a) { L.alarm = a; }, onAlarm: { addListener: (f) => (L.onAlarm = f) } },
     runtime: {
-      lastError: undefined, getURL: (p) => p, getManifest: () => ({ version: "9.9.9", optional_host_permissions: ["https://www.tiktok.com/*", "https://www.instagram.com/*"] }), reload: () => (L.reloaded = true),
+      lastError: undefined, getURL: (p) => "chrome-extension://abc/" + p, getManifest: () => ({ version: "9.9.9", optional_host_permissions: ["https://www.tiktok.com/*", "https://www.instagram.com/*"] }), reload: () => (L.reloaded = true),
       onInstalled: { addListener: (f) => (L.installed = f) }, onStartup: { addListener() {} },
       onMessage: { addListener: (f) => (L.msg = f) },
       connectNative() {
@@ -85,7 +85,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
           postMessage(m) {
             posted.push(m);
             if (m.url && m.url.includes("slow")) return setTimeout(() => { ls.forEach((f) => f({ id: m.id, type: "progress", pct: 40 })); setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok" } })), 400); }, 0);
-            if (m.type === "expand") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "expanded", ok: true, urls: ["https://www.tiktok.com/@e/video/501", "https://www.tiktok.com/@e/video/502", "https://www.tiktok.com/@e/video/503"] })), 0);
+            if (m.type === "expand") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "expanded", ok: true, urls: L.expandUrls || ["https://www.tiktok.com/@e/video/501", "https://www.tiktok.com/@e/video/502", "https://www.tiktok.com/@e/video/503"] })), 0);
             if (m.type === "update") { L.updates = (L.updates || 0) + 1; L.healed = true; return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "updated", ok: true, output: "upgraded" })), 0); }
             if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update engine from the dashboard" })), 0);
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
@@ -154,7 +154,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(L.updates, 1); assert.ok(Date.now() - store.lastUpdate < 5000);
 
   // in-page button: page-state decides single / batch / none; page-download reaches the host
-  const ask = (m) => new Promise((res) => L.msg(m, {}, res));
+  const ask = (m) => new Promise((res) => L.msg(m, m.type.startsWith("page-") ? { tab: { id: 1 } } : { url: "chrome-extension://abc/dashboard.html" }, res));
   assert.deepEqual(await ask({ type: "page-state", href: "https://www.tiktok.com/@a/video/77", hrefs: [] }), { kind: "single" });
   const feed = ["https://www.tiktok.com/@a/video/81", "https://www.tiktok.com/@a/video/82", "https://www.tiktok.com/@a"];
   assert.deepEqual(await ask({ type: "page-state", href: "https://www.tiktok.com/@a", hrefs: feed }), { kind: "batch", n: 2 });
@@ -175,6 +175,17 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(store.library.find((v) => v.url === noteUrl).note, "keep #hook");
   await ask({ type: "lib-delete", url: noteUrl });
   assert.equal(store.library.some((v) => v.url === noteUrl), false);
+
+  // sender checks: a web page / other context cannot use privileged actions; content script cannot either
+  const forged = (m, sender) => new Promise((res) => L.msg(m, sender, res));
+  assert.deepEqual(await forged({ type: "lib-delete", url: "x" }, { tab: { id: 9 }, url: "https://evil.example/" }), { error: "not allowed" });
+  assert.deepEqual(await forged({ type: "expand-download", url: "https://www.tiktok.com/@e", limit: 3 }, { tab: { id: 9 } }), { error: "not allowed" });
+  assert.deepEqual(await forged({ type: "page-state", href: "https://www.tiktok.com/@a/video/1", hrefs: [] }, {}), { error: "not allowed" });
+  // expand output goes through the platform allowlist
+  const hostile = posted.length;
+  L.expandUrls = ["http://127.0.0.1:8080/x", "https://www.tiktok.com/@e/video/601"];
+  assert.deepEqual(await ask({ type: "expand-download", url: "https://www.tiktok.com/@e", limit: 2 }), { found: 1, ok: 1, skipped: 0, failed: 0 });
+  assert.ok(posted.slice(hostile).every((m) => !String(m.url).includes("127.0.0.1")));
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host

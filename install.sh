@@ -3,10 +3,15 @@
 #   curl -fsSL https://raw.githubusercontent.com/CitizenZM/one-click-downloader-20261106/main/install.sh | bash
 set -euo pipefail
 REPO="${ONECLICK_REPO:-https://github.com/CitizenZM/one-click-downloader-20261106}"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
-if [ ! -f "$SRC/host/oneclick_host.py" ]; then          # running via curl | bash: fetch the repo
+REF="${ONECLICK_REF:-main}"
+SRC=""
+# Only trust the local folder when this is a real file on disk (not "curl | bash", where BASH_SOURCE is empty).
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; fi
+if [ -z "$SRC" ] || [ ! -f "$SRC/host/oneclick_host.py" ]; then
   SRC="$HOME/.oneclick-downloader"
-  if [ -d "$SRC/.git" ]; then git -C "$SRC" pull -q; else git clone -q --depth 1 "$REPO" "$SRC"; fi
+  if [ -d "$SRC/.git" ]; then git -C "$SRC" fetch -q --depth 1 origin "$REF" && git -C "$SRC" checkout -q FETCH_HEAD
+  else git clone -q --depth 1 --branch "$REF" "$REPO" "$SRC"; fi
+  echo "installed from $REPO @ $(git -C "$SRC" rev-parse --short HEAD) (set ONECLICK_REF to pin a tag or commit)"
 fi
 need() { command -v "$1" >/dev/null 2>&1; }
 need python3 || { echo "python3 is required"; exit 1; }

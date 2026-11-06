@@ -44,7 +44,8 @@ function idleClose() {
 function call(msg, onProgress) {
   return new Promise((resolve, reject) => {
     const id = ++seq;
-    pending.set(id, { resolve, reject, onProgress });
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error("Helper did not answer in time")); }, 20 * 60000);
+    pending.set(id, { resolve: (v) => { clearTimeout(timer); resolve(v); }, reject: (e) => { clearTimeout(timer); reject(e); }, onProgress });
     try { connect().postMessage({ ...msg, id }); } catch (e) { pending.delete(id); reject(e); }
   });
 }
@@ -68,14 +69,17 @@ const addToLibrary = (meta) => locked(async () => {
   const url = meta.webpage_url;
   const caption = String(meta.description || "").split("\n")[0].trim();
   const title = /^(Video|Photo) by /.test(meta.title || "") && caption ? caption.slice(0, 100) : meta.title;
-  const entry = { ...meta, title, platform: meta.extractor_key || "Other", url, at: Date.now() };
+  const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : null);
+  const entry = { ...meta, title, platform: meta.extractor_key || "Other", url, at: Date.now(),
+    duration: num(meta.duration), view_count: num(meta.view_count), like_count: num(meta.like_count),
+    comment_count: num(meta.comment_count), channel_follower_count: num(meta.channel_follower_count) };
   const i = lib.findIndex((v) => v.url === url);
   if (i >= 0) lib[i] = entry; else lib.push(entry);
-  await chrome.storage.local.set({ library: lib });
+  await chrome.storage.local.set({ library: lib.slice(-5000) }); // bounded: no unlimitedStorage needed
 });
 const addError = (url, error) => locked(async () => {
   const errs = (await get("errors", [])).slice(-49);
-  errs.push({ url, error, at: Date.now() });
+  errs.push({ url: String(url).replace(/[?#].*$/, ""), error: String(error).slice(0, 300), at: Date.now() }); // no query tokens
   await chrome.storage.local.set({ errors: errs });
 });
 function setJob(id, patch) {
@@ -202,8 +206,9 @@ async function pageDownload({ href, hrefs }) {
 async function expandDownload({ url, limit }) {
   const r = await call({ type: "expand", url, limit });
   if (!r.ok) return { error: r.error };
-  const rs = await Promise.all(r.urls.map((u) => download(u)));
-  return { found: r.urls.length, ok: rs.filter((x) => x.ok && !x.skipped).length, skipped: rs.filter((x) => x.skipped).length, failed: rs.filter((x) => !x.ok).length };
+  const urls = videoUrls(r.urls, 100); // same allowlist as every other batch path
+  const rs = await Promise.all(urls.map((u) => download(u)));
+  return { found: urls.length, ok: rs.filter((x) => x.ok && !x.skipped).length, skipped: rs.filter((x) => x.skipped).length, failed: rs.filter((x) => !x.ok).length };
 }
 
 // library edits run here so they share the storage lock with new downloads
@@ -214,7 +219,11 @@ const libEdit = (fn) => locked(async () => {
 });
 
 // dashboard / content script -> background
-chrome.runtime.onMessage.addListener((m, _sender, send) => {
+const CONTENT_TYPES = ["page-state", "page-download"];
+chrome.runtime.onMessage.addListener((m, sender, send) => {
+  // privileged actions only from our own pages; the content script may only ask about / download its own page
+  const fromExtensionPage = typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
+  if (CONTENT_TYPES.includes(m.type) ? !(sender.tab || fromExtensionPage) : !fromExtensionPage) { send({ error: "not allowed" }); return false; }
   if (m.type === "page-state") { send(pageState(m)); return false; }
   const run = m.type === "page-download" ? pageDownload(m)
     : m.type === "expand-download" ? expandDownload(m)

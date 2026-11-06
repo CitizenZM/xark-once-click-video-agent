@@ -5,14 +5,17 @@ Messages in : {"id", "url", "quality"?}  |  {"id", "type": "ping"}  |  {"id", "t
 Messages out: {"id", "ok", "meta"|"error"}  |  {"id", "type": "pong", ...}  |  {"id", "type": "updated", ...}
 Downloads run in a small thread pool; every reply carries the request id.
 """
-import json, os, re, shutil, struct, subprocess, sys, threading, time
+import ipaddress, json, os, re, shutil, struct, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
-engine = os.environ.get("ONECLICK_ENGINE") or shutil.which("engine") or os.path.expanduser("~/.local/bin/engine")
+# Chrome starts the helper with a minimal PATH, so search the usual install locations first.
+# User-level installs (pipx) first: the updater manages that copy, so it must be the one in use.
+PATH = os.pathsep.join(p for p in [os.path.expanduser("~/.local/bin"), "/opt/homebrew/bin", "/usr/local/bin",
+                                   "/usr/bin", "/bin", os.environ.get("PATH", "")] if p)
+engine = os.environ.get("ONECLICK_ENGINE") or shutil.which("engine", path=PATH) or os.path.expanduser("~/.local/bin/engine")
 OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneClick")
-PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + os.path.expanduser("~/.local/bin")
-COOKIE_HOSTS = ("instagram.com",)  # retry with Chrome cookies if the anonymous try fails
+COOKIE_HOSTS = ("instagram.com", "www.instagram.com")  # retry with Chrome cookies if the anonymous try fails
 WORKERS = 3
 NAMING = {
     "creator-title-id": "%(uploader_id,uploader|site)s - %(title).60B [%(id)s]",
@@ -45,12 +48,50 @@ def read_msg():
     return json.loads(sys.stdin.buffer.read(struct.unpack("<I", raw)[0]))
 
 
+def log_path():
+    if os.environ.get("ONECLICK_LOG"):
+        return os.environ["ONECLICK_LOG"]
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Logs/oneclick-host.log")
+    if os.name == "nt":
+        return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "oneclick-host.log")
+    return os.path.expanduser("~/.local/state/oneclick-host.log")
+
+
 def log(line):
+    path = log_path()
     try:
-        with open(os.path.expanduser("~/Library/Logs/oneclick-host.log"), "a") as f:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if os.path.exists(path) and os.path.getsize(path) > 1_000_000:  # keep one rotated copy
+            os.replace(path, path + ".1")
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "a") as f:
             f.write(time.strftime("%F %T ") + line + "\n")
     except OSError:
         pass
+
+
+def blocked_host(host):
+    """Refuse loopback, private and link-local targets (a profile page must not make the helper fetch the LAN)."""
+    host = (host or "").lower().rstrip(".")
+    if not host or host == "localhost" or host.endswith((".local", ".localhost", ".internal")):
+        return True
+    try:
+        ip = ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast
+
+
+def valid_url(url):
+    u = urlparse(url or "")
+    return u.scheme in ("http", "https") and bool(u.netloc) and not blocked_host(u.hostname)
+
+
+def redact(url):
+    """Logs keep the path only; query strings can carry tokens (YouTube watch?v= is kept)."""
+    u = urlparse(url or "")
+    return url if not u.query else (f"{u.scheme}://{u.netloc}{u.path}?{u.query}" if u.path == "/watch" and u.query.startswith("v=") else f"{u.scheme}://{u.netloc}{u.path}")
 
 
 def out_dir(folder):
@@ -70,7 +111,7 @@ def run(url, opts, cookies=False, on_pct=None):
     os.makedirs(folder, exist_ok=True)
     cmd = [engine, "--no-playlist", "--no-warnings",
            "--windows-filenames",
-           "-o", os.path.join(folder, NAMING[opts["naming"]] + ".%(ext)s"),
+           "-o", os.path.join(folder.replace("%", "%%"), NAMING[opts["naming"]] + ".%(ext)s"),
            "--print", "after_move:%(.{" + FIELDS + "})j"]
     if quality == "audio":
         cmd += ["-f", "ba/b", "-x", "--audio-format", "mp3"]
@@ -110,7 +151,7 @@ def friendly(stderr):
 def download(msg, on_pct=None):
     url = msg.get("url", "")
     u = urlparse(url)
-    if u.scheme not in ("http", "https") or not u.netloc:
+    if not valid_url(url):
         return {"ok": False, "error": "invalid url"}
     try:
         opts = {"quality": msg.get("quality", "best"), "dir": out_dir(msg.get("folder")),
@@ -120,7 +161,7 @@ def download(msg, on_pct=None):
             if code == 0 or not any(t in out.lower() for t in TRANSIENT):
                 break
             time.sleep(RETRY_BASE * (attempt + 1))
-        if code != 0 and u.netloc.endswith(COOKIE_HOSTS):
+        if code != 0 and u.hostname in COOKIE_HOSTS:
             code, out = run(url, opts, cookies=True, on_pct=on_pct)
     except Exception as e:  # bad folder, missing engine, ...
         return {"ok": False, "error": str(e)}
@@ -128,7 +169,10 @@ def download(msg, on_pct=None):
         return {"ok": False, "error": friendly(out)}
     for line in reversed(out.strip().splitlines()):
         if line.startswith("{"):
-            meta = json.loads(line)
+            try:
+                meta = json.loads(line)
+            except ValueError:
+                continue
             meta["file"] = meta.pop("filepath", None)
             return {"ok": True, "meta": meta}
     return {"ok": True, "meta": {"webpage_url": url, "file": None}}
@@ -147,9 +191,12 @@ def expand(msg):
     """List the newest video URLs of a profile / channel / hashtag page (no download)."""
     url = msg.get("url", "")
     u = urlparse(url)
-    if u.scheme not in ("http", "https") or not u.netloc:
+    if not valid_url(url):
         return {"type": "expanded", "ok": False, "error": "invalid url"}
-    limit = max(1, min(int(msg.get("limit") or 25), 100))
+    try:
+        limit = max(1, min(int(msg.get("limit") or 25), 100))
+    except (TypeError, ValueError):
+        limit = 25
 
     def listing(cookies):
         cmd = [engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", "%(url)s"]
@@ -159,19 +206,24 @@ def expand(msg):
 
     try:
         p = listing(False)
-        if p.returncode != 0 and u.netloc.endswith(COOKIE_HOSTS):
+        if p.returncode != 0 and u.hostname in COOKIE_HOSTS:
             p = listing(True)
     except Exception as e:
         return {"type": "expanded", "ok": False, "error": str(e)}
     if p.returncode != 0:
         return {"type": "expanded", "ok": False, "error": friendly(p.stderr)}
-    urls = [l.strip() for l in p.stdout.splitlines() if l.strip().startswith(("http://", "https://"))]
+    urls = [l.strip() for l in p.stdout.splitlines() if valid_url(l.strip())]
     return {"type": "expanded", "ok": True, "urls": urls[:limit]}
 
 
 def update():
-    pipx = shutil.which("pipx", path=PATH)
-    cmd = [pipx, "upgrade", "engine"] if pipx else [engine, "-U"]
+    pipx, brew = shutil.which("pipx", path=PATH), shutil.which("brew", path=PATH)
+    if engine.startswith(os.path.expanduser("~/.local/")) and pipx:
+        cmd = [pipx, "upgrade", "engine"]
+    elif brew and engine.startswith(("/opt/homebrew/", "/usr/local/")):
+        cmd = [brew, "upgrade", "engine"]
+    else:
+        cmd = [engine, "-U"]
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env={**os.environ, "PATH": PATH})
         out = (p.stdout + p.stderr).strip().splitlines()
@@ -210,6 +262,10 @@ def handle(msg, on_pct=None):
 
 
 def main():
+    if os.name == "nt":  # native messaging is binary: stop Windows translating newlines
+        import msvcrt
+        msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+        msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
     lock = threading.Lock()
 
     def reply(obj):
@@ -234,9 +290,12 @@ def main():
 
     def work(msg):
         pct = lambda p: reply({"type": "progress", "id": msg.get("id"), "pct": p})
-        res = handle(msg, pct)
+        try:
+            res = handle(msg, pct)
+        except Exception as e:  # never leave the extension waiting for a reply
+            res = {"ok": False, "error": "helper error: %s" % e}
         res["id"] = msg.get("id")
-        log("%s %s" % (msg.get("type") or msg.get("url"), json.dumps({k: res.get(k) for k in ("ok", "error")})
+        log("%s %s" % (msg.get("type") or redact(msg.get("url")), json.dumps({k: res.get(k) for k in ("ok", "error")})
                                                            if msg.get("type") != "hello" else "v" + str(msg.get("version")) + " dev=" + str(res["dev"])))
         reply(res)
         if res.get("type") == "hello" and res["dev"] and not watcher:

@@ -96,6 +96,32 @@ class T(unittest.TestCase):
         bad = session([{"id": 5, "type": "expand", "url": "javascript:alert(1)"}], {})[5]
         self.assertFalse(bad["ok"])
 
+    def test_private_targets_and_lookalike_cookie_hosts_are_refused(self):
+        path, d = stub('echo "$@" >> "$(dirname "$0")/args"; echo "ERROR: login required" >&2; exit 1')
+        env = {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d}
+        for u in ("http://127.0.0.1:8080/x", "http://169.254.169.254/latest", "http://localhost/x", "http://192.168.1.5/x", "http://[::1]/x"):
+            self.assertEqual(session([{"id": 1, "url": u}], env)[1]["error"], "invalid url", u)
+            self.assertFalse(session([{"id": 2, "type": "expand", "url": u}], env)[2]["ok"], u)
+        self.assertFalse(os.path.exists(os.path.join(d, "args")))  # engine never ran
+        session([{"id": 3, "url": "https://notinstagram.com/p/x"}], env)   # lookalike host: no cookie retry
+        with open(os.path.join(d, "args")) as f:
+            self.assertNotIn("cookies-from-browser", f.read())
+
+    def test_expand_drops_private_urls_and_bad_limit_does_not_hang(self):
+        path, d = stub('printf "https://www.tiktok.com/@a/video/1\\nhttp://127.0.0.1/x\\n"')
+        r = session([{"id": 6, "type": "expand", "url": "https://www.tiktok.com/@a", "limit": "abc"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[6]
+        self.assertEqual(r["urls"], ["https://www.tiktok.com/@a/video/1"])
+
+    def test_percent_in_folder_is_escaped_and_log_is_private_and_redacted(self):
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; echo \'{"filepath":"/x/v.mp4"}\'')
+        home = tempfile.mkdtemp(); logf = os.path.join(home, "h.log")
+        env = {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "HOME": home, "ONECLICK_LOG": logf}
+        session([{"id": 1, "url": "https://www.tiktok.com/@a/video/1?token=SECRET", "folder": home + "/50%off"}], env)
+        with open(os.path.join(d, "args")) as f:
+            self.assertIn("50%%off", f.read())
+        text = open(logf).read()
+        self.assertNotIn("SECRET", text); self.assertEqual(oct(os.stat(logf).st_mode & 0o777), "0o600")
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]
