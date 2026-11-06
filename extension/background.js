@@ -174,9 +174,36 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "dashboard") return openDashboard();
 });
 
-// dashboard -> background
+// ---- optional in-page button (content script is registered only after the user opts in) ----
+async function setButtons(on) {
+  try { await chrome.scripting.unregisterContentScripts({ ids: ["oneclick-button"] }); } catch { /* none registered */ }
+  if (!on) return { ok: true };
+  const origins = chrome.runtime.getManifest().optional_host_permissions || [];
+  await chrome.scripting.registerContentScripts([{ id: "oneclick-button", matches: origins, js: ["content.js"], runAt: "document_idle", persistAcrossSessions: true }]);
+  return { ok: true };
+}
+
+function pageState({ href, hrefs }) {
+  if (videoUrls([href]).length) return { kind: "single" };
+  const n = videoUrls(hrefs || []).length;
+  return n >= 2 ? { kind: "batch", n } : { kind: null };
+}
+
+async function pageDownload({ href, hrefs }) {
+  if (videoUrls([href]).length) {
+    const r = await download(href, true);
+    return r.ok ? { ok: 1, skipped: 0, failed: 0 } : { ok: 0, failed: 1, error: r.error };
+  }
+  const rs = await Promise.all(videoUrls(hrefs || []).map((u) => download(u)));
+  return { ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length };
+}
+
+// dashboard / content script -> background
 chrome.runtime.onMessage.addListener((m, _sender, send) => {
-  const run = m.type === "ping" || m.type === "update" ? call({ type: m.type })
+  if (m.type === "page-state") { send(pageState(m)); return false; }
+  const run = m.type === "page-download" ? pageDownload(m)
+    : m.type === "buttons" ? setButtons(!!m.on)
+    : m.type === "ping" || m.type === "update" ? call({ type: m.type })
     : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map((u) => download(u))).then((rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length }))
     : null;
   if (!run) return false;

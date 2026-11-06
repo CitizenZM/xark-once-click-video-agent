@@ -79,6 +79,7 @@ async function load() {
   $("#folder").value = settings.folder || "";
   $("#skipdup").checked = settings.skipDuplicates !== false;
   $("#autoupd").checked = settings.autoUpdate !== false;
+  $("#btns").checked = !!settings.showButton;
   $("#errors").innerHTML = errors.slice(-8).reverse().map((e) => `<li>${esc(new Date(e.at).toLocaleString())}: ${esc(e.error)} <small>(${esc(e.url)})</small></li>`).join("") || `<li class="empty" style="color:var(--mute)">None</li>`;
   $("#csv").onclick = () => save("library.csv", ["saved,platform,creator,title,url,duration,views,likes", ...library.map((v) => [new Date(v.at).toISOString(), v.platform, v.uploader, v.title, v.url, v.duration, v.view_count, v.like_count].map(csvCell).join(","))].join("\n"), "text/csv");
   $("#json").onclick = () => save("library.json", JSON.stringify(library, null, 2), "application/json");
@@ -86,12 +87,22 @@ async function load() {
 }
 
 async function saveSettings() {
-  const settings = { quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked };
+  const settings = { quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked };
   await chrome.storage.local.set({ settings });
   $("#setMsg").textContent = "Saved";
   setTimeout(() => ($("#setMsg").textContent = ""), 1500);
 }
 for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd"]) $(id).onchange = saveSettings;
+$("#btns").onchange = async (e) => {
+  const origins = chrome.runtime.getManifest().optional_host_permissions;
+  if (e.target.checked) {
+    if (!(await chrome.permissions.request({ origins }))) { e.target.checked = false; return; }
+  } else {
+    await chrome.permissions.remove({ origins }).catch(() => {});
+  }
+  await send({ type: "buttons", on: e.target.checked });
+  saveSettings();
+};
 $("#go").onclick = async () => {
   const urls = $("#urls").value.split(/\s+/).filter(Boolean);
   if (!urls.length) return;

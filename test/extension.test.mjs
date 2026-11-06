@@ -54,7 +54,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   globalThis.chrome = {
     alarms: { create(a) { L.alarm = a; }, onAlarm: { addListener: (f) => (L.onAlarm = f) } },
     runtime: {
-      lastError: undefined, getURL: (p) => p, getManifest: () => ({ version: "9.9.9" }), reload: () => (L.reloaded = true),
+      lastError: undefined, getURL: (p) => p, getManifest: () => ({ version: "9.9.9", optional_host_permissions: ["https://www.tiktok.com/*", "https://www.instagram.com/*"] }), reload: () => (L.reloaded = true),
       onInstalled: { addListener: (f) => (L.installed = f) }, onStartup: { addListener() {} },
       onMessage: { addListener: (f) => (L.msg = f) },
       connectNative() {
@@ -77,7 +77,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
     contextMenus: { create() {}, onClicked: { addListener: (f) => (L.menu = f) } },
     notifications: { create: (o) => notes.push(o) },
     storage: { local: { get: async (k) => { await new Promise((r) => setTimeout(r, 2)); return { [k]: structuredClone(store[k]) }; }, set: async (o) => { await new Promise((r) => setTimeout(r, 2)); Object.assign(store, o); } } },
-    scripting: { executeScript: async () => [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
+    scripting: { registerContentScripts: async (a) => (L.registered = a), unregisterContentScripts: async () => { L.unregistered = true; }, executeScript: async () => [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
     tabs: { create() {} },
   };
   await import("../extension/background.js");
@@ -131,6 +131,18 @@ test("background: one-click and batch reach the host and fill the library", asyn
   store.lastUpdate = Date.now() - 8 * 86400000;
   await L.onAlarm({ name: "update" }); await new Promise((r) => setTimeout(r, 30));
   assert.equal(L.updates, 1); assert.ok(Date.now() - store.lastUpdate < 5000);
+
+  // in-page button: page-state decides single / batch / none; page-download reaches the host
+  const ask = (m) => new Promise((res) => L.msg(m, {}, res));
+  assert.deepEqual(await ask({ type: "page-state", href: "https://www.tiktok.com/@a/video/77", hrefs: [] }), { kind: "single" });
+  const feed = ["https://www.tiktok.com/@a/video/81", "https://www.tiktok.com/@a/video/82", "https://www.tiktok.com/@a"];
+  assert.deepEqual(await ask({ type: "page-state", href: "https://www.tiktok.com/@a", hrefs: feed }), { kind: "batch", n: 2 });
+  assert.deepEqual(await ask({ type: "page-state", href: "https://example.com/", hrefs: ["https://example.com/a"] }), { kind: null });
+  const before2 = posted.length;
+  assert.deepEqual(await ask({ type: "page-download", href: "https://www.tiktok.com/@a", hrefs: feed }), { ok: 2, skipped: 0, failed: 0 });
+  assert.equal(posted.length, before2 + 2);
+  await ask({ type: "buttons", on: true });
+  assert.deepEqual([L.registered[0].id, L.registered[0].js[0], L.registered[0].matches.includes("https://www.instagram.com/*")], ["oneclick-button", "content.js", true]);
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
