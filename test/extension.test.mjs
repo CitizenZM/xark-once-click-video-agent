@@ -66,7 +66,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
     action: { onClicked: { addListener: (f) => (L.click = f) }, setBadgeText() {}, setBadgeBackgroundColor() {} },
     contextMenus: { create() {}, onClicked: { addListener: (f) => (L.menu = f) } },
     notifications: { create: (o) => notes.push(o) },
-    storage: { local: { get: async (k) => ({ [k]: store[k] }), set: async (o) => Object.assign(store, o) } },
+    storage: { local: { get: async (k) => { await new Promise((r) => setTimeout(r, 2)); return { [k]: structuredClone(store[k]) }; }, set: async (o) => { await new Promise((r) => setTimeout(r, 2)); Object.assign(store, o); } } },
     scripting: { executeScript: async () => [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
     tabs: { create() {} },
   };
