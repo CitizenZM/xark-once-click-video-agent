@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.1
+- Fixed: TikTok creators showed a numeric id instead of the handle (file names, creator grouping, profile links).
+
 ## 3.0.0
 - Release: all of 2.1-2.9 together; verified by 14 helper tests, 7 extension tests (wiring included), an independent security review and a cold-install test.
 

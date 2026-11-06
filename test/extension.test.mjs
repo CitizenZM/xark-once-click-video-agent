@@ -59,6 +59,13 @@ test("outliers: follower baseline, median fallback, and no verdict on tiny sampl
   assert.ok(o[0].basis.includes("median")); assert.ok(o[1].basis.includes("follower"));
 });
 
+test("TikTok creators are keyed by the handle in the URL, not the numeric uploader_id", () => {
+  const tt = [{ url: "https://www.tiktok.com/@glow.ana/video/1", platform: "TikTok", uploader: "glow.ana", uploader_id: "107955", at: NOW },
+    { url: "https://www.tiktok.com/@glow.ana/video/2", platform: "TikTok", uploader: "glow.ana", uploader_id: "107955", at: NOW }];
+  assert.equal(analyze(tt).creators[0].k, "glow.ana");
+  assert.equal(recommend(tt).creators[0].url, "https://www.tiktok.com/@glow.ana");
+});
+
 test("recommend: derived from library only, profile + tag links, excludes known creators from mentions", () => {
   const r = recommend(lib);
   assert.equal(r.creators[0].url, "https://www.tiktok.com/@ana");

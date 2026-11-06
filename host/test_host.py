@@ -122,6 +122,13 @@ class T(unittest.TestCase):
         text = open(logf).read()
         self.assertNotIn("SECRET", text); self.assertEqual(oct(os.stat(logf).st_mode & 0o777), "0o600")
 
+    def test_tiktok_numeric_uploader_id_is_replaced_by_handle_in_meta_and_filename(self):
+        path, d = stub('touch "$(dirname "$0")/107955 - 77.mp4"; echo \'{"extractor_key":"TikTok","uploader":"tiktok","uploader_id":"107955","filepath":"\'"$(dirname "$0")"\'/107955 - 77.mp4"}\'')
+        r = session([{"id": 1, "url": "https://www.tiktok.com/@tiktok/video/77"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[1]
+        self.assertEqual(r["meta"]["uploader_id"], "tiktok")
+        self.assertTrue(r["meta"]["file"].endswith("/tiktok - 77.mp4") and os.path.exists(r["meta"]["file"]))
+        self.assertFalse(os.path.exists(os.path.join(d, "107955 - 77.mp4")))
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]

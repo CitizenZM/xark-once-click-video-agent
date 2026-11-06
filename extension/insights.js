@@ -14,7 +14,9 @@ const hashtagsOf = (v) => [
 ];
 const bucketOf = (d) => (d == null ? "unknown" : d < 15 ? "<15s" : d < 30 ? "15-30s" : d < 60 ? "30-60s" : "60s+");
 const BUCKETS = ["<15s", "15-30s", "30-60s", "60s+"];
-const creatorKey = (v) => v.uploader_id || v.uploader || "unknown";
+// TikTok's uploader_id is numeric; the handle lives in the URL (older saved entries have only the numeric id).
+const handleOf = (v) => (v.platform === "TikTok" && /tiktok\.com\/@([\w.]+)/.exec(v.url || "")?.[1]) || v.uploader_id || v.uploader || "unknown";
+const creatorKey = handleOf;
 const day = (t) => new Date(t).toISOString().slice(0, 10);
 
 const median = (xs) => {
@@ -110,7 +112,7 @@ export function recommend(lib) {
   const creators = a.creators
     .map((c) => {
       const v = lib.find((x) => creatorKey(x) === c.k);
-      const url = PROFILE[v.platform] && v.uploader_id ? PROFILE[v.platform](v.uploader_id) : null;
+      const url = PROFILE[v.platform] && handleOf(v) !== "unknown" ? PROFILE[v.platform](handleOf(v)) : null;
       return { name: c.k, platform: v.platform, saved: c.n, avgEng: c.avgEng, url,
         basis: `${c.n} saved video${c.n > 1 ? "s" : ""}${c.avgEng != null ? `, ${(c.avgEng * 100).toFixed(1)}% like rate` : ""}` };
     })

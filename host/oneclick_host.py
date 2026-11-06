@@ -148,6 +148,21 @@ def friendly(stderr):
     return last[:300]
 
 
+def normalize(meta):
+    """TikTok's uploader_id is a number; the handle is in `uploader`. Fix the metadata and the file name."""
+    if meta.get("extractor_key") == "TikTok" and meta.get("uploader"):
+        old, handle, f = str(meta.get("uploader_id") or ""), meta["uploader"], meta.get("file")
+        if f and old and old != handle and (old + " - ") in os.path.basename(f):
+            new = os.path.join(os.path.dirname(f), os.path.basename(f).replace(old + " - ", handle + " - ", 1))
+            try:
+                os.replace(f, new)
+                meta["file"] = new
+            except OSError:
+                pass
+        meta["uploader_id"] = handle
+    return meta
+
+
 def download(msg, on_pct=None):
     url = msg.get("url", "")
     u = urlparse(url)
@@ -174,7 +189,7 @@ def download(msg, on_pct=None):
             except ValueError:
                 continue
             meta["file"] = meta.pop("filepath", None)
-            return {"ok": True, "meta": meta}
+            return {"ok": True, "meta": normalize(meta)}
     return {"ok": True, "meta": {"webpage_url": url, "file": None}}
 
 
