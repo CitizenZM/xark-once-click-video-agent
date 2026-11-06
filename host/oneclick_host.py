@@ -1,12 +1,29 @@
-#!/usr/bin/python3
-"""Chrome native-messaging host: receives {"url": ...}, runs engine, replies {"ok":..., "file"/"error":...}."""
-import json, os, struct, subprocess, sys, time
+#!/usr/bin/env python3
+"""Chrome native-messaging host (long-lived port).
+
+Messages in : {"id", "url", "quality"?}  |  {"id", "type": "ping"}  |  {"id", "type": "update"}
+Messages out: {"id", "ok", "meta"|"error"}  |  {"id", "type": "pong", ...}  |  {"id", "type": "updated", ...}
+Downloads run in a small thread pool; every reply carries the request id.
+"""
+import json, os, shutil, struct, subprocess, sys, threading, time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
-engine = os.environ.get("ONECLICK_ENGINE") or os.path.expanduser("~/.local/bin/engine")
+engine = os.environ.get("ONECLICK_ENGINE") or shutil.which("engine") or os.path.expanduser("~/.local/bin/engine")
 OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneClick")
-PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"  # ffmpeg lives in /opt/homebrew/bin
+PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + os.path.expanduser("~/.local/bin")
 COOKIE_HOSTS = ("instagram.com",)  # retry with Chrome cookies if the anonymous try fails
+WORKERS = 3
+FIELDS = ("id,title,uploader,uploader_id,extractor_key,webpage_url,duration,view_count,"
+          "like_count,comment_count,upload_date,description,tags,filepath")
+FRIENDLY = (
+    ("login required", "Login required: log in to the site in Chrome, then retry"),
+    ("rate-limit", "Rate limited by the site: wait a few minutes"),
+    ("private video", "This video is private"),
+    ("unsupported url", "No downloadable video found on this page"),
+    ("not available in your country", "Blocked in your region"),
+    ("http error 403", "Site refused the request (403): update engine from the dashboard"),
+)
 
 
 def read_msg():
@@ -14,42 +31,6 @@ def read_msg():
     if len(raw) < 4:
         return None
     return json.loads(sys.stdin.buffer.read(struct.unpack("<I", raw)[0]))
-
-
-def send_msg(obj):
-    data = json.dumps(obj).encode()
-    sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
-    sys.stdout.buffer.flush()
-
-
-def run(url, cookies=False):
-    os.makedirs(OUT_DIR, exist_ok=True)
-    cmd = [engine, "--no-playlist", "-f", "bv*+ba/b", "-S", "vcodec:h264,acodec:m4a", "--merge-output-format", "mp4",
-           "-o", os.path.join(OUT_DIR, "%(uploader|site)s - %(title).80B [%(id)s].%(ext)s"),
-           "--print", "after_move:filepath", "--no-warnings"]
-    if cookies:
-        cmd += ["--cookies-from-browser", "chrome"]
-    p = subprocess.run(cmd + [url], capture_output=True, text=True, timeout=600,
-                       env={**os.environ, "PATH": PATH})
-    return p
-
-
-def handle(msg):
-    url = (msg or {}).get("url", "")
-    u = urlparse(url)
-    if u.scheme not in ("http", "https") or not u.netloc:
-        return {"ok": False, "error": "invalid url"}
-    try:
-        p = run(url)
-        if p.returncode != 0 and u.netloc.endswith(COOKIE_HOSTS):
-            p = run(url, cookies=True)
-    except Exception as e:  # missing engine, timeout, ...
-        return {"ok": False, "error": str(e)}
-    if p.returncode != 0:
-        lines = (p.stderr or "").strip().splitlines()
-        return {"ok": False, "error": lines[-1][:300] if lines else "engine failed"}
-    out = (p.stdout or "").strip().splitlines()
-    return {"ok": True, "file": out[-1] if out else OUT_DIR}
 
 
 def log(line):
@@ -60,9 +41,107 @@ def log(line):
         pass
 
 
+def run(url, quality="best", cookies=False):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    cmd = [engine, "--no-playlist", "--no-warnings",
+           "-o", os.path.join(OUT_DIR, "%(uploader|site)s - %(title).80B [%(id)s].%(ext)s"),
+           "--print", "after_move:%(.{" + FIELDS + "})j"]
+    if quality == "audio":
+        cmd += ["-f", "ba/b", "-x", "--audio-format", "mp3"]
+    else:
+        fmt = "bv*[height<=1080]+ba/b[height<=1080]" if quality == "1080" else "bv*+ba/b"
+        cmd += ["-f", fmt, "-S", "vcodec:h264,acodec:m4a", "--merge-output-format", "mp4"]
+    if cookies:
+        cmd += ["--cookies-from-browser", "chrome"]
+    return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=900,
+                          env={**os.environ, "PATH": PATH})
+
+
+def friendly(stderr):
+    lines = (stderr or "").strip().splitlines()
+    last = lines[-1] if lines else "engine failed"
+    for needle, text in FRIENDLY:
+        if needle in (stderr or "").lower():
+            return text
+    return last[:300]
+
+
+def download(msg):
+    url = msg.get("url", "")
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not u.netloc:
+        return {"ok": False, "error": "invalid url"}
+    quality = msg.get("quality", "best")
+    try:
+        p = run(url, quality)
+        if p.returncode != 0 and u.netloc.endswith(COOKIE_HOSTS):
+            p = run(url, quality, cookies=True)
+    except Exception as e:  # missing engine, timeout, ...
+        return {"ok": False, "error": str(e)}
+    if p.returncode != 0:
+        return {"ok": False, "error": friendly(p.stderr)}
+    for line in reversed((p.stdout or "").strip().splitlines()):
+        if line.startswith("{"):
+            meta = json.loads(line)
+            meta["file"] = meta.pop("filepath", None)
+            return {"ok": True, "meta": meta}
+    return {"ok": True, "meta": {"webpage_url": url, "file": None}}
+
+
+def ping():
+    try:
+        v = subprocess.run([engine, "--version"], capture_output=True, text=True, timeout=20,
+                           env={**os.environ, "PATH": PATH}).stdout.strip() or None
+    except Exception:
+        v = None
+    return {"type": "pong", "engine": v, "ffmpeg": bool(shutil.which("ffmpeg", path=PATH)), "outDir": OUT_DIR}
+
+
+def update():
+    pipx = shutil.which("pipx", path=PATH)
+    cmd = [pipx, "upgrade", "engine"] if pipx else [engine, "-U"]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env={**os.environ, "PATH": PATH})
+        out = (p.stdout + p.stderr).strip().splitlines()
+        return {"type": "updated", "ok": p.returncode == 0, "output": out[-1] if out else ""}
+    except Exception as e:
+        return {"type": "updated", "ok": False, "output": str(e)}
+
+
+def handle(msg):
+    kind = (msg or {}).get("type")
+    if kind == "ping":
+        return ping()
+    if kind == "update":
+        return update()
+    return download(msg or {})
+
+
+def main():
+    lock = threading.Lock()
+
+    def reply(obj):
+        data = json.dumps(obj).encode()
+        with lock:
+            try:
+                sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
+                sys.stdout.buffer.flush()
+            except OSError:
+                pass
+
+    def work(msg):
+        res = handle(msg)
+        res["id"] = msg.get("id")
+        log("%s %s" % (msg.get("type") or msg.get("url"), json.dumps({k: res.get(k) for k in ("ok", "error")})))
+        reply(res)
+
+    with ThreadPoolExecutor(WORKERS) as ex:
+        while True:
+            msg = read_msg()
+            if msg is None:
+                break
+            ex.submit(work, msg)
+
+
 if __name__ == "__main__":
-    msg = read_msg()
-    log("request " + json.dumps(msg))
-    res = handle(msg)
-    log("result " + json.dumps(res))
-    send_msg(res)
+    main()

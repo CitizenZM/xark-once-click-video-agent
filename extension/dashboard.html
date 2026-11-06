@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library & Insights</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<header>
+  <h1>One-Click Downloader</h1>
+  <p class="sub">Your saved videos, what they have in common, and where to look next.</p>
+</header>
+<main>
+  <section id="setup" class="card"></section>
+
+  <section>
+    <h2>Overview</h2>
+    <div id="kpis" class="kpis"></div>
+    <ul id="headlines" class="headlines"></ul>
+  </section>
+
+  <section id="charts" class="grid"></section>
+
+  <section>
+    <h2>Where to look next</h2>
+    <p class="note">Accounts and hashtags below come only from your own saved videos. The ad libraries are fixed public sources.</p>
+    <div id="recs" class="grid"></div>
+  </section>
+
+  <section>
+    <h2>Download</h2>
+    <div class="card">
+      <label for="urls">Paste video links (one per line, up to 200)</label>
+      <textarea id="urls" rows="4" placeholder="https://www.tiktok.com/@user/video/123&#10;https://www.instagram.com/reel/abc/"></textarea>
+      <div class="row">
+        <button id="go">Download all</button>
+        <label>Quality
+          <select id="quality"><option value="best">Best</option><option value="1080">Up to 1080p</option><option value="audio">Audio only (mp3)</option></select>
+        </label>
+        <span id="goStatus" class="note"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Library <span id="count" class="note"></span></h2>
+    <div class="row">
+      <button id="csv" class="ghost">Export CSV</button>
+      <button id="json" class="ghost">Export JSON</button>
+      <button id="clear" class="ghost danger">Clear library</button>
+    </div>
+    <div class="tablewrap"><table id="table"></table></div>
+    <h3>Recent errors</h3>
+    <ul id="errors" class="errors"></ul>
+  </section>
+</main>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
