@@ -90,5 +90,5 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(store.library.at(-1).title, "Great hook here");
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
-  assert.equal(posted.length, 1); // only the instagram click reached the host
+  assert.deepEqual(posted.map((m) => m.type || "download"), ["hello", "download"]); // the chrome:// click never reached the host
 });
