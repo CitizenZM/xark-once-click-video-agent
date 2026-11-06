@@ -27,7 +27,7 @@ DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclic
 EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
 WATCH_SEC = float(os.environ.get("ONECLICK_WATCH_SEC") or 2)
 FIELDS = ("id,title,uploader,uploader_id,extractor_key,webpage_url,duration,view_count,"
-          "like_count,comment_count,upload_date,description,tags,filepath")
+          "like_count,comment_count,channel_follower_count,upload_date,description,tags,filepath")
 FRIENDLY = (
     ("login required", "Login required: log in to the site in Chrome, then retry"),
     ("rate-limit", "Rate limited by the site: wait a few minutes"),

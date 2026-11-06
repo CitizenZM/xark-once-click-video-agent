@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { videoUrls, dedupeKey } from "../extension/urls.js";
-import { analyze, recommend, filterLibrary } from "../extension/insights.js";
+import { analyze, recommend, filterLibrary, outliers } from "../extension/insights.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
 const lib = [
@@ -47,6 +47,16 @@ test("filterLibrary: search incl. notes/tags, platform filter, sorts", () => {
   assert.equal(filterLibrary(l, { sort: "views" })[0].url, lib[1].url);  // 5000 views
   assert.equal(filterLibrary(l, { sort: "like" })[0].url, lib[0].url);   // 20% like rate
   assert.equal(filterLibrary(l, { sort: "length" })[0].url, lib[2].url); // 40s
+});
+
+test("outliers: follower baseline, median fallback, and no verdict on tiny samples", () => {
+  const mk = (url, platform, views, followers) => ({ url, platform, view_count: views, like_count: 1, channel_follower_count: followers, at: NOW });
+  const l = [mk("a", "YouTube", 500000, 100000), mk("b", "YouTube", 5000, 100000), // a = 5x followers, b = 0.05x
+    mk("c", "TikTok", 1000), mk("d", "TikTok", 1200), mk("e", "TikTok", 900), mk("f", "TikTok", 20000), // f ~ 17x median
+    mk("g", "Instagram", 99999)]; // single Instagram video: no baseline, no verdict
+  const o = outliers(l);
+  assert.deepEqual(o.map((x) => x.video.url), ["f", "a"]); // f: 18x median (score 6.1), a: 5x followers (score 5)
+  assert.ok(o[0].basis.includes("median")); assert.ok(o[1].basis.includes("follower"));
 });
 
 test("recommend: derived from library only, profile + tag links, excludes known creators from mentions", () => {

@@ -17,6 +17,33 @@ const BUCKETS = ["<15s", "15-30s", "30-60s", "60s+"];
 const creatorKey = (v) => v.uploader_id || v.uploader || "unknown";
 const day = (t) => new Date(t).toISOString().slice(0, 10);
 
+const median = (xs) => {
+  const s = xs.filter((x) => x > 0).sort((a, b) => a - b);
+  return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null;
+};
+
+// Videos that beat their baseline. Baseline is the creator's follower count when engine knows it
+// (views / followers >= 1), otherwise the median views of the saved videos on that platform (>= 3x).
+export function outliers(lib, limit = 6) {
+  const medByPlatform = {};
+  for (const p of new Set(lib.map((v) => v.platform))) medByPlatform[p] = median(lib.filter((v) => v.platform === p).map((v) => v.view_count));
+  return lib
+    .map((v) => {
+      if (!(v.view_count > 0)) return null;
+      if (v.channel_follower_count > 0) {
+        const multiple = v.view_count / v.channel_follower_count;
+        return { video: v, multiple, score: multiple / 1, basis: `${multiple.toFixed(1)}x the creator's follower count` };
+      }
+      const med = medByPlatform[v.platform];
+      if (!med || lib.filter((x) => x.platform === v.platform).length < 3) return null; // too few to call anything an outlier
+      const multiple = v.view_count / med;
+      return { video: v, multiple, score: multiple / 3, basis: `${multiple.toFixed(1)}x the median of your saved ${v.platform} videos` };
+    })
+    .filter((o) => o && o.score >= 1)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
 export function analyze(lib) {
   const total = lib.length;
   const byPlatform = count(lib.map((v) => v.platform || "Other"));
@@ -29,6 +56,8 @@ export function analyze(lib) {
     const vs = lib.filter((v) => bucketOf(v.duration) === k);
     return { k, n: vs.length, avgEng: avg(vs.map(eng).filter((e) => e != null)) };
   });
+  const likeRateByPlatform = byPlatform.map((p) => ({ k: p.k, n: p.n,
+    rate: avg(lib.filter((v) => (v.platform || "Other") === p.k).map(eng).filter((e) => e != null)) }));
   const perDay = count(lib.map((v) => day(v.at))).sort((a, b) => a.k.localeCompare(b.k));
   const topVideos = [...lib].sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, 5);
   const engs = lib.map(eng).filter((e) => e != null);
@@ -43,7 +72,7 @@ export function analyze(lib) {
       headlines.push(`${best.k} videos have the highest like rate (${(best.avgEng * 100).toFixed(1)}%).`);
     if (creators[0] && creators[0].n > 1) headlines.push(`You saved ${creators[0].n} videos from ${creators[0].k}: worth studying their format.`);
   }
-  return { total, creatorsCount: creators.length, byPlatform, creators, hashtags, buckets, perDay, topVideos,
+  return { total, creatorsCount: creators.length, byPlatform, likeRateByPlatform, creators, hashtags, buckets, perDay, topVideos,
     avgEngagement: avg(engs), totalViews: lib.reduce((a, v) => a + (v.view_count || 0), 0), headlines };
 }
 
