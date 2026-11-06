@@ -19,6 +19,9 @@ NAMING = {
     "creator-id": "%(uploader_id,uploader|site)s - %(id)s",
     "date-creator-id": "%(upload_date|nodate)s %(uploader_id,uploader|site)s - %(id)s",
 }
+TRANSIENT = ("timed out", "connection reset", "http error 5", "temporary failure", "unable to download webpage",
+             "remote end closed", "read error", "network is unreachable")
+RETRY_BASE = float(os.environ.get("ONECLICK_RETRY_SEC") or 2)
 PCT_RE = re.compile(r"\[PCT\]\s*([\d.]+)%")
 DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclick-dev")
 EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
@@ -112,7 +115,11 @@ def download(msg, on_pct=None):
     try:
         opts = {"quality": msg.get("quality", "best"), "dir": out_dir(msg.get("folder")),
                 "naming": msg.get("naming") if msg.get("naming") in NAMING else "creator-title-id"}
-        code, out = run(url, opts, on_pct=on_pct)
+        for attempt in range(3):  # retry only network-type failures, with growing delay
+            code, out = run(url, opts, on_pct=on_pct)
+            if code == 0 or not any(t in out.lower() for t in TRANSIENT):
+                break
+            time.sleep(RETRY_BASE * (attempt + 1))
         if code != 0 and u.netloc.endswith(COOKIE_HOSTS):
             code, out = run(url, opts, cookies=True, on_pct=on_pct)
     except Exception as e:  # bad folder, missing engine, ...

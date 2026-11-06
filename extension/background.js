@@ -7,6 +7,9 @@ let inflight = 0;
 const pending = new Map();
 const jobs = new Map(); // live queue, mirrored to storage for the dashboard
 let jobSeq = 0;
+let devMode = false;
+let idleTimer = null;
+let lastHeal = 0;
 let flushTimer = null;
 let chain = Promise.resolve(); // serialises read-modify-write on storage
 const locked = (fn) => (chain = chain.then(fn, fn));
@@ -20,6 +23,7 @@ function connect() {
     const p = pending.get(m.id);
     if (m.type === "progress") return p && p.onProgress && p.onProgress(m.pct);
     if (p) { pending.delete(m.id); p.resolve(m); }
+    idleClose();
   });
   port.onDisconnect.addListener(() => {
     const err = (chrome.runtime.lastError && chrome.runtime.lastError.message) || "Helper disconnected";
@@ -28,6 +32,13 @@ function connect() {
     pending.clear();
   });
   return port;
+}
+
+// Release the helper process after a quiet minute (dev builds keep it for auto-reload).
+function idleClose() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (port && !pending.size && !devMode) { port.disconnect(); port = null; } }, 60000);
+  if (idleTimer.unref) idleTimer.unref(); // Node (tests) only; a no-op in the browser
 }
 
 function call(msg, onProgress) {
@@ -42,6 +53,7 @@ function call(msg, onProgress) {
 async function hello() {
   try {
     const r = await call({ type: "hello", version: chrome.runtime.getManifest().version });
+    devMode = !!r.dev;
     if (!r.dev && port) { port.disconnect(); port = null; }
   } catch { /* helper not installed: the dashboard explains how to set it up */ }
 }
@@ -97,7 +109,14 @@ async function download(url, force = false) {
   setJob(job, { id: job, url, state: "queued", pct: 0, at: Date.now() });
   inflight++; badge();
   try {
-    const r = await call({ url, quality, folder, naming }, (pct) => setJob(job, { state: "running", pct }));
+    const send = () => call({ url, quality, folder, naming }, (pct) => setJob(job, { state: "running", pct }));
+    let r = await send();
+    // an old engine is the usual cause of sudden 403s: update once an hour at most, then retry
+    if (!r.ok && /update engine/.test(r.error || "") && Date.now() - lastHeal > 3600000) {
+      lastHeal = Date.now();
+      await call({ type: "update" }).catch(() => {});
+      r = await send();
+    }
     if (r.ok) await addToLibrary(r.meta); else await addError(url, r.error);
     setJob(job, r.ok ? { state: "done", pct: 100 } : { state: "error", error: r.error });
     return r;
@@ -132,9 +151,18 @@ const openDashboard = () => chrome.tabs.create({ url: chrome.runtime.getURL("das
 
 chrome.action.onClicked.addListener(oneClick);
 
-chrome.runtime.onStartup.addListener(hello);
+async function maybeUpdate() {
+  const { autoUpdate = true } = await get("settings", {});
+  if (!autoUpdate || Date.now() - (await get("lastUpdate", 0)) < 7 * 86400000) return;
+  const r = await call({ type: "update" });
+  await chrome.storage.local.set({ lastUpdate: Date.now(), updateResult: r.output || "" });
+}
+const schedule = () => chrome.alarms.create("update", { periodInMinutes: 1440 });
+chrome.alarms.onAlarm.addListener((a) => a.name === "update" && maybeUpdate().catch(() => {}));
+
+chrome.runtime.onStartup.addListener(() => { hello(); schedule(); });
 chrome.runtime.onInstalled.addListener(() => {
-  hello();
+  hello(); schedule();
   chrome.contextMenus.create({ id: "dl-link", title: "Download video from this link", contexts: ["link"] });
   chrome.contextMenus.create({ id: "dl-all", title: "Download all videos on this page", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dashboard", title: "Open library & insights", contexts: ["action"] });

@@ -52,6 +52,7 @@ test("recommend: derived from library only, profile + tag links, excludes known 
 test("background: one-click and batch reach the host and fill the library", async () => {
   const store = {}, notes = [], posted = [], L = {};
   globalThis.chrome = {
+    alarms: { create(a) { L.alarm = a; }, onAlarm: { addListener: (f) => (L.onAlarm = f) } },
     runtime: {
       lastError: undefined, getURL: (p) => p, getManifest: () => ({ version: "9.9.9" }), reload: () => (L.reloaded = true),
       onInstalled: { addListener: (f) => (L.installed = f) }, onStartup: { addListener() {} },
@@ -64,6 +65,8 @@ test("background: one-click and batch reach the host and fill the library", asyn
           postMessage(m) {
             posted.push(m);
             if (m.url && m.url.includes("slow")) return setTimeout(() => { ls.forEach((f) => f({ id: m.id, type: "progress", pct: 40 })); setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok" } })), 400); }, 0);
+            if (m.type === "update") { L.updates = (L.updates || 0) + 1; L.healed = true; return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "updated", ok: true, output: "upgraded" })), 0); }
+            if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update engine from the dashboard" })), 0);
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
             setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4", ...(m.url.includes("instagram") ? { title: "Video by bo", description: "Great hook here\nmore text" } : {}) } })), 0);
           },
@@ -116,6 +119,18 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(notes.at(-1).message, "0 saved, 2 already saved, 0 failed");
   await L.click({ id: 1, url: "https://www.tiktok.com/@a/video/10" });
   assert.deepEqual([posted.at(-1).folder, posted.at(-1).naming], ["~/refs", "creator-id"]);
+
+  // self-heal: a 403 triggers one engine update and one retry, which then succeeds
+  await L.click({ id: 1, url: "https://www.tiktok.com/@h/video/heal" });
+  assert.equal(L.updates, 1); assert.equal(notes.at(-1).title, "Saved");
+  // weekly auto-update: alarm registered; fires only when the last update is older than 7 days
+  assert.equal(L.alarm, "update");
+  L.updates = 0; store.lastUpdate = Date.now();
+  await L.onAlarm({ name: "update" }); await new Promise((r) => setTimeout(r, 20));
+  assert.equal(L.updates, 0);
+  store.lastUpdate = Date.now() - 8 * 86400000;
+  await L.onAlarm({ name: "update" }); await new Promise((r) => setTimeout(r, 30));
+  assert.equal(L.updates, 1); assert.ok(Date.now() - store.lastUpdate < 5000);
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host

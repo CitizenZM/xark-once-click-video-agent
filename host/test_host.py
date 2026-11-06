@@ -77,6 +77,16 @@ class T(unittest.TestCase):
         bad = session([{"id": 2, "url": "https://www.tiktok.com/@a/video/2", "folder": "/etc"}], env)[2]
         self.assertFalse(bad["ok"]); self.assertIn("inside your home folder", bad["error"])
 
+    def test_transient_error_is_retried_permanent_is_not(self):
+        flaky, d = stub('f="$(dirname "$0")/n"; n=$(cat "$f" 2>/dev/null || echo 0); echo $((n+1)) > "$f"; '
+                        '[ "$n" -lt 2 ] && { echo "ERROR: timed out" >&2; exit 1; }; echo \'{"filepath":"/x/v.mp4"}\'')
+        env = {"ONECLICK_ENGINE": flaky, "ONECLICK_OUT": d, "ONECLICK_RETRY_SEC": "0"}
+        self.assertTrue(session([{"id": 1, "url": "https://www.tiktok.com/@a/video/1"}], env)[1]["ok"])
+        self.assertEqual(open(os.path.join(d, "n")).read().strip(), "3")  # failed twice, third try succeeded
+        perm, d2 = stub('f="$(dirname "$0")/n"; n=$(cat "$f" 2>/dev/null || echo 0); echo $((n+1)) > "$f"; echo "ERROR: Private video" >&2; exit 1')
+        r = session([{"id": 2, "url": "https://www.tiktok.com/@a/video/2"}], {**env, "ONECLICK_ENGINE": perm, "ONECLICK_OUT": d2})[2]
+        self.assertFalse(r["ok"]); self.assertEqual(open(os.path.join(d2, "n")).read().strip(), "1")  # no retry
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]
