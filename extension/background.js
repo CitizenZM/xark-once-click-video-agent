@@ -206,11 +206,20 @@ async function expandDownload({ url, limit }) {
   return { found: r.urls.length, ok: rs.filter((x) => x.ok && !x.skipped).length, skipped: rs.filter((x) => x.skipped).length, failed: rs.filter((x) => !x.ok).length };
 }
 
+// library edits run here so they share the storage lock with new downloads
+const libEdit = (fn) => locked(async () => {
+  const lib = await get("library", []);
+  await chrome.storage.local.set({ library: fn(lib) });
+  return { ok: true };
+});
+
 // dashboard / content script -> background
 chrome.runtime.onMessage.addListener((m, _sender, send) => {
   if (m.type === "page-state") { send(pageState(m)); return false; }
   const run = m.type === "page-download" ? pageDownload(m)
     : m.type === "expand-download" ? expandDownload(m)
+    : m.type === "lib-delete" ? libEdit((lib) => lib.filter((v) => v.url !== m.url))
+    : m.type === "lib-note" ? libEdit((lib) => lib.map((v) => (v.url === m.url ? { ...v, note: String(m.note || "").slice(0, 500) } : v)))
     : m.type === "buttons" ? setButtons(!!m.on)
     : m.type === "ping" || m.type === "update" ? call({ type: m.type })
     : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map((u) => download(u))).then((rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length }))

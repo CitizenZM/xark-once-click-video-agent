@@ -75,6 +75,11 @@
   <section>
     <h2>Library <span id="count" class="note"></span></h2>
     <div class="row">
+      <input id="q" class="grow" type="search" placeholder="Search title, creator, tags, notes">
+      <select id="fplat"><option value="">All platforms</option></select>
+      <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
+    </div>
+    <div class="row">
       <button id="csv" class="ghost">Export CSV</button>
       <button id="json" class="ghost">Export JSON</button>
       <button id="clear" class="ghost danger">Clear library</button>

@@ -1,4 +1,4 @@
-import { analyze, recommend } from "./insights.js";
+import { analyze, recommend, filterLibrary } from "./insights.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -56,12 +56,28 @@ function renderRecs(lib) {
     <div class="card"><h3>Ad libraries</h3><ul class="list">${r.channels.map((c) => `<li>${link(c.url, c.name)}<small>${esc(c.why)}</small></li>`).join("")}</ul></div>`;
 }
 
+let shown = 200, current = [];
 function renderTable(lib) {
-  $("#count").textContent = `(${lib.length})`;
-  const rows = [...lib].sort((a, b) => b.at - a.at);
-  $("#table").innerHTML = `<tr><th>Saved</th><th>Platform</th><th>Creator</th><th>Title</th><th>Length</th><th>Views</th><th>Likes</th></tr>` +
-    rows.map((v) => `<tr><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a></td><td>${v.duration ? v.duration + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td></tr>`).join("");
+  current = lib;
+  const plats = [...new Set(lib.map((v) => v.platform))].sort();
+  const sel = $("#fplat"), keep = sel.value;
+  sel.innerHTML = `<option value="">All platforms</option>` + plats.map((p) => `<option>${esc(p)}</option>`).join("");
+  sel.value = plats.includes(keep) ? keep : "";
+  const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, sort: $("#fsort").value });
+  $("#count").textContent = rows.length === lib.length ? `(${lib.length})` : `(${rows.length} of ${lib.length})`;
+  $("#table").innerHTML = `<tr><th>Saved</th><th>Platform</th><th>Creator</th><th>Title</th><th>Length</th><th>Views</th><th>Likes</th><th>Note</th><th></th></tr>` +
+    rows.slice(0, shown).map((v) => `<tr><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a></td><td>${v.duration ? v.duration + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a></td></tr>`).join("") +
+    (rows.length > shown ? `<tr><td colspan="9"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
 }
+$("#table").addEventListener("click", async (e) => {
+  const t = e.target.closest("a"); if (!t) return;
+  if (t.id === "more") { e.preventDefault(); shown += 200; return renderTable(current); }
+  if (!t.dataset.url) return;
+  e.preventDefault();
+  if (t.classList.contains("del-btn")) { if (confirm("Remove this video from the list? The file stays on disk.")) await send({ type: "lib-delete", url: t.dataset.url }); }
+  else { const v = current.find((x) => x.url === t.dataset.url); const note = prompt("Note (use #tags to group)", (v && v.note) || ""); if (note !== null) await send({ type: "lib-note", url: t.dataset.url, note }); }
+});
+for (const id of ["#q", "#fplat", "#fsort"]) $(id).addEventListener("input", () => { shown = 200; renderTable(current); });
 
 const csvCell = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
 function save(name, text, type) {

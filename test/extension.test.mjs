@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { videoUrls, dedupeKey } from "../extension/urls.js";
-import { analyze, recommend } from "../extension/insights.js";
+import { analyze, recommend, filterLibrary } from "../extension/insights.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
 const lib = [
@@ -37,6 +37,16 @@ test("analyze: totals, platform split, buckets, hashtags, headlines", () => {
   assert.equal(a.totalViews, 8000);
   assert.ok(a.headlines[0].startsWith("67%"));
   assert.deepEqual(analyze([]).headlines, []);
+});
+
+test("filterLibrary: search incl. notes/tags, platform filter, sorts", () => {
+  const l = [{ ...lib[0], note: "winner hook #swipe" }, lib[1], lib[2]];
+  assert.deepEqual(filterLibrary(l, { q: "swipe" }).map((v) => v.url), [lib[0].url]);
+  assert.equal(filterLibrary(l, { q: "ana ugc" }).length, 2);          // every word must match
+  assert.equal(filterLibrary(l, { platform: "Instagram" }).length, 1);
+  assert.equal(filterLibrary(l, { sort: "views" })[0].url, lib[1].url);  // 5000 views
+  assert.equal(filterLibrary(l, { sort: "like" })[0].url, lib[0].url);   // 20% like rate
+  assert.equal(filterLibrary(l, { sort: "length" })[0].url, lib[2].url); // 40s
 });
 
 test("recommend: derived from library only, profile + tag links, excludes known creators from mentions", () => {
@@ -148,6 +158,13 @@ test("background: one-click and batch reach the host and fill the library", asyn
   // latest-N-from-profile: expand then download each (one already saved is skipped)
   await L.click({ id: 1, url: "https://www.tiktok.com/@e/video/501" });
   assert.deepEqual(await ask({ type: "expand-download", url: "https://www.tiktok.com/@e", limit: 3 }), { found: 3, ok: 2, skipped: 1, failed: 0 });
+
+  // library edits go through the background (shared lock): note then delete
+  const noteUrl = "https://www.tiktok.com/@a/video/9";
+  await ask({ type: "lib-note", url: noteUrl, note: "keep #hook" });
+  assert.equal(store.library.find((v) => v.url === noteUrl).note, "keep #hook");
+  await ask({ type: "lib-delete", url: noteUrl });
+  assert.equal(store.library.some((v) => v.url === noteUrl), false);
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
