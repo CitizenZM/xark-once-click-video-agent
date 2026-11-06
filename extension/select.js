@@ -13,9 +13,9 @@
     .box.on{background:#2563eb}.box.on::after{content:"✓"}
     .bar{position:fixed;z-index:2147483647;left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:#111827;color:#fff;
       font:600 14px -apple-system,Segoe UI,sans-serif;padding:10px 14px;border-radius:999px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
-    .bar button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;background:#374151}.bar button.go{background:#2563eb}.bar button[disabled]{opacity:.5;cursor:default}</style>
-    <div class="bar"><span id="n"></span><button id="all">Select all</button><button id="none">Clear</button><button class="go" id="go">Download</button><button id="x">Close</button></div>`;
-  const $ = (id) => root.getElementById ? root.getElementById(id) : root.querySelector("#" + id);
+    .bar input{all:unset;width:140px;padding:6px 10px;border-radius:999px;background:#1f2937;border:1px solid #374151;font-weight:500}.bar button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;background:#374151}.bar button.go{background:#2563eb}.bar button[disabled]{opacity:.5;cursor:default}</style>
+    <div class="bar"><span id="n"></span><input id="col" list="cols" placeholder="Collection (optional)" maxlength="60"><datalist id="cols"></datalist><button id="all">Select all</button><button id="none">Clear</button><button class="go" id="go">Download</button><button id="x">Close</button></div>`;
+  const $ = (id) => root.querySelector("#" + id);
   const boxes = new Map(); // clean url -> {el, on}
   const links = () => { const m = new Map(); for (const a of document.links) { if (!VIDEO.some((p) => p.test(a.href))) continue; const k = clean(a.href); const r = a.getBoundingClientRect(); if (k && r.width > 40 && r.height > 40 && !m.has(k)) m.set(k, r); } return m; };
   const count = () => [...boxes.values()].filter((b) => b.on).length;
@@ -45,10 +45,14 @@
   $("go").onclick = async () => {
     const hrefs = [...boxes].filter(([, b]) => b.on).map(([k]) => k);
     $("go").disabled = true; $("n").textContent = `Queued ${hrefs.length}…`;
-    let r; try { r = await chrome.runtime.sendMessage({ type: "page-download", href: "", hrefs }); } catch (e) { r = { error: String(e) }; }
+    let r; try { r = await chrome.runtime.sendMessage({ type: "page-download", href: "", hrefs, folder: $("col").value.trim() }); } catch (e) { r = { error: String(e) }; }
     $("n").textContent = r && !r.error ? `✓ ${r.ok} saved${r.skipped ? `, ${r.skipped} already saved` : ""}${r.failed ? `, ${r.failed} failed` : ""}` : "✗ " + ((r && r.error) || "failed");
     for (const b of boxes.values()) { b.on = false; b.el.classList.remove("on"); }
   };
   document.documentElement.appendChild(host);
   place();
+  chrome.storage.local.get(["folders", "library"]).then(({ folders = [], library = [] }) => {
+    const names = [...new Set([...folders, ...library.map((v) => v.folder).filter(Boolean)])];
+    for (const n of names) { const o = document.createElement("option"); o.value = n; $("cols").appendChild(o); }
+  }).catch(() => {});
 })();

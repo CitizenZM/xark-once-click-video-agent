@@ -1,6 +1,6 @@
-# One-Click Video Downloader
+# Xark Once Click Video Agent
 
-Chrome extension that saves the video on the page (TikTok, Instagram, YouTube, X and 1000+ sites) with one click, downloads a whole page or a profile's latest videos, and turns what you save into a small research dashboard.
+Chrome extension that saves the video on the page (TikTok, Instagram, YouTube, X and 1000+ sites) with one click, downloads a whole page or a profile's latest videos, sorts what you save into collections, and turns it into a small research dashboard with optional AI recommendations.
 
 It runs [engine](https://github.com/engine/engine) on your own computer through a tiny local helper. Nothing is uploaded anywhere.
 
@@ -8,10 +8,10 @@ It runs [engine](https://github.com/engine/engine) on your own computer through 
 1. **Helper** (installs engine + ffmpeg if missing, registers the helper)
    - macOS / Linux:
      ```bash
-     curl -fsSL https://raw.githubusercontent.com/CitizenZM/one-click-downloader-20261106/main/install.sh | bash
+     curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash
      ```
      From a clone: `bash install.sh`. Pin a release with `ONECLICK_REF=<tag>`.
-   - Windows (experimental, untested): `irm https://raw.githubusercontent.com/CitizenZM/one-click-downloader-20261106/main/install.ps1 | iex`
+   - Windows (experimental, untested): `irm https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.ps1 | iex`
 2. **Extension**: `chrome://extensions` → Developer mode → Load unpacked → pick the `extension/` folder.
 
 Open the dashboard (right-click the toolbar icon → "Open library & insights"). It should say **Helper ready**.
@@ -40,3 +40,11 @@ Layout: `extension/` (MV3, no build step) · `host/` (native messaging helper) �
 Download only content you own or have permission to use, and respect each platform's terms and copyright law. This project is a thin wrapper around engine and ships no site-specific code.
 
 MIT licensed.
+
+## What you get
+- **Toolbar popup**: Download this video · Select videos on this page · Open dashboard. Shortcut `Alt+Shift+D` downloads the current tab.
+- **Dashboard** (popup → Dashboard): library, charts, outliers, creators and hashtags to explore, queue, settings.
+- **Collections**: make folders of saved video links, choose a collection when you select or paste videos, move videos in bulk, copy a collection's links.
+- **AI assistant (optional)**: paste your own Anthropic API key in the dashboard. Buttons *Recommend from my library* and *Auto-sort unfiled videos into collections* send a capped summary (titles, creators, tags, first caption line, counts) to api.anthropic.com only when pressed. See PRIVACY.md.
+
+Site and downloads: https://xark-once-click-video-agent.vercel.app

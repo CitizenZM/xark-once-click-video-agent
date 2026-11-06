@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.0
+- Renamed to Xark Once Click Video Agent.
+- Toolbar popup (download this video, select videos, open dashboard); `Alt+Shift+D` downloads the current tab.
+- Collections: folders for saved videos, filter, bulk move, copy links, choose a collection when downloading or selecting.
+- Optional AI assistant (own API key): recommendations from your library and auto-sort into collections, on click only.
+- Landing page on Vercel; unpacked zip keeps the pinned extension ID.
+
 ## 3.1.0
 - New: "Select videos on this page…" (right-click the page or the toolbar icon): tick videos with checkboxes, Select all / Clear, then Download. Works without extra site permissions.
 - Fixed: the same video clicked several times while it is downloading is now one download, not several.

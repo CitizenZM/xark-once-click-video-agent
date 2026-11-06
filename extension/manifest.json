@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "One-Click Video Downloader",
-  "version": "3.1.0",
-  "description": "One click to save TikTok, Instagram and other videos with local engine. Batch-download a whole page, then see what your saved videos have in common.",
+  "name": "Xark Once Click Video Agent",
+  "version": "3.2.0",
+  "description": "Save TikTok, Instagram and other videos in one click with local engine. Pick videos on a page, sort them into collections, and get AI recommendations from your own library.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3c38ZNaC2YzRhljp8wRs+UkTA9MX2DJDGNItM3+BpkyN8IPq7Hj7snIUDH/okAiTjAivfiF4nZGALZm7ccOSQmnA9UOqOIGLvtdmt0WGS//sWGEkCXzgrAt1EZPWnsCeJFjmOJ5DpUZ1RhdBEOE/V/qtrCzDqlIJ8asQtX4cA4FQRB6RfLUgtr1zjbiafZkinCsBBdJDXujH8asZIYCrh9nlH++mtL4VJhgLf6wkirslW1zG9wOfcMQcbvFbdxsJssMB+6KoslqRR1sfwUBKK6TQVRIgt+TBFpvXE5L033EXOYo1wzNptnw8PAklcKNluPp//fcNteJNJ9VkYj3cEwIDAQAB",
   "permissions": [
     "nativeMessaging",
@@ -18,7 +18,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Download this video",
+    "default_title": "Xark Once Click Video Agent",
+    "default_popup": "popup.html",
     "default_icon": {
       "128": "icon.png"
     }
@@ -27,7 +28,9 @@
     "128": "icon.png"
   },
   "commands": {
-    "_execute_action": {
+    "_execute_action": {},
+    "download-current": {
+      "description": "Download the video on the current tab",
       "suggested_key": {
         "default": "Alt+Shift+D",
         "mac": "Alt+Shift+D"
@@ -39,6 +42,7 @@
     "https://www.instagram.com/*",
     "https://www.youtube.com/*",
     "https://x.com/*",
-    "https://twitter.com/*"
+    "https://twitter.com/*",
+    "https://api.anthropic.com/*"
   ]
 }

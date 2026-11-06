@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { videoUrls, dedupeKey } from "../extension/urls.js";
 import { analyze, recommend, filterLibrary, outliers } from "../extension/insights.js";
+import { buildPrompt, parseJson, groupAssignments, ask as aiAsk } from "../extension/ai.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
 const lib = [
@@ -101,12 +102,13 @@ test("background: one-click and batch reach the host and fill the library", asyn
         };
       },
     },
+    commands: { onCommand: { addListener: (f) => (L.cmd = f) } },
     action: { onClicked: { addListener: (f) => (L.click = f) }, setBadgeText() {}, setBadgeBackgroundColor() {} },
     contextMenus: { create() {}, onClicked: { addListener: (f) => (L.menu = f) } },
     notifications: { create: (o) => notes.push(o) },
     storage: { local: { get: async (k) => { await new Promise((r) => setTimeout(r, 2)); return { [k]: structuredClone(store[k]) }; }, set: async (o) => { await new Promise((r) => setTimeout(r, 2)); Object.assign(store, o); } } },
     scripting: { registerContentScripts: async (a) => (L.registered = a), unregisterContentScripts: async () => { L.unregistered = true; }, executeScript: async (o) => o.files ? (L.injected = o) : [{ result: ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11", "https://example.com/x"] }] },
-    tabs: { create() {} },
+    tabs: { create() {}, query: async () => [{ id: 3, url: "https://www.tiktok.com/@cmd/video/4242" }] },
   };
   await import("../extension/background.js");
 
@@ -206,6 +208,42 @@ test("background: one-click and batch reach the host and fill the library", asyn
   const sel = ["https://www.tiktok.com/@q/video/701", "https://www.tiktok.com/@q/video/702"];
   assert.deepEqual(await ask({ type: "page-download", href: "", hrefs: sel }), { ok: 2, skipped: 0, failed: 0 });
 
+  // collections: download into one, move, delete; keyboard shortcut downloads the active tab; popup action reports the result
+  const fa = posted.length;
+  assert.deepEqual(await ask({ type: "download", urls: ["https://www.tiktok.com/@f/video/801", "https://www.tiktok.com/@f/video/802"], folder: "Hooks" }), { ok: 2, skipped: 0, failed: 0 });
+  assert.deepEqual(store.folders, ["Hooks"]);
+  assert.equal(store.library.filter((v) => v.folder === "Hooks").length, 2);
+  await ask({ type: "lib-folder", urls: ["https://www.tiktok.com/@f/video/801"], folder: "Pricing" });
+  assert.deepEqual([store.library.find((v) => v.url.endsWith("/801")).folder, store.folders.includes("Pricing")], ["Pricing", true]);
+  await ask({ type: "lib-folder", urls: ["https://www.tiktok.com/@f/video/801"], folder: "" });
+  assert.equal(store.library.find((v) => v.url.endsWith("/801")).folder, undefined);
+  await ask({ type: "folder-delete", name: "Hooks" });
+  assert.equal(store.library.some((v) => v.folder === "Hooks"), false); assert.equal(store.folders.includes("Hooks"), false);
+  assert.deepEqual(await ask({ type: "folder-add", name: "  " }), { error: "Enter a name" });
+  await L.cmd("download-current"); await new Promise((r) => setTimeout(r, 30));
+  assert.ok(posted.some((m) => m.url === "https://www.tiktok.com/@cmd/video/4242"));
+  assert.deepEqual(await ask({ type: "download-one", url: "https://www.tiktok.com/@cmd/video/4243" }), { ok: true, error: undefined });
+  // select mode can file the ticked videos straight into a collection
+  await ask({ type: "page-download", href: "", hrefs: ["https://www.tiktok.com/@g/video/901"], folder: "Picked" });
+  assert.equal(store.library.find((v) => v.url.endsWith("/901")).folder, "Picked");
+
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
+});
+
+test("filterLibrary by collection; AI prompt is capped and has no urls; assignments map back safely", async () => {
+  const l = [{ ...lib[0], folder: "Hooks" }, lib[1], { ...lib[2], folder: "Pricing" }];
+  assert.deepEqual(filterLibrary(l, { folder: "Hooks" }).map((v) => v.url), [lib[0].url]);
+  assert.deepEqual(filterLibrary(l, { folder: "__none" }).map((v) => v.url), [lib[1].url]);
+  const many = Array.from({ length: 100 }, (_, i) => ({ ...lib[0], url: "https://www.tiktok.com/@a/video/" + i, title: "t" + i }));
+  const p = buildPrompt("sort", [...many, ...l], ["Hooks"]);
+  assert.equal(p.urls.length, 60); assert.ok(!p.text.includes("tiktok.com/@a/video"));      // urls never sent
+  assert.equal(buildPrompt("sort", l, []).urls.length, 1);                                     // only unfiled videos are sorted
+  assert.deepEqual(groupAssignments({ assignments: [{ i: 0, collection: "A" }, { i: 5, collection: "B" }, { i: 1, collection: "" }, { i: 1, collection: "A" }] }, ["u0", "u1"]), { A: ["u0", "u1"] });
+  assert.deepEqual(parseJson('Sure!\n```json\n{"a":1}\n```'), { a: 1 });
+  assert.throws(() => parseJson("no json"));
+  let seen; const fake = async (url, o) => { seen = { url, o }; return { ok: true, json: async () => ({ content: [{ text: '{"summary":"x"}' }] }) }; };
+  assert.deepEqual(await aiAsk("k", "hi", fake), { summary: "x" });
+  assert.equal(seen.url, "https://api.anthropic.com/v1/messages"); assert.equal(seen.o.headers["x-api-key"], "k");
+  await assert.rejects(aiAsk("k", "hi", async () => ({ ok: false, status: 401, json: async () => ({ error: { message: "bad key" } }) })), /bad key/);
 });

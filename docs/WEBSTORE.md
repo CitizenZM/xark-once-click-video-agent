@@ -1,5 +1,5 @@
 # Chrome Web Store pack (not yet published: needs the owner's developer account)
-Build: `bash scripts/build-zip.sh` → `dist/one-click-downloader-<version>.zip` (dev-only `key` removed).
+Build: `bash scripts/build-zip.sh` → `dist/xark-once-click-video-agent.zip` (dev-only `key` removed).
 After the first upload, put the store-assigned extension ID in `host/EXTENSION_IDS` and re-run `install.sh`, otherwise the helper rejects the store build.
 
 **Name**: One-Click Video Downloader

@@ -79,10 +79,10 @@ export function analyze(lib) {
 }
 
 // Library table: text search over title/creator/tags/notes, platform filter, sort.
-export function filterLibrary(lib, { q = "", platform = "", sort = "new" } = {}) {
+export function filterLibrary(lib, { q = "", platform = "", sort = "new", folder = "" } = {}) {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const hay = (v) => [v.title, v.uploader, v.uploader_id, v.note, v.platform, ...(v.tags || [])].join(" ").toLowerCase();
-  const out = lib.filter((v) => (!platform || v.platform === platform) && words.every((w) => hay(v).includes(w)));
+  const hay = (v) => [v.title, v.uploader, v.uploader_id, v.note, v.folder, v.platform, ...(v.tags || [])].join(" ").toLowerCase();
+  const out = lib.filter((v) => (!platform || v.platform === platform) && (!folder || (folder === "__none" ? !v.folder : v.folder === folder)) && words.every((w) => hay(v).includes(w)));
   const by = { new: (a, b) => b.at - a.at, views: (a, b) => (b.view_count || 0) - (a.view_count || 0),
     like: (a, b) => (eng(b) ?? -1) - (eng(a) ?? -1), length: (a, b) => (b.duration || 0) - (a.duration || 0) };
   return out.sort(by[sort] || by.new);

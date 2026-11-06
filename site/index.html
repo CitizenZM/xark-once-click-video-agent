@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xark Once Click Video Agent</title>
+<meta name="description" content="Save TikTok, Instagram and YouTube videos in one click, sort them into collections, and get AI recommendations from your own library. Runs locally with engine.">
+<style>
+:root{--bg:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--card:#f9fafb;--blue:#2563eb;--code:#f3f4f6}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--ink:#f3f4f6;--mute:#9ca3af;--line:#27304a;--card:#111833;--code:#0f172a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,Segoe UI,Roboto,sans-serif}
+.w{max-width:820px;margin:0 auto;padding:0 16px}
+header{padding:56px 0 24px}h1{font-size:clamp(28px,6vw,44px);line-height:1.1;margin:0 0 12px}
+.lead{color:var(--mute);font-size:18px;margin:0 0 20px}
+.btn{display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:600;padding:11px 18px;border-radius:10px;margin:0 8px 8px 0}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+h2{font-size:22px;margin:40px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mute);font-size:14px}
+ol{padding-left:20px}li{margin:0 0 14px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:13px;margin:8px 0}
+.note{color:var(--mute);font-size:14px}footer{margin:48px 0;color:var(--mute);font-size:14px}a{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="w">
+<header>
+  <h1>Xark Once Click Video Agent</h1>
+  <p class="lead">Save the TikTok, Instagram or YouTube video you like in one click. Pick videos on a page, keep them in collections, and let AI point out what to study next.</p>
+  <a class="btn" href="xark-once-click-video-agent.zip" download>Download the extension (.zip)</a>
+  <a class="btn ghost" href="https://github.com/CitizenZM/xark-once-click-video-agent">GitHub</a>
+</header>
+
+<h2>What it does</h2>
+<div class="grid">
+  <div class="card"><h3>One click</h3><p>Click the icon on a video page, or press Alt+Shift+D. The file lands in your Downloads folder.</p></div>
+  <div class="card"><h3>Select on a page</h3><p>Tick videos on a feed or profile, or Select all, then download them as a queue.</p></div>
+  <div class="card"><h3>Collections</h3><p>Folders for your saved video links. Move in bulk, filter, copy a collection's links.</p></div>
+  <div class="card"><h3>Dashboard</h3><p>Library, charts, outliers, creators and hashtags worth exploring, plus fixed public ad libraries.</p></div>
+  <div class="card"><h3>AI assistant (optional)</h3><p>With your own Anthropic key: recommendations from your library and auto-sort into collections, only when you press the button.</p></div>
+  <div class="card"><h3>Local and private</h3><p>Downloads run on your computer with engine. No accounts, no analytics.</p></div>
+</div>
+
+<h2>Install in 2 steps</h2>
+<ol>
+  <li><b>Install the helper</b> (macOS or Linux). It sets up engine and ffmpeg and registers a small local program that Chrome talks to.
+    <pre>curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash</pre>
+    <span class="note">Windows: an experimental installer is in the GitHub repo (install.ps1), not yet tested on a real PC.</span></li>
+  <li><b>Add the extension.</b> Download the zip above and unzip it. Open <code>chrome://extensions</code>, turn on Developer mode, click <i>Load unpacked</i> and choose the unzipped folder. Pin the icon.</li>
+</ol>
+<p class="note">Then click the icon → Dashboard. It should say “Helper ready”. Use the zip from this page: it keeps the extension ID the helper expects.</p>
+
+<h2>Good to know</h2>
+<ul class="note">
+  <li>You are responsible for respecting each platform's terms and the creators' rights. Save references for research; do not republish other people's videos.</li>
+  <li>Instagram sometimes needs your Chrome login cookies; the helper reads them locally only when an anonymous try fails.</li>
+  <li>The AI buttons send a capped summary of your saved videos to api.anthropic.com with your key. Nothing is sent otherwise. <a href="https://github.com/CitizenZM/xark-once-click-video-agent/blob/main/PRIVACY.md">Privacy</a>.</li>
+</ul>
+<footer>Xark · open source (MIT) · built on <a href="https://github.com/engine/engine">engine</a></footer>
+</div>
+</body>
+</html>

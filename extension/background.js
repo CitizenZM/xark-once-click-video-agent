@@ -142,10 +142,11 @@ async function downloadNow(url, force = false) {
 }
 
 async function oneClick(tab) {
-  if (!/^https?:\/\//.test((tab && tab.url) || "")) return notify("Not a page", "Open a video page first.");
+  if (!/^https?:\/\//.test((tab && tab.url) || "")) { notify("Not a page", "Open a video page first."); return { ok: false, error: "Not a page" }; }
   const r = await download(tab.url, true); // a direct click always downloads
   if (r.ok) notify("Saved", (r.meta && r.meta.file) || "Download complete");
   else notify("Download failed", r.error + (/disconnect|not found|Specified native/i.test(r.error) ? " (open the dashboard to set up the helper)" : ""));
+  return { ok: !!r.ok, error: r.error };
 }
 
 async function downloadAll(tab) {
@@ -161,7 +162,12 @@ async function downloadAll(tab) {
 
 const openDashboard = () => chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 
-chrome.action.onClicked.addListener(oneClick);
+chrome.action.onClicked.addListener(oneClick); // only fires if the popup is removed
+chrome.commands.onCommand.addListener(async (cmd) => {
+  if (cmd !== "download-current") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab) oneClick(tab);
+});
 
 async function maybeUpdate() {
   const { autoUpdate = true } = await get("settings", {});
@@ -192,7 +198,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 async function setButtons(on) {
   try { await chrome.scripting.unregisterContentScripts({ ids: ["oneclick-button"] }); } catch { /* none registered */ }
   if (!on) return { ok: true };
-  const origins = chrome.runtime.getManifest().optional_host_permissions || [];
+  const origins = (chrome.runtime.getManifest().optional_host_permissions || []).filter((o) => !o.includes("anthropic.com"));
   await chrome.scripting.registerContentScripts([{ id: "oneclick-button", matches: origins, js: ["content.js"], runAt: "document_idle", persistAcrossSessions: true }]);
   return { ok: true };
 }
@@ -203,13 +209,39 @@ function pageState({ href, hrefs }) {
   return n >= 2 ? { kind: "batch", n } : { kind: null };
 }
 
-async function pageDownload({ href, hrefs }) {
+async function pageDownload({ href, hrefs, folder }) {
   if (videoUrls([href]).length) {
     const r = await download(href, true);
     return r.ok ? { ok: 1, skipped: 0, failed: 0 } : { ok: 0, failed: 1, error: r.error };
   }
-  const rs = await Promise.all(videoUrls(hrefs || []).map((u) => download(u)));
-  return { ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length };
+  const { ok, skipped, failed } = await downloadMany(videoUrls(hrefs || []), folder);
+  return { ok, skipped, failed };
+}
+
+// Collections: a video's `folder` is a plain name; `folders` holds names that exist even when empty.
+const cleanFolder = (f) => String(f || "").trim().slice(0, 60);
+const addFolderName = (name) => locked(async () => {
+  const f = cleanFolder(name);
+  if (!f) return { error: "Enter a name" };
+  const list = await get("folders", []);
+  if (!list.includes(f)) await chrome.storage.local.set({ folders: [...list, f].slice(0, 200) });
+  return { ok: true };
+});
+const deleteFolder = (name) => locked(async () => {
+  const f = cleanFolder(name);
+  await chrome.storage.local.set({ folders: (await get("folders", [])).filter((x) => x !== f), library: (await get("library", [])).map((v) => (v.folder === f ? { ...v, folder: undefined } : v)) });
+  return { ok: true };
+});
+async function moveToFolder(urls, folder) {
+  const f = cleanFolder(folder), keys = new Set(urls.map(dedupeKey));
+  if (f) await addFolderName(f);
+  return libEdit((lib) => lib.map((v) => (keys.has(dedupeKey(v.url)) ? { ...v, folder: f || undefined } : v)));
+}
+const summary = (rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length });
+async function downloadMany(urls, folder) {
+  const rs = await Promise.all(urls.map((u) => download(u)));
+  if (cleanFolder(folder)) await moveToFolder(urls.filter((_, i) => rs[i].ok), folder);
+  return { rs, ...summary(rs) };
 }
 
 // "Latest N from this profile": the helper lists the URLs, then each goes through the normal download path.
@@ -241,7 +273,11 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
     : m.type === "lib-note" ? libEdit((lib) => lib.map((v) => (v.url === m.url ? { ...v, note: String(m.note || "").slice(0, 500) } : v)))
     : m.type === "buttons" ? setButtons(!!m.on)
     : m.type === "ping" || m.type === "update" ? call({ type: m.type })
-    : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map((u) => download(u))).then((rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length }))
+    : m.type === "download" ? downloadMany(videoUrls(m.urls || [], 200), m.folder).then(({ ok, skipped, failed }) => ({ ok, skipped, failed }))
+    : m.type === "download-one" ? oneClick({ url: m.url })
+    : m.type === "lib-folder" ? moveToFolder(videoUrls(m.urls || [], 500), m.folder)
+    : m.type === "folder-add" ? addFolderName(m.name)
+    : m.type === "folder-delete" ? deleteFolder(m.name)
     : null;
   if (!run) return false;
   run.then(send, (e) => send({ error: e.message }));

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Library & Insights</title>
+<title>Xark Once Click Video Agent</title>
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
 <header>
-  <h1>One-Click Downloader</h1>
+  <h1>Xark Once Click Video Agent</h1>
   <p class="sub">Your saved videos, what they have in common, and where to look next.</p>
 </header>
 <main>
@@ -30,11 +30,22 @@
   </section>
 
   <section>
+    <h2>AI assistant</h2>
+    <div class="card">
+      <p class="note">Optional. Uses your own Anthropic API key, stored only in this browser. When you press a button, a capped summary of your library (titles, creators, hashtags, first caption line, view and like counts) is sent to api.anthropic.com. Nothing is sent otherwise.</p>
+      <div class="row"><input id="aikey" class="grow" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button id="aisave" class="ghost">Save key</button><button id="aiclear" class="ghost">Remove key</button></div>
+      <div class="row"><button id="airec">Recommend from my library</button><button id="aisort">Auto-sort unfiled videos into collections</button><span id="aiStatus" class="note"></span></div>
+      <div id="aiOut"></div>
+    </div>
+  </section>
+
+  <section>
     <h2>Download</h2>
     <div class="card">
       <label for="urls">Paste video links (one per line, up to 200)</label>
       <textarea id="urls" rows="4" placeholder="https://www.tiktok.com/@user/video/123&#10;https://www.instagram.com/reel/abc/"></textarea>
       <div class="row">
+        <label class="inline">Collection <select id="dcol"><option value="">(none)</option></select></label>
         <button id="go">Download all</button>
 
         <span id="goStatus" class="note"></span>
@@ -76,8 +87,15 @@
     <h2>Library <span id="count" class="note"></span></h2>
     <div class="row">
       <input id="q" class="grow" type="search" placeholder="Search title, creator, tags, notes">
+      <select id="fcol"><option value="">All collections</option></select>
       <select id="fplat"><option value="">All platforms</option></select>
       <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
+    </div>
+    <div class="row">
+      <button id="newcol" class="ghost">+ New collection</button>
+      <button id="delcol" class="ghost danger" hidden>Delete this collection</button>
+      <button id="copy" class="ghost">Copy links in this view</button>
+      <span class="note">Move ticked to</span><select id="mvcol"><option value="">(unfiled)</option></select><button id="mv" class="ghost">Move</button>
     </div>
     <div class="row">
       <button id="csv" class="ghost">Export CSV</button>

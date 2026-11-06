@@ -1,8 +1,8 @@
 #!/bin/bash
 # One-command setup: engine + ffmpeg + the native helper, registered for Chrome-family browsers (macOS, Linux).
-#   curl -fsSL https://raw.githubusercontent.com/CitizenZM/one-click-downloader-20261106/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash
 set -euo pipefail
-REPO="${ONECLICK_REPO:-https://github.com/CitizenZM/one-click-downloader-20261106}"
+REPO="${ONECLICK_REPO:-https://github.com/CitizenZM/xark-once-click-video-agent}"
 REF="${ONECLICK_REF:-main}"
 SRC=""
 # Only trust the local folder when this is a real file on disk (not "curl | bash", where BASH_SOURCE is empty).

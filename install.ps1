@@ -1,7 +1,7 @@
 # EXPERIMENTAL and not yet tested on a real Windows machine. Run in PowerShell:
-#   irm https://raw.githubusercontent.com/CitizenZM/one-click-downloader-20261106/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.ps1 | iex
 $ErrorActionPreference = "Stop"
-$Repo = "https://github.com/CitizenZM/one-click-downloader-20261106"
+$Repo = "https://github.com/CitizenZM/xark-once-click-video-agent"
 $src = if ($PSScriptRoot -and (Test-Path "$PSScriptRoot\host\oneclick_host.py")) { $PSScriptRoot } else { "$HOME\.oneclick-downloader" }
 if (-not (Test-Path "$src\host\oneclick_host.py")) { git clone --depth 1 $Repo $src }
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw "Python 3 is required: winget install Python.Python.3.12" }
