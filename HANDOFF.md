@@ -20,3 +20,8 @@
 - 完成: v3.1.0: select-videos mode (checkbox overlay) + in-flight duplicate guard; verified rapid-click queue
 - 验证: node tests 8 pass (dedupe test fails without fix), host 15 pass, select.js rendered in browser stub, payload correct
 - 下一步: User: right-click page > Select videos on this page on real TikTok/IG
+
+### 2026-11-06 15:33 · claude-sonnet-5-5
+- 完成: v3.2.0 renamed Xark Once Click Video Agent: popup+dashboard entry, collections, optional AI (own key), landing site on Vercel, repo renamed
+- 验证: node 9 + host 15 tests pass; live site 200, zip 200 v3.2.0; helper log hello v3.2.0 from Chrome; dashboard collections verified in stub browser
+- 下一步: User: popup > Dashboard; try collections; paste Anthropic key and test AI buttons (not run: no key)
