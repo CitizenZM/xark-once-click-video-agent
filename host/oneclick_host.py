@@ -5,7 +5,7 @@ Messages in : {"id", "url", "quality"?}  |  {"id", "type": "ping"}  |  {"id", "t
 Messages out: {"id", "ok", "meta"|"error"}  |  {"id", "type": "pong", ...}  |  {"id", "type": "updated", ...}
 Downloads run in a small thread pool; every reply carries the request id.
 """
-import json, os, shutil, struct, subprocess, sys, threading, time
+import json, os, re, shutil, struct, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
@@ -14,6 +14,7 @@ OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneC
 PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + os.path.expanduser("~/.local/bin")
 COOKIE_HOSTS = ("instagram.com",)  # retry with Chrome cookies if the anonymous try fails
 WORKERS = 3
+PCT_RE = re.compile(r"\[PCT\]\s*([\d.]+)%")
 DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclick-dev")
 EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
 WATCH_SEC = float(os.environ.get("ONECLICK_WATCH_SEC") or 2)
@@ -44,7 +45,8 @@ def log(line):
         pass
 
 
-def run(url, quality="best", cookies=False):
+def run(url, quality="best", cookies=False, on_pct=None):
+    """Run engine, streaming progress. Returns (returncode, combined output)."""
     os.makedirs(OUT_DIR, exist_ok=True)
     cmd = [engine, "--no-playlist", "--no-warnings",
            "--windows-filenames",
@@ -57,8 +59,23 @@ def run(url, quality="best", cookies=False):
         cmd += ["-f", fmt, "-S", "vcodec:h264,acodec:m4a", "--merge-output-format", "mp4"]
     if cookies:
         cmd += ["--cookies-from-browser", "chrome"]
-    return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=900,
-                          env={**os.environ, "PATH": PATH})
+    cmd += ["--newline", "--progress-template", "download:[PCT] %(progress._percent_str)s"]
+    proc = subprocess.Popen(cmd + [url], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                            env={**os.environ, "PATH": PATH})
+    timer = threading.Timer(900, proc.kill)
+    timer.start()
+    out, last = [], -1
+    try:
+        for line in proc.stdout:
+            out.append(line)
+            m = PCT_RE.search(line)
+            if m and on_pct and int(float(m.group(1))) != last:
+                last = int(float(m.group(1)))
+                on_pct(last)
+        proc.wait()
+    finally:
+        timer.cancel()
+    return proc.returncode, "".join(out)
 
 
 def friendly(stderr):
@@ -70,21 +87,21 @@ def friendly(stderr):
     return last[:300]
 
 
-def download(msg):
+def download(msg, on_pct=None):
     url = msg.get("url", "")
     u = urlparse(url)
     if u.scheme not in ("http", "https") or not u.netloc:
         return {"ok": False, "error": "invalid url"}
     quality = msg.get("quality", "best")
     try:
-        p = run(url, quality)
-        if p.returncode != 0 and u.netloc.endswith(COOKIE_HOSTS):
-            p = run(url, quality, cookies=True)
-    except Exception as e:  # missing engine, timeout, ...
+        code, out = run(url, quality, on_pct=on_pct)
+        if code != 0 and u.netloc.endswith(COOKIE_HOSTS):
+            code, out = run(url, quality, cookies=True, on_pct=on_pct)
+    except Exception as e:  # missing engine, ...
         return {"ok": False, "error": str(e)}
-    if p.returncode != 0:
-        return {"ok": False, "error": friendly(p.stderr)}
-    for line in reversed((p.stdout or "").strip().splitlines()):
+    if code != 0:
+        return {"ok": False, "error": friendly(out)}
+    for line in reversed(out.strip().splitlines()):
         if line.startswith("{"):
             meta = json.loads(line)
             meta["file"] = meta.pop("filepath", None)
@@ -128,7 +145,7 @@ def ext_stamp():
     return latest
 
 
-def handle(msg):
+def handle(msg, on_pct=None):
     kind = (msg or {}).get("type")
     if kind == "hello":
         return {"type": "hello", "dev": dev_mode()}
@@ -136,7 +153,7 @@ def handle(msg):
         return ping()
     if kind == "update":
         return update()
-    return download(msg or {})
+    return download(msg or {}, on_pct)
 
 
 def main():
@@ -163,7 +180,8 @@ def main():
                 reply({"type": "reload", "id": None})
 
     def work(msg):
-        res = handle(msg)
+        pct = lambda p: reply({"type": "progress", "id": msg.get("id"), "pct": p})
+        res = handle(msg, pct)
         res["id"] = msg.get("id")
         log("%s %s" % (msg.get("type") or msg.get("url"), json.dumps({k: res.get(k) for k in ("ok", "error")})
                                                            if msg.get("type") != "hello" else "v" + str(msg.get("version")) + " dev=" + str(res["dev"])))

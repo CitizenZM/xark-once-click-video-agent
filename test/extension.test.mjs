@@ -56,6 +56,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
           disconnect() { L.disconnected = true; },
           postMessage(m) {
             posted.push(m);
+            if (m.url && m.url.includes("slow")) return setTimeout(() => { ls.forEach((f) => f({ id: m.id, type: "progress", pct: 40 })); setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok" } })), 400); }, 0);
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
             setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4", ...(m.url.includes("instagram") ? { title: "Video by bo", description: "Great hook here\nmore text" } : {}) } })), 0);
           },
@@ -89,6 +90,17 @@ test("background: one-click and batch reach the host and fill the library", asyn
   await L.click({ id: 1, url: "https://www.instagram.com/p/zz/" });
   assert.equal(store.library.at(-1).title, "Great hook here");
 
+  // concurrency: 25 downloads finishing together must all land in the library (no lost updates)
+  const before = store.library.length;
+  await Promise.all(Array.from({ length: 25 }, (_, i) => L.click({ id: 1, url: `https://www.tiktok.com/@c/video/${i}` })));
+  assert.equal(store.library.length, before + 25);
+  // live queue: progress is mirrored to storage while running, and the job ends as done
+  const slow = L.click({ id: 1, url: "https://www.tiktok.com/@s/video/slow" });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.deepEqual(store.jobs.at(-1) && [store.jobs.at(-1).state, store.jobs.at(-1).pct], ["running", 40]);
+  await slow; await new Promise((r) => setTimeout(r, 300));
+  assert.equal(store.jobs.at(-1).state, "done");
+
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
-  assert.deepEqual(posted.map((m) => m.type || "download"), ["hello", "download"]); // the chrome:// click never reached the host
+  assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
 });

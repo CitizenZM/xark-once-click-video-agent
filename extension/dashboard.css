@@ -44,5 +44,10 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lin
 th { color: var(--mute); font-weight: 500; }
 .errors { color: var(--warn); font-size: 13px; padding-left: 18px; }
 .ok { color: var(--ok); } .bad { color: var(--warn); } code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: 12px; word-break: break-all; }
+.job { display: grid; grid-template-columns: 1fr 90px 44px; gap: 8px; align-items: center; font-size: 13px; margin: 6px 0; }
+.job .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job .track { background: var(--line); border-radius: 6px; height: 8px; overflow: hidden; } .job .fill { background: var(--accent); height: 100%; }
+.job.done .fill { background: var(--ok); } .job.error .fill { background: var(--warn); }
+.job .st { color: var(--mute); text-align: right; }
 .empty { color: var(--mute); font-size: 13px; }
 @media (max-width: 480px) { .bar { grid-template-columns: 70px 1fr 30px; } }

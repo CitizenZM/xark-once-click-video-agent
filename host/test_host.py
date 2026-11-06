@@ -54,6 +54,17 @@ class T(unittest.TestCase):
                       {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})
         self.assertEqual(sorted(res), [1, 2, 3, 4, 5, 6]); self.assertTrue(all(r["ok"] for r in res.values()))
 
+    def test_progress_events_stream_before_final_reply(self):
+        path, d = stub('printf "[PCT]  10.0%%\n[PCT]  55.5%%\n[PCT] 100%%\n"; echo \'{"filepath":"/x/v.mp4"}\'')
+        data = json.dumps({"id": 3, "url": "https://www.tiktok.com/@a/video/3"}).encode()
+        p = subprocess.run([sys.executable, HOST], input=struct.pack("<I", len(data)) + data, capture_output=True,
+                           env={**os.environ, "ONECLICK_ENGINE": path, "ONECLICK_OUT": d})
+        msgs, i = [], 0
+        while i < len(p.stdout):
+            n = struct.unpack("<I", p.stdout[i:i + 4])[0]; msgs.append(json.loads(p.stdout[i + 4:i + 4 + n])); i += 4 + n
+        self.assertEqual([m.get("pct") for m in msgs if m.get("type") == "progress"], [10, 55, 100])
+        self.assertTrue(msgs[-1]["ok"] and msgs[-1]["id"] == 3)
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]

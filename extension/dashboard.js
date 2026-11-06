@@ -25,6 +25,12 @@ async function renderSetup() {
   $("#upd").onclick = async () => { $("#updMsg").textContent = "updating…"; const u = await send({ type: "update" }); $("#updMsg").textContent = (u && (u.output || u.error)) || ""; renderSetup(); };
 }
 
+function renderJobs(jobs) {
+  const live = jobs.filter((j) => j.state === "queued" || j.state === "running" || Date.now() - j.at < 120000);
+  $("#queue").hidden = !live.length;
+  $("#jobs").innerHTML = live.slice(-12).map((j) => `<div class="job ${esc(j.state)}"><span class="u" title="${esc(j.error || j.url)}">${esc(j.url.replace(/^https?:\/\/(www\.)?/, ""))}</span><span class="track"><span class="fill" style="display:block;width:${j.state === "queued" ? 0 : Math.max(4, j.pct || 0)}%"></span></span><span class="st">${j.state === "running" ? (j.pct || 0) + "%" : esc(j.state)}</span></div>`).join("");
+}
+
 function renderInsights(lib) {
   const a = analyze(lib);
   $("#kpis").innerHTML = [[a.total, "videos saved"], [a.creatorsCount, "creators"], [short(a.totalViews), "total views"], [pct(a.avgEngagement), "avg like rate"]]
@@ -65,7 +71,8 @@ function save(name, text, type) {
 }
 
 async function load() {
-  const { library = [], errors = [], settings = {} } = await chrome.storage.local.get(["library", "errors", "settings"]);
+  const { library = [], errors = [], settings = {}, jobs = [] } = await chrome.storage.local.get(["library", "errors", "settings", "jobs"]);
+  renderJobs(jobs);
   renderInsights(library); renderRecs(library); renderTable(library);
   $("#quality").value = settings.quality || "best";
   $("#errors").innerHTML = errors.slice(-8).reverse().map((e) => `<li>${esc(new Date(e.at).toLocaleString())}: ${esc(e.error)} <small>(${esc(e.url)})</small></li>`).join("") || `<li class="empty" style="color:var(--mute)">None</li>`;
@@ -86,4 +93,7 @@ $("#go").onclick = async () => {
 
 renderSetup();
 load();
-chrome.storage.onChanged.addListener(load);
+chrome.storage.onChanged.addListener((c) => {
+  if (c.jobs) renderJobs(c.jobs.newValue || []);
+  if (c.library || c.errors) load();
+});

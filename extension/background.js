@@ -5,6 +5,11 @@ let port = null;
 let seq = 0;
 let inflight = 0;
 const pending = new Map();
+const jobs = new Map(); // live queue, mirrored to storage for the dashboard
+let jobSeq = 0;
+let flushTimer = null;
+let chain = Promise.resolve(); // serialises read-modify-write on storage
+const locked = (fn) => (chain = chain.then(fn, fn));
 
 // ---- native host (one long-lived port; replies matched by id) ----
 function connect() {
@@ -13,6 +18,7 @@ function connect() {
   port.onMessage.addListener((m) => {
     if (m.type === "reload") return chrome.runtime.reload(); // dev builds only (host sends it when ~/.oneclick-dev exists)
     const p = pending.get(m.id);
+    if (m.type === "progress") return p && p.onProgress && p.onProgress(m.pct);
     if (p) { pending.delete(m.id); p.resolve(m); }
   });
   port.onDisconnect.addListener(() => {
@@ -24,10 +30,10 @@ function connect() {
   return port;
 }
 
-function call(msg) {
+function call(msg, onProgress) {
   return new Promise((resolve, reject) => {
     const id = ++seq;
-    pending.set(id, { resolve, reject });
+    pending.set(id, { resolve, reject, onProgress });
     try { connect().postMessage({ ...msg, id }); } catch (e) { pending.delete(id); reject(e); }
   });
 }
@@ -45,7 +51,7 @@ async function get(key, fallback) {
   const r = await chrome.storage.local.get(key);
   return r[key] ?? fallback;
 }
-async function addToLibrary(meta) {
+const addToLibrary = (meta) => locked(async () => {
   const lib = await get("library", []);
   const url = meta.webpage_url;
   const caption = String(meta.description || "").split("\n")[0].trim();
@@ -54,11 +60,20 @@ async function addToLibrary(meta) {
   const i = lib.findIndex((v) => v.url === url);
   if (i >= 0) lib[i] = entry; else lib.push(entry);
   await chrome.storage.local.set({ library: lib });
-}
-async function addError(url, error) {
+});
+const addError = (url, error) => locked(async () => {
   const errs = (await get("errors", [])).slice(-49);
   errs.push({ url, error, at: Date.now() });
   await chrome.storage.local.set({ errors: errs });
+});
+function setJob(id, patch) {
+  jobs.set(id, { ...jobs.get(id), ...patch });
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    for (const [k, j] of jobs) if (jobs.size > 30 && (j.state === "done" || j.state === "error")) jobs.delete(k);
+    chrome.storage.local.set({ jobs: [...jobs.values()] });
+  }, 250);
 }
 
 // ---- UI helpers ----
@@ -73,13 +88,17 @@ function notify(title, message) {
 // ---- actions ----
 async function download(url) {
   const { quality = "best" } = await get("settings", {});
+  const job = ++jobSeq;
+  setJob(job, { id: job, url, state: "queued", pct: 0, at: Date.now() });
   inflight++; badge();
   try {
-    const r = await call({ url, quality });
+    const r = await call({ url, quality }, (pct) => setJob(job, { state: "running", pct }));
     if (r.ok) await addToLibrary(r.meta); else await addError(url, r.error);
+    setJob(job, r.ok ? { state: "done", pct: 100 } : { state: "error", error: r.error });
     return r;
   } catch (e) {
     await addError(url, e.message);
+    setJob(job, { state: "error", error: e.message });
     return { ok: false, error: e.message };
   } finally {
     inflight--; badge();
