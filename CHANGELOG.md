@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.0
+- New: "Select videos on this page…" (right-click the page or the toolbar icon): tick videos with checkboxes, Select all / Clear, then Download. Works without extra site permissions.
+- Fixed: the same video clicked several times while it is downloading is now one download, not several.
+
 ## 3.0.1
 - Fixed: TikTok creators showed a numeric id instead of the handle (file names, creator grouping, profile links).
 

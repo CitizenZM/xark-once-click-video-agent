@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "One-Click Video Downloader",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "One click to save TikTok, Instagram and other videos with local engine. Batch-download a whole page, then see what your saved videos have in common.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3c38ZNaC2YzRhljp8wRs+UkTA9MX2DJDGNItM3+BpkyN8IPq7Hj7snIUDH/okAiTjAivfiF4nZGALZm7ccOSQmnA9UOqOIGLvtdmt0WGS//sWGEkCXzgrAt1EZPWnsCeJFjmOJ5DpUZ1RhdBEOE/V/qtrCzDqlIJ8asQtX4cA4FQRB6RfLUgtr1zjbiafZkinCsBBdJDXujH8asZIYCrh9nlH++mtL4VJhgLf6wkirslW1zG9wOfcMQcbvFbdxsJssMB+6KoslqRR1sfwUBKK6TQVRIgt+TBFpvXE5L033EXOYo1wzNptnw8PAklcKNluPp//fcNteJNJ9VkYj3cEwIDAQAB",
   "permissions": [

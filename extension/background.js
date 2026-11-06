@@ -105,7 +105,7 @@ function notify(title, message) {
 const active = new Map(); // dedupeKey -> promise: the same video clicked twice while running is one download
 function download(url, force = false) {
   const key = dedupeKey(url);
-  if (false && active.has(key)) return active.get(key);
+  if (active.has(key)) return active.get(key);
   const p = downloadNow(url, force).finally(() => active.delete(key));
   active.set(key, p);
   return p;
