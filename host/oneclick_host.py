@@ -14,6 +14,11 @@ OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneC
 PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + os.path.expanduser("~/.local/bin")
 COOKIE_HOSTS = ("instagram.com",)  # retry with Chrome cookies if the anonymous try fails
 WORKERS = 3
+NAMING = {
+    "creator-title-id": "%(uploader_id,uploader|site)s - %(title).60B [%(id)s]",
+    "creator-id": "%(uploader_id,uploader|site)s - %(id)s",
+    "date-creator-id": "%(upload_date|nodate)s %(uploader_id,uploader|site)s - %(id)s",
+}
 PCT_RE = re.compile(r"\[PCT\]\s*([\d.]+)%")
 DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclick-dev")
 EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
@@ -45,12 +50,24 @@ def log(line):
         pass
 
 
-def run(url, quality="best", cookies=False, on_pct=None):
+def out_dir(folder):
+    """Custom folder must live inside the user's home directory."""
+    if not folder:
+        return OUT_DIR
+    home = os.path.realpath(os.path.expanduser("~"))
+    p = os.path.realpath(os.path.expanduser(folder))
+    if os.path.commonpath([p, home]) != home:
+        raise ValueError("Download folder must be inside your home folder")
+    return p
+
+
+def run(url, opts, cookies=False, on_pct=None):
     """Run engine, streaming progress. Returns (returncode, combined output)."""
-    os.makedirs(OUT_DIR, exist_ok=True)
+    quality, folder = opts["quality"], opts["dir"]
+    os.makedirs(folder, exist_ok=True)
     cmd = [engine, "--no-playlist", "--no-warnings",
            "--windows-filenames",
-           "-o", os.path.join(OUT_DIR, "%(uploader_id,uploader|site)s - %(title).60B [%(id)s].%(ext)s"),
+           "-o", os.path.join(folder, NAMING[opts["naming"]] + ".%(ext)s"),
            "--print", "after_move:%(.{" + FIELDS + "})j"]
     if quality == "audio":
         cmd += ["-f", "ba/b", "-x", "--audio-format", "mp3"]
@@ -92,12 +109,13 @@ def download(msg, on_pct=None):
     u = urlparse(url)
     if u.scheme not in ("http", "https") or not u.netloc:
         return {"ok": False, "error": "invalid url"}
-    quality = msg.get("quality", "best")
     try:
-        code, out = run(url, quality, on_pct=on_pct)
+        opts = {"quality": msg.get("quality", "best"), "dir": out_dir(msg.get("folder")),
+                "naming": msg.get("naming") if msg.get("naming") in NAMING else "creator-title-id"}
+        code, out = run(url, opts, on_pct=on_pct)
         if code != 0 and u.netloc.endswith(COOKIE_HOSTS):
-            code, out = run(url, quality, cookies=True, on_pct=on_pct)
-    except Exception as e:  # missing engine, ...
+            code, out = run(url, opts, cookies=True, on_pct=on_pct)
+    except Exception as e:  # bad folder, missing engine, ...
         return {"ok": False, "error": str(e)}
     if code != 0:
         return {"ok": False, "error": friendly(out)}

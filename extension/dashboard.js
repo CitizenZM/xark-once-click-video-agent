@@ -75,19 +75,28 @@ async function load() {
   renderJobs(jobs);
   renderInsights(library); renderRecs(library); renderTable(library);
   $("#quality").value = settings.quality || "best";
+  $("#naming").value = settings.naming || "creator-title-id";
+  $("#folder").value = settings.folder || "";
+  $("#skipdup").checked = settings.skipDuplicates !== false;
   $("#errors").innerHTML = errors.slice(-8).reverse().map((e) => `<li>${esc(new Date(e.at).toLocaleString())}: ${esc(e.error)} <small>(${esc(e.url)})</small></li>`).join("") || `<li class="empty" style="color:var(--mute)">None</li>`;
   $("#csv").onclick = () => save("library.csv", ["saved,platform,creator,title,url,duration,views,likes", ...library.map((v) => [new Date(v.at).toISOString(), v.platform, v.uploader, v.title, v.url, v.duration, v.view_count, v.like_count].map(csvCell).join(","))].join("\n"), "text/csv");
   $("#json").onclick = () => save("library.json", JSON.stringify(library, null, 2), "application/json");
   $("#clear").onclick = async () => { if (confirm("Delete the saved-video list? Downloaded files stay on disk.")) { await chrome.storage.local.set({ library: [], errors: [] }); load(); } };
 }
 
-$("#quality").onchange = (e) => chrome.storage.local.set({ settings: { quality: e.target.value } });
+async function saveSettings() {
+  const settings = { quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked };
+  await chrome.storage.local.set({ settings });
+  $("#setMsg").textContent = "Saved";
+  setTimeout(() => ($("#setMsg").textContent = ""), 1500);
+}
+for (const id of ["#quality", "#naming", "#folder", "#skipdup"]) $(id).onchange = saveSettings;
 $("#go").onclick = async () => {
   const urls = $("#urls").value.split(/\s+/).filter(Boolean);
   if (!urls.length) return;
   $("#goStatus").textContent = "downloading…";
   const r = await send({ type: "download", urls });
-  $("#goStatus").textContent = r.error ? r.error : `${r.ok} saved, ${r.failed} failed (only TikTok, Instagram, YouTube and X video links are accepted)`;
+  $("#goStatus").textContent = r.error ? r.error : `${r.ok} saved, ${r.skipped} already saved, ${r.failed} failed (only TikTok, Instagram, YouTube and X video links are accepted)`;
   load();
 };
 

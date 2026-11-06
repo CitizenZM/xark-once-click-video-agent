@@ -65,6 +65,18 @@ class T(unittest.TestCase):
         self.assertEqual([m.get("pct") for m in msgs if m.get("type") == "progress"], [10, 55, 100])
         self.assertTrue(msgs[-1]["ok"] and msgs[-1]["id"] == 3)
 
+    def test_folder_inside_home_ok_outside_rejected_and_naming_applied(self):
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; echo \'{"filepath":"/x/v.mp4"}\'')
+        home = tempfile.mkdtemp()
+        env = {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "HOME": home}
+        ok = session([{"id": 1, "url": "https://www.tiktok.com/@a/video/1", "folder": home + "/vids", "naming": "creator-id"}], env)[1]
+        self.assertTrue(ok["ok"])
+        with open(os.path.join(d, "args")) as f:
+            args = f.read()
+        self.assertIn(os.path.realpath(home) + "/vids/%(uploader_id,uploader|site)s - %(id)s.%(ext)s", args)
+        bad = session([{"id": 2, "url": "https://www.tiktok.com/@a/video/2", "folder": "/etc"}], env)[2]
+        self.assertFalse(bad["ok"]); self.assertIn("inside your home folder", bad["error"])
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]

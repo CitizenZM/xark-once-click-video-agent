@@ -36,11 +36,24 @@
       <textarea id="urls" rows="4" placeholder="https://www.tiktok.com/@user/video/123&#10;https://www.instagram.com/reel/abc/"></textarea>
       <div class="row">
         <button id="go">Download all</button>
-        <label>Quality
-          <select id="quality"><option value="best">Best</option><option value="1080">Up to 1080p</option><option value="audio">Audio only (mp3)</option></select>
-        </label>
+
         <span id="goStatus" class="note"></span>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Settings</h2>
+    <div class="card settings">
+      <label>Quality
+        <select id="quality"><option value="best">Best</option><option value="1080">Up to 1080p</option><option value="audio">Audio only (mp3)</option></select>
+      </label>
+      <label>File names
+        <select id="naming"><option value="creator-title-id">creator - title [id]</option><option value="creator-id">creator - id</option><option value="date-creator-id">date creator - id</option></select>
+      </label>
+      <label class="wide">Download folder <input id="folder" placeholder="default: ~/Downloads/OneClick (must be inside your home folder)"></label>
+      <label><input type="checkbox" id="skipdup"> Skip videos already saved (batch and pasted links)</label>
+      <span id="setMsg" class="note"></span>
     </div>
   </section>
 

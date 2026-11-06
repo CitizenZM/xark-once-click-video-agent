@@ -1,4 +1,4 @@
-import { videoUrls } from "./urls.js";
+import { videoUrls, dedupeKey } from "./urls.js";
 
 const HOST = "com.barron.oneclick_dl";
 let port = null;
@@ -86,13 +86,18 @@ function notify(title, message) {
 }
 
 // ---- actions ----
-async function download(url) {
-  const { quality = "best" } = await get("settings", {});
+async function download(url, force = false) {
+  const { quality = "best", folder = "", naming = "creator-title-id", skipDuplicates = true } = await get("settings", {});
+  if (!force && skipDuplicates) {
+    const key = dedupeKey(url);
+    const seen = (await get("library", [])).find((v) => v.file && dedupeKey(v.url) === key);
+    if (seen) return { ok: true, skipped: true, meta: seen };
+  }
   const job = ++jobSeq;
   setJob(job, { id: job, url, state: "queued", pct: 0, at: Date.now() });
   inflight++; badge();
   try {
-    const r = await call({ url, quality }, (pct) => setJob(job, { state: "running", pct }));
+    const r = await call({ url, quality, folder, naming }, (pct) => setJob(job, { state: "running", pct }));
     if (r.ok) await addToLibrary(r.meta); else await addError(url, r.error);
     setJob(job, r.ok ? { state: "done", pct: 100 } : { state: "error", error: r.error });
     return r;
@@ -107,7 +112,7 @@ async function download(url) {
 
 async function oneClick(tab) {
   if (!/^https?:\/\//.test((tab && tab.url) || "")) return notify("Not a page", "Open a video page first.");
-  const r = await download(tab.url);
+  const r = await download(tab.url, true); // a direct click always downloads
   if (r.ok) notify("Saved", (r.meta && r.meta.file) || "Download complete");
   else notify("Download failed", r.error + (/disconnect|not found|Specified native/i.test(r.error) ? " (open the dashboard to set up the helper)" : ""));
 }
@@ -117,9 +122,10 @@ async function downloadAll(tab) {
   const urls = videoUrls((res && res.result) || []);
   if (!urls.length) return notify("No videos found", "No TikTok, Instagram, YouTube or X video links on this page.");
   notify("Queued", `${urls.length} videos`);
-  const results = await Promise.all(urls.map(download));
-  const ok = results.filter((r) => r.ok).length;
-  notify("Batch finished", `${ok} saved, ${results.length - ok} failed`);
+  const results = await Promise.all(urls.map((u) => download(u)));
+  const skipped = results.filter((r) => r.skipped).length;
+  const ok = results.filter((r) => r.ok).length - skipped;
+  notify("Batch finished", `${ok} saved${skipped ? `, ${skipped} already saved` : ""}, ${results.length - ok - skipped} failed`);
 }
 
 const openDashboard = () => chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
@@ -143,7 +149,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // dashboard -> background
 chrome.runtime.onMessage.addListener((m, _sender, send) => {
   const run = m.type === "ping" || m.type === "update" ? call({ type: m.type })
-    : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map(download)).then((rs) => ({ ok: rs.filter((r) => r.ok).length, failed: rs.filter((r) => !r.ok).length }))
+    : m.type === "download" ? Promise.all(videoUrls(m.urls || [], 200).map((u) => download(u))).then((rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok).length }))
     : null;
   if (!run) return false;
   run.then(send, (e) => send({ error: e.message }));

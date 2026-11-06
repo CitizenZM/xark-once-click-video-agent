@@ -7,6 +7,17 @@ const PATTERNS = [
   /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/status\/\d+/,
 ];
 
+// Same video, different URL shapes (Instagram /p/ vs /reel/, tracking params) -> one key.
+export function dedupeKey(url) {
+  const ig = /instagram\.com\/(?:reel|reels|p|tv)\/([\w-]+)/.exec(url);
+  if (ig) return "ig:" + ig[1];
+  const tt = /tiktok\.com\/@[\w.]+\/video\/(\d+)/.exec(url);
+  if (tt) return "tt:" + tt[1];
+  const yt = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([\w-]+)/.exec(url);
+  if (yt) return "yt:" + yt[1];
+  return url.replace(/[?#].*$/, "").replace(/\/$/, "");
+}
+
 export function videoUrls(hrefs, limit = 50) {
   const seen = new Set();
   for (const h of hrefs) {

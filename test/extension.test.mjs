@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { videoUrls } from "../extension/urls.js";
+import { videoUrls, dedupeKey } from "../extension/urls.js";
 import { analyze, recommend } from "../extension/insights.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
@@ -19,6 +19,13 @@ test("videoUrls keeps video pages, strips tracking, dedupes, caps", () => {
     "https://www.tiktok.com/@ana/video/1", "https://www.instagram.com/reel/abc", "https://www.youtube.com/watch?v=abc123",
   ]);
   assert.equal(videoUrls(hrefs, 1).length, 1);
+});
+
+test("dedupeKey: same video, different URL shapes", () => {
+  assert.equal(dedupeKey("https://www.instagram.com/reel/AbC_1/?igsh=x"), dedupeKey("https://www.instagram.com/p/AbC_1/"));
+  assert.equal(dedupeKey("https://www.tiktok.com/@a/video/123?lang=en"), "tt:123");
+  assert.equal(dedupeKey("https://youtu.be/abc"), dedupeKey("https://www.youtube.com/watch?v=abc&t=3"));
+  assert.notEqual(dedupeKey("https://www.tiktok.com/@a/video/1"), dedupeKey("https://www.tiktok.com/@a/video/2"));
 });
 
 test("analyze: totals, platform split, buckets, hashtags, headlines", () => {
@@ -78,7 +85,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(notes.at(-1).title, "Saved");
 
   await L.menu({ menuItemId: "dl-all" }, { id: 1 });
-  assert.deepEqual(posted.slice(1).map((m) => m.url), ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11"]);
+  assert.deepEqual(posted.slice(1).map((m) => m.url).sort(), ["https://www.tiktok.com/@a/video/10", "https://www.tiktok.com/@a/video/11"]);
   assert.equal(store.library.length, 3);
   assert.equal(notes.at(-1).message, "2 saved, 0 failed");
 
@@ -100,6 +107,15 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.deepEqual(store.jobs.at(-1) && [store.jobs.at(-1).state, store.jobs.at(-1).pct], ["running", 40]);
   await slow; await new Promise((r) => setTimeout(r, 300));
   assert.equal(store.jobs.at(-1).state, "done");
+
+  // duplicates: batch skips a saved video (no host call); a direct click still downloads; settings reach the host
+  store.settings = { folder: "~/refs", naming: "creator-id" };
+  const callsBefore = posted.length;
+  await L.menu({ menuItemId: "dl-all" }, { id: 1 }); // page links 10 and 11 are already saved
+  assert.equal(posted.length, callsBefore);
+  assert.equal(notes.at(-1).message, "0 saved, 2 already saved, 0 failed");
+  await L.click({ id: 1, url: "https://www.tiktok.com/@a/video/10" });
+  assert.deepEqual([posted.at(-1).folder, posted.at(-1).naming], ["~/refs", "creator-id"]);
 
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
