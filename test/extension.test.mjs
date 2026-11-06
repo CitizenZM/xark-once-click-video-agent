@@ -46,15 +46,18 @@ test("background: one-click and batch reach the host and fill the library", asyn
   const store = {}, notes = [], posted = [], L = {};
   globalThis.chrome = {
     runtime: {
-      lastError: undefined, getURL: (p) => p, onInstalled: { addListener() {} },
+      lastError: undefined, getURL: (p) => p, getManifest: () => ({ version: "9.9.9" }), reload: () => (L.reloaded = true),
+      onInstalled: { addListener: (f) => (L.installed = f) }, onStartup: { addListener() {} },
       onMessage: { addListener: (f) => (L.msg = f) },
       connectNative() {
         const ls = [];
         return {
-          onMessage: { addListener: (f) => ls.push(f) }, onDisconnect: { addListener() {} },
+          onMessage: { addListener: (f) => { ls.push(f); L.hostSend = (m) => ls.forEach((g) => g(m)); } }, onDisconnect: { addListener() {} },
+          disconnect() { L.disconnected = true; },
           postMessage(m) {
             posted.push(m);
-            setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4" } })), 0);
+            if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
+            setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4", ...(m.url.includes("instagram") ? { title: "Video by bo", description: "Great hook here\nmore text" } : {}) } })), 0);
           },
         };
       },
@@ -78,6 +81,14 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(store.library.length, 3);
   assert.equal(notes.at(-1).message, "2 saved, 0 failed");
 
+  // hello: non-dev closes the port; the helper's reload message restarts the extension
+  posted.length = 0; L.installed(); await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual([posted[0].type, posted[0].version, L.disconnected], ["hello", "9.9.9", true]);
+  L.hostSend({ type: "reload", id: null }); assert.equal(L.reloaded, true);
+  // library title: Instagram "Video by X" becomes the caption's first line
+  await L.click({ id: 1, url: "https://www.instagram.com/p/zz/" });
+  assert.equal(store.library.at(-1).title, "Great hook here");
+
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
-  assert.equal(posted.length, 3);
+  assert.equal(posted.length, 1); // only the instagram click reached the host
 });

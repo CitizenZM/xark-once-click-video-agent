@@ -14,6 +14,9 @@ OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneC
 PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:" + os.path.expanduser("~/.local/bin")
 COOKIE_HOSTS = ("instagram.com",)  # retry with Chrome cookies if the anonymous try fails
 WORKERS = 3
+DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclick-dev")
+EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
+WATCH_SEC = float(os.environ.get("ONECLICK_WATCH_SEC") or 2)
 FIELDS = ("id,title,uploader,uploader_id,extractor_key,webpage_url,duration,view_count,"
           "like_count,comment_count,upload_date,description,tags,filepath")
 FRIENDLY = (
@@ -44,7 +47,8 @@ def log(line):
 def run(url, quality="best", cookies=False):
     os.makedirs(OUT_DIR, exist_ok=True)
     cmd = [engine, "--no-playlist", "--no-warnings",
-           "-o", os.path.join(OUT_DIR, "%(uploader|site)s - %(title).80B [%(id)s].%(ext)s"),
+           "--windows-filenames",
+           "-o", os.path.join(OUT_DIR, "%(uploader_id,uploader|site)s - %(title).60B [%(id)s].%(ext)s"),
            "--print", "after_move:%(.{" + FIELDS + "})j"]
     if quality == "audio":
         cmd += ["-f", "ba/b", "-x", "--audio-format", "mp3"]
@@ -108,8 +112,26 @@ def update():
         return {"type": "updated", "ok": False, "output": str(e)}
 
 
+def dev_mode():
+    return os.path.exists(DEV_FILE)
+
+
+def ext_stamp():
+    """Newest mtime under the extension folder (dev auto-reload)."""
+    latest = 0.0
+    for root, _dirs, files in os.walk(EXT_DIR):
+        for f in files:
+            try:
+                latest = max(latest, os.path.getmtime(os.path.join(root, f)))
+            except OSError:
+                pass
+    return latest
+
+
 def handle(msg):
     kind = (msg or {}).get("type")
+    if kind == "hello":
+        return {"type": "hello", "dev": dev_mode()}
     if kind == "ping":
         return ping()
     if kind == "update":
@@ -129,11 +151,26 @@ def main():
             except OSError:
                 pass
 
+    watcher = []
+
+    def watch():
+        last = ext_stamp()
+        while True:
+            time.sleep(WATCH_SEC)
+            now = ext_stamp()
+            if now != last:
+                last = now
+                reply({"type": "reload", "id": None})
+
     def work(msg):
         res = handle(msg)
         res["id"] = msg.get("id")
-        log("%s %s" % (msg.get("type") or msg.get("url"), json.dumps({k: res.get(k) for k in ("ok", "error")})))
+        log("%s %s" % (msg.get("type") or msg.get("url"), json.dumps({k: res.get(k) for k in ("ok", "error")})
+                                                           if msg.get("type") != "hello" else "v" + str(msg.get("version")) + " dev=" + str(res["dev"])))
         reply(res)
+        if res.get("type") == "hello" and res["dev"] and not watcher:
+            watcher.append(threading.Thread(target=watch, daemon=True))
+            watcher[0].start()
 
     with ThreadPoolExecutor(WORKERS) as ex:
         while True:

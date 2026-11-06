@@ -60,5 +60,25 @@ class T(unittest.TestCase):
         self.assertEqual((r["type"], r["engine"], r["outDir"]), ("pong", "9.9.9", d))
 
 
+
+class Dev(unittest.TestCase):
+    def test_hello_reports_dev_flag_and_dev_mode_pushes_reload_on_change(self):
+        import time
+        d = tempfile.mkdtemp(); ext = os.path.join(d, "ext"); os.makedirs(ext)
+        open(os.path.join(ext, "a.js"), "w").write("1")
+        env = {**os.environ, "ONECLICK_DEV_FILE": os.path.join(d, "dev"), "ONECLICK_EXT_DIR": ext, "ONECLICK_WATCH_SEC": "0.1"}
+        # no dev file: hello says dev=false
+        self.assertFalse(session([{"id": 1, "type": "hello", "version": "1"}], env)[1]["dev"])
+        open(env["ONECLICK_DEV_FILE"], "w").close()
+        p = subprocess.Popen([sys.executable, HOST], stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=env)
+        b = json.dumps({"id": 2, "type": "hello", "version": "1"}).encode()
+        p.stdin.write(struct.pack("<I", len(b)) + b); p.stdin.flush()
+        rd = lambda: json.loads(p.stdout.read(struct.unpack("<I", p.stdout.read(4))[0]))
+        self.assertTrue(rd()["dev"])
+        time.sleep(0.3); os.utime(os.path.join(ext, "a.js"), (time.time() + 5, time.time() + 5))
+        self.assertEqual(rd()["type"], "reload")
+        p.stdin.close(); p.wait(timeout=5)
+
+
 if __name__ == "__main__":
     unittest.main()

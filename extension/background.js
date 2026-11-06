@@ -11,6 +11,7 @@ function connect() {
   if (port) return port;
   port = chrome.runtime.connectNative(HOST);
   port.onMessage.addListener((m) => {
+    if (m.type === "reload") return chrome.runtime.reload(); // dev builds only (host sends it when ~/.oneclick-dev exists)
     const p = pending.get(m.id);
     if (p) { pending.delete(m.id); p.resolve(m); }
   });
@@ -31,6 +32,14 @@ function call(msg) {
   });
 }
 
+// Tell the helper which build is running; keep the port open only in dev mode (auto-reload).
+async function hello() {
+  try {
+    const r = await call({ type: "hello", version: chrome.runtime.getManifest().version });
+    if (!r.dev && port) { port.disconnect(); port = null; }
+  } catch { /* helper not installed: the dashboard explains how to set it up */ }
+}
+
 // ---- storage ----
 async function get(key, fallback) {
   const r = await chrome.storage.local.get(key);
@@ -39,7 +48,9 @@ async function get(key, fallback) {
 async function addToLibrary(meta) {
   const lib = await get("library", []);
   const url = meta.webpage_url;
-  const entry = { ...meta, platform: meta.extractor_key || "Other", url, at: Date.now() };
+  const caption = String(meta.description || "").split("\n")[0].trim();
+  const title = /^(Video|Photo) by /.test(meta.title || "") && caption ? caption.slice(0, 100) : meta.title;
+  const entry = { ...meta, title, platform: meta.extractor_key || "Other", url, at: Date.now() };
   const i = lib.findIndex((v) => v.url === url);
   if (i >= 0) lib[i] = entry; else lib.push(entry);
   await chrome.storage.local.set({ library: lib });
@@ -96,7 +107,9 @@ const openDashboard = () => chrome.tabs.create({ url: chrome.runtime.getURL("das
 
 chrome.action.onClicked.addListener(oneClick);
 
+chrome.runtime.onStartup.addListener(hello);
 chrome.runtime.onInstalled.addListener(() => {
+  hello();
   chrome.contextMenus.create({ id: "dl-link", title: "Download video from this link", contexts: ["link"] });
   chrome.contextMenus.create({ id: "dl-all", title: "Download all videos on this page", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dashboard", title: "Open library & insights", contexts: ["action"] });
