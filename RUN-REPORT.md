@@ -33,3 +33,11 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - Dashboard: all 8 tabs render, no console errors. Bugs found and fixed (tests fail before, pass after): Instagram creators shown as numeric ids and one account split in two; keyword/hashtag drill-downs showed 0 because search skipped caption/transcript/link. After fix: 8 creators, The Good Bug = 2; drill-downs match the keyword table (protein 5→6, whey 3→4 due to substring search).
 - Settings: cover/parallel/waitSec/maxMinutes saved under the keys background.js reads.
 - Tests: 49 node pass, 66 Python OK; zips rebuilt at 3.5.1.
+
+## 2026-11-07 — 更新检查、Sonnet 测试、收费模式与成本
+- engine -U: up to date (2026.10.26)
+- Sonnet agent: `node --test test/*.test.mjs` 49/49 pass; `unittest discover` 66 OK; node --check 14 files OK; py_compile OK; manifest/CHANGELOG/zip all 3.5.1; CI last 3 runs success; engine -j TikTok returns id 7697307919943060767
+- Re-verified by Opus: same counts
+- Cost: whisper base.en 9s clip in 0.61s; avg file 2.05 MB (43 files); AI click est. $0.010–0.031 (Sonnet 5.5), token count estimated at 3.2 chars/token (no API key for count_tokens)
+- Doc: docs/MONETIZATION-AND-COST.md
+- Open: ai.js thinking + max_tokens 2000 truncation risk, not changed (needs API key to verify)
