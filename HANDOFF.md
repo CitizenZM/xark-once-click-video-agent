@@ -40,3 +40,8 @@
 - 完成: Competitor scan of 18 Chrome extensions in 5 groups (downloaders, IG/TikTok bulk, sorters, creator analytics, ad swipe files) -> docs/COMPETITORS.md with gap list
 - 验证: Sources: Chrome Web Store listings fetched 2026-11-06 via TinyFish + vendor articles; committed and pushed
 - 下一步: Pick P1: on-page sort/outlier, local transcription, batch reliability
+
+### 2026-11-06 17:51 · claude-opus-5-5
+- 完成: docs/GAP-DEV-PLAN.md: build+self-test plan for 10 gap features (F1-F10) with L1-L6 test layers; test/real/run.sh real-page harness (ego lite)
+- 验证: Feasibility checked: TikTok tile views via data-e2e=video-views, IG reels tile innerText views; engine has facebook:ads; brew openai-whisper broken (abseil dylib); harness first run blocked by ego notification prompt (space 12 handed to user)
+- 下一步: User dismisses ego notification prompt; rerun bash test/real/run.sh; then build v3.5 (F1+F3)
