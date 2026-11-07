@@ -25,3 +25,8 @@
 - 完成: v3.2.0 renamed Xark Once Click Video Agent: popup+dashboard entry, collections, optional AI (own key), landing site on Vercel, repo renamed
 - 验证: node 9 + host 15 tests pass; live site 200, zip 200 v3.2.0; helper log hello v3.2.0 from Chrome; dashboard collections verified in stub browser
 - 下一步: User: popup > Dashboard; try collections; paste Anthropic key and test AI buttons (not run: no key)
+
+### 2026-11-06 16:05 · claude-opus-5-5
+- 完成: v3.3.0: popup one-click auto-queues current video (incl. TikTok For You), persistent 3-at-a-time queue with cancel/retry, select mode rebuilt (detect.js) + Instagram /user/reel/ fix, popup redesign
+- 验证: node 10 + host 15 pass; select tested on real TikTok profile/ForYou + IG reels/profile via ego (33/2/12/12 found, payload ok); CI + Vercel zip 3.3.0; Chrome hello v3.3.0
+- 下一步: User: try icon one-click on TikTok For You and IG, select mode on a profile
