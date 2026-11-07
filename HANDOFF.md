@@ -55,3 +55,8 @@
 - 完成: Real-Chrome check of 3.5.0: loaded, library mirror + MCP read 9 items, TikTok select/sort/outliers/top10 with real clicks, real download+cover; fixed TikTok cover file naming (8fb0694)
 - 验证: 65 python OK, 47 node pass; re-download gives matching mp4+jpg names
 - 下一步: User checks popup, context menu, Alt+Shift+D and dashboard by hand (Claude in Chrome cannot reach them)
+
+### 2026-11-06 23:01 · claude-opus-5-5
+- 完成: 3.5.1: automated UI test of popup+dashboard with real library (stubbed chrome in in-app browser); fixed Instagram creator names/grouping and keyword drill-down search; Chrome auto-reloaded to 3.5.1
+- 验证: 49 node pass, 66 python OK, CI success befe5fd, log hello v3.5.1 22:59:40
+- 下一步: Native context menu and Alt+Shift+D remain hand-check only
