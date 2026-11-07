@@ -1,5 +1,6 @@
 """Wiring tests: drive the real host over the native-messaging protocol with a stub engine."""
 import json, os, stat, struct, subprocess, sys, tempfile, unittest
+os.environ.setdefault("ONECLICK_LOG", os.path.join(tempfile.gettempdir(), "oneclick-test.log"))  # never write tests into the real log
 
 HOST = os.path.join(os.path.dirname(__file__), "oneclick_host.py")
 
