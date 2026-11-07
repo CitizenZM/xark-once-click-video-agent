@@ -65,3 +65,8 @@
 - 完成: Sonnet full test pass (49+66), monetization + cost-per-run doc
 - 验证: node --test 49 pass; unittest 66 OK; git push ok
 - 下一步: Decide pricing tiers; fix ai.js thinking/max_tokens with an API key to verify
+
+### 2026-11-07 10:51 · claude-opus-5-5
+- 完成: Fixed ai.js Sonnet 5.5 cutoff risk: max_tokens 8000, effort low, text-only parse, max_tokens stop error; pushed 994a8d6
+- 验证: node --test 49 pass 0 fail; new test fails on old ai.js (2000!==8000); python unittest OK; build-zip OK
+- 下一步: Test AI buttons once with a real Anthropic key
