@@ -50,3 +50,8 @@
 - 完成: v3.5.0: all 9 gap features (F1-F10 minus photo posts) built by 6 Sonnet agents in 2 waves, merged, real-checked; tag v3.5.0
 - 验证: node 47 pass, host 64 OK, CI success 032f6df, Vercel zip 3.5.0; real checks listed in RUN-REPORT.md
 - 下一步: User: reload extension once (to load 3.5.0, then library mirror + growth alarm start); dismiss ego lite notification prompt so test/real/run.sh can run
+
+### 2026-11-06 22:37 · claude-opus-5-5
+- 完成: Real-Chrome check of 3.5.0: loaded, library mirror + MCP read 9 items, TikTok select/sort/outliers/top10 with real clicks, real download+cover; fixed TikTok cover file naming (8fb0694)
+- 验证: 65 python OK, 47 node pass; re-download gives matching mp4+jpg names
+- 下一步: User checks popup, context menu, Alt+Shift+D and dashboard by hand (Claude in Chrome cannot reach them)
