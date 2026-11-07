@@ -45,3 +45,8 @@
 - 完成: docs/GAP-DEV-PLAN.md: build+self-test plan for 10 gap features (F1-F10) with L1-L6 test layers; test/real/run.sh real-page harness (ego lite)
 - 验证: Feasibility checked: TikTok tile views via data-e2e=video-views, IG reels tile innerText views; engine has facebook:ads; brew openai-whisper broken (abseil dylib); harness first run blocked by ego notification prompt (space 12 handed to user)
 - 下一步: User dismisses ego notification prompt; rerun bash test/real/run.sh; then build v3.5 (F1+F3)
+
+### 2026-11-06 18:46 · claude-opus-5-5
+- 完成: v3.5.0: all 9 gap features (F1-F10 minus photo posts) built by 6 Sonnet agents in 2 waves, merged, real-checked; tag v3.5.0
+- 验证: node 47 pass, host 64 OK, CI success 032f6df, Vercel zip 3.5.0; real checks listed in RUN-REPORT.md
+- 下一步: User: reload extension once (to load 3.5.0, then library mirror + growth alarm start); dismiss ego lite notification prompt so test/real/run.sh can run
