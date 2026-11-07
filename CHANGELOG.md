@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.3.0
+- One click again: clicking the icon queues the video you are watching right away (also on TikTok For You, where there is no video link). Opening the popup on an already saved video does not download it twice.
+- Real download queue: persisted, 3 at a time, resumes after Chrome restarts the extension, cancel waiting jobs, retry failed ones, clear finished. Live in the popup.
+- Select mode rebuilt and tested on real TikTok and Instagram pages: checkboxes on every tile, Select visible, Auto-scroll +20, collection, Add to queue, Esc to close.
+- Fixed: Instagram links of the form /<user>/reel/<id>/ were not recognised (select found 0 videos, popup said "not a video page").
+- Redesigned popup.
+
 ## 3.2.0
 - Renamed to Xark Once Click Video Agent.
 - Toolbar popup (download this video, select videos, open dashboard); `Alt+Shift+D` downloads the current tab.

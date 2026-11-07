@@ -42,7 +42,8 @@ Download only content you own or have permission to use, and respect each platfo
 MIT licensed.
 
 ## What you get
-- **Toolbar popup**: Download this video · Select videos on this page · Open dashboard. Shortcut `Alt+Shift+D` downloads the current tab.
+- **One click**: click the icon and the video you are watching joins the download queue (turn off in the popup). The popup shows the live queue, Select videos and Dashboard. `Alt+Shift+D` also downloads the current tab.
+- **Select videos**: checkboxes on every video tile, Select visible, Auto-scroll +20, pick a collection, Add to queue. Or right-click any video link → Add this link to the download queue.
 - **Dashboard** (popup → Dashboard): library, charts, outliers, creators and hashtags to explore, queue, settings.
 - **Collections**: make folders of saved video links, choose a collection when you select or paste videos, move videos in bulk, copy a collection's links.
 - **AI assistant (optional)**: paste your own Anthropic API key in the dashboard. Buttons *Recommend from my library* and *Auto-sort unfiled videos into collections* send a capped summary (titles, creators, tags, first caption line, counts) to api.anthropic.com only when pressed. See PRIVACY.md.

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { videoUrls, dedupeKey } from "../extension/urls.js";
+import { videoUrls, dedupeKey, canonical, PATTERNS } from "../extension/urls.js";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { analyze, recommend, filterLibrary, outliers } from "../extension/insights.js";
 import { buildPrompt, parseJson, groupAssignments, ask as aiAsk } from "../extension/ai.js";
 
@@ -96,6 +98,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
             if (m.type === "expand") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "expanded", ok: true, urls: L.expandUrls || ["https://www.tiktok.com/@e/video/501", "https://www.tiktok.com/@e/video/502", "https://www.tiktok.com/@e/video/503"] })), 0);
             if (m.type === "update") { L.updates = (L.updates || 0) + 1; L.healed = true; return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "updated", ok: true, output: "upgraded" })), 0); }
             if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update engine from the dashboard" })), 0);
+            if (m.url && m.url.includes("hold") && L.hold) { L.held = (L.held || []).concat(m); L.release = () => { L.held.forEach((h) => ls.forEach((f) => f({ id: h.id, ok: true, meta: { webpage_url: h.url, extractor_key: "TikTok", file: "/h.mp4" } }))); L.held = []; }; return; }
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
             setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4", ...(m.url.includes("instagram") ? { title: "Video by bo", description: "Great hook here\nmore text" } : {}) } })), 0);
           },
@@ -204,7 +207,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(posted.length - n0, 11); assert.equal(store.library.length - lib0, 11);
   // select mode: the menu injects select.js; the ticked links come back as page-download with no page href
   await L.menu({ menuItemId: "select" }, { id: 7 });
-  assert.deepEqual(L.injected, { target: { tabId: 7 }, files: ["select.js"] });
+  assert.deepEqual(L.injected, { target: { tabId: 7 }, files: ["detect.js", "select.js"] });
   const sel = ["https://www.tiktok.com/@q/video/701", "https://www.tiktok.com/@q/video/702"];
   assert.deepEqual(await ask({ type: "page-download", href: "", hrefs: sel }), { ok: 2, skipped: 0, failed: 0 });
 
@@ -227,8 +230,41 @@ test("background: one-click and batch reach the host and fill the library", asyn
   await ask({ type: "page-download", href: "", hrefs: ["https://www.tiktok.com/@g/video/901"], folder: "Picked" });
   assert.equal(store.library.find((v) => v.url.endsWith("/901")).folder, "Picked");
 
+  // queue: popup one-click does not re-download a saved video; enqueue-many answers at once and files into a collection
+  assert.deepEqual(await ask({ type: "enqueue", url: "https://www.tiktok.com/@a/video/10" }), { saved: true, url: "https://www.tiktok.com/@a/video/10", title: undefined });
+  const q0 = posted.length;
+  const one = await ask({ type: "enqueue", url: "https://www.instagram.com/natgeo/reel/NEW1/?igsh=x" });
+  assert.deepEqual(one, { queued: true, url: "https://www.instagram.com/reel/NEW1" });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(posted.at(-1).url, "https://www.instagram.com/reel/NEW1"); assert.equal(posted.length, q0 + 1);
+  const many = await forged({ type: "enqueue-many", hrefs: ["https://www.instagram.com/natgeo/reel/M1/", "https://www.instagram.com/natgeo/p/M2/", "https://www.tiktok.com/@a/video/10", "https://evil.example/x"], folder: "IG refs" }, { tab: { id: 5 } });
+  assert.deepEqual(many, { queued: 2, saved: 1 });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual([...new Set(store.library.filter((v) => v.folder === "IG refs").map((v) => dedupeKey(v.url)))].sort(), ["ig:M1", "ig:M2", "tt:10"]);
+  // queue limits: at most 3 running at once; cancel a waiting job; retry a failed one
+  L.hold = true;
+  for (let i = 0; i < 5; i++) L.click({ id: 1, url: `https://www.tiktok.com/@w/video/hold${i}` });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(store.jobs.filter((j) => j.state === "running").length, 3);
+  const waiting = store.jobs.find((j) => j.state === "queued");
+  await ask({ type: "queue", action: "cancel", id: waiting.id }); await new Promise((r) => setTimeout(r, 300));
+  assert.equal(store.jobs.find((j) => j.id === waiting.id).state, "canceled");
+  L.hold = false; L.release(); await new Promise((r) => setTimeout(r, 400));
+  assert.equal(store.jobs.filter((j) => j.url.includes("hold") && j.state === "done").length, 4);
+  await ask({ type: "queue", action: "retry", id: waiting.id }); await new Promise((r) => setTimeout(r, 400));
+  assert.equal(store.jobs.filter((j) => j.url.endsWith("hold" + waiting.url.slice(-1)) && j.state === "done").length, 1);
+  await ask({ type: "queue", action: "clear" }); await new Promise((r) => setTimeout(r, 300));
+  assert.equal(store.jobs.length, 0);
+
   await L.click({ id: 1, url: "chrome://extensions" }); // not http(s): must not call the host
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
+
+  // restart: a job that was running when the worker stopped is queued again and finished by the new worker
+  store.jobs = [{ id: "r1", url: "https://www.tiktok.com/@z/video/77001", state: "running", pct: 40, at: 1 }];
+  const p0 = posted.length;
+  await import("../extension/background.js?restart"); await new Promise((r) => setTimeout(r, 400));
+  assert.ok(posted.slice(p0).some((m) => m.url === "https://www.tiktok.com/@z/video/77001"));
+  assert.equal(store.jobs.find((j) => j.id === "r1").state, "done");
 });
 
 test("filterLibrary by collection; AI prompt is capped and has no urls; assignments map back safely", async () => {
@@ -246,4 +282,17 @@ test("filterLibrary by collection; AI prompt is capped and has no urls; assignme
   assert.deepEqual(await aiAsk("k", "hi", fake), { summary: "x" });
   assert.equal(seen.url, "https://api.anthropic.com/v1/messages"); assert.equal(seen.o.headers["x-api-key"], "k");
   await assert.rejects(aiAsk("k", "hi", async () => ({ ok: false, status: 401, json: async () => ({ error: { message: "bad key" } }) })), /bad key/);
+});
+
+test("urls: Instagram /<user>/reel/ links, canonical form, audio pages excluded; detect.js uses the same patterns", () => {
+  assert.equal(canonical("https://www.instagram.com/natgeo/reel/DfaOQ3uT1uD/"), "https://www.instagram.com/reel/DfaOQ3uT1uD");
+  assert.equal(canonical("https://www.instagram.com/natgeo/p/DeuOR-CjKE9/?img_index=1"), "https://www.instagram.com/p/DeuOR-CjKE9");
+  assert.equal(canonical("https://www.instagram.com/reels/DezY3q8TCbx/"), "https://www.instagram.com/reel/DezY3q8TCbx");
+  assert.equal(canonical("https://www.instagram.com/reels/audio/123/"), null);
+  assert.equal(canonical("https://www.instagram.com/natgeo/"), null);
+  assert.equal(canonical("https://www.tiktok.com/@/video/7696986447479311648"), "https://www.tiktok.com/@/video/7696986447479311648");
+  assert.equal(dedupeKey("https://www.instagram.com/natgeo/reel/X1/"), dedupeKey("https://www.instagram.com/p/X1/"));
+  assert.deepEqual(videoUrls(["https://www.instagram.com/a/reel/X1/", "https://www.instagram.com/reel/X1/"]), ["https://www.instagram.com/reel/X1"]);
+  const win = {}; vm.runInNewContext(readFileSync(new URL("../extension/detect.js", import.meta.url), "utf8"), { window: win });
+  assert.deepEqual([...win.__oneclickDetect.PATTERNS].map((r) => r.source), PATTERNS.map((r) => r.source));
 });

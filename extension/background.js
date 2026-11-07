@@ -3,10 +3,7 @@ import { videoUrls, dedupeKey } from "./urls.js";
 const HOST = "com.barron.oneclick_dl";
 let port = null;
 let seq = 0;
-let inflight = 0;
 const pending = new Map();
-const jobs = new Map(); // live queue, mirrored to storage for the dashboard
-let jobSeq = 0;
 let devMode = false;
 let idleTimer = null;
 let lastHeal = 0;
@@ -82,63 +79,121 @@ const addError = (url, error) => locked(async () => {
   errs.push({ url: String(url).replace(/[?#].*$/, ""), error: String(error).slice(0, 300), at: Date.now() }); // no query tokens
   await chrome.storage.local.set({ errors: errs });
 });
-function setJob(id, patch) {
-  jobs.set(id, { ...jobs.get(id), ...patch });
+// ---- download queue: persisted in storage ("jobs"), survives a service-worker restart, runs MAX_RUN at a time ----
+const MAX_RUN = 3, KEEP_DONE = 50;
+let queue = null;            // [{id,url,state:queued|running|done|error|canceled,pct,at,error,title}]
+const waiters = new Map();   // job id -> [resolve]
+const isLive = (j) => j.state === "queued" || j.state === "running";
+async function loadQueue() {
+  // a job that was running when the worker stopped never got its answer: queue it again
+  if (!queue) queue = (await get("jobs", [])).map((j) => (j.state === "running" ? { ...j, state: "queued", pct: 0 } : j));
+  return queue;
+}
+function flush() {
+  badge();
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
     flushTimer = null;
-    for (const [k, j] of jobs) if (jobs.size > 30 && (j.state === "done" || j.state === "error")) jobs.delete(k);
-    chrome.storage.local.set({ jobs: [...jobs.values()] });
+    const done = queue.filter((j) => !isLive(j)), drop = new Set(done.slice(0, Math.max(0, done.length - KEEP_DONE)).map((j) => j.id));
+    queue = queue.filter((j) => !drop.has(j.id));
+    chrome.storage.local.set({ jobs: queue });
   }, 250);
 }
+const patchJob = (j, p) => { Object.assign(j, p); flush(); };
+const waitFor = (id) => new Promise((res) => { if (!waiters.has(id)) waiters.set(id, []); waiters.get(id).push(res); });
+function settle(j, r) { const ws = waiters.get(j.id) || []; waiters.delete(j.id); ws.forEach((f) => f(r)); }
 
-// ---- UI helpers ----
 function badge() {
+  const n = queue ? queue.filter(isLive).length : 0;
   chrome.action.setBadgeBackgroundColor({ color: "#2563eb" });
-  chrome.action.setBadgeText({ text: inflight ? String(inflight) : "" });
+  chrome.action.setBadgeText({ text: n ? String(n) : "" });
 }
 function notify(title, message) {
   chrome.notifications.create({ type: "basic", iconUrl: "icon.png", title, message });
 }
 
-// ---- actions ----
-const active = new Map(); // dedupeKey -> promise: the same video clicked twice while running is one download
-function download(url, force = false) {
+// Add a video to the queue; resolves with the helper's result when that video is finished.
+async function download(url, force = false) {
+  const { skipDuplicates = true } = await get("settings", {});
   const key = dedupeKey(url);
-  if (active.has(key)) return active.get(key);
-  const p = downloadNow(url, force).finally(() => active.delete(key));
-  active.set(key, p);
-  return p;
-}
-async function downloadNow(url, force = false) {
-  const { quality = "best", folder = "", naming = "creator-title-id", skipDuplicates = true } = await get("settings", {});
   if (!force && skipDuplicates) {
-    const key = dedupeKey(url);
     const seen = (await get("library", [])).find((v) => v.file && dedupeKey(v.url) === key);
     if (seen) return { ok: true, skipped: true, meta: seen };
   }
-  const job = ++jobSeq;
-  setJob(job, { id: job, url, state: "queued", pct: 0, at: Date.now() });
-  inflight++; badge();
+  await loadQueue();
+  const live = queue.find((j) => isLive(j) && dedupeKey(j.url) === key); // clicked again while queued: same job
+  if (live) return waitFor(live.id);
+  const j = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), url, state: "queued", pct: 0, at: Date.now() };
+  queue.push(j);
+  const done = waitFor(j.id);
+  pump();
+  return done;
+}
+function pump() {
+  if (!queue) return;
+  let running = queue.filter((j) => j.state === "running").length;
+  for (const j of queue) {
+    if (running >= MAX_RUN) break;
+    if (j.state === "queued") { running++; j.state = "running"; run(j); }
+  }
+  flush();
+}
+async function run(j) {
+  const { quality = "best", folder = "", naming = "creator-title-id" } = await get("settings", {});
+  let r;
   try {
-    const send = () => call({ url, quality, folder, naming }, (pct) => setJob(job, { state: "running", pct }));
-    let r = await send();
+    const send = () => call({ url: j.url, quality, folder, naming }, (pct) => patchJob(j, { pct }));
+    r = await send();
     // an old engine is the usual cause of sudden 403s: update once an hour at most, then retry
     if (!r.ok && /update engine/.test(r.error || "") && Date.now() - lastHeal > 3600000) {
       lastHeal = Date.now();
       await call({ type: "update" }).catch(() => {});
       r = await send();
     }
-    if (r.ok) await addToLibrary(r.meta); else await addError(url, r.error);
-    setJob(job, r.ok ? { state: "done", pct: 100 } : { state: "error", error: r.error });
-    return r;
-  } catch (e) {
-    await addError(url, e.message);
-    setJob(job, { state: "error", error: e.message });
-    return { ok: false, error: e.message };
-  } finally {
-    inflight--; badge();
+  } catch (e) { r = { ok: false, error: e.message }; }
+  if (r.ok) await addToLibrary(r.meta); else await addError(j.url, r.error);
+  patchJob(j, r.ok ? { state: "done", pct: 100, title: (r.meta && r.meta.title) || "", file: (r.meta && r.meta.file) || "" } : { state: "error", error: r.error });
+  settle(j, r);
+  pump();
+}
+async function queueAction({ action, id }) {
+  await loadQueue();
+  const j = queue.find((x) => x.id === id);
+  if (action === "clear") queue = queue.filter(isLive);
+  else if (!j) return { error: "not found" };
+  else if (action === "cancel" && j.state === "queued") { patchJob(j, { state: "canceled" }); settle(j, { ok: false, error: "canceled" }); }
+  else if (action === "retry" && (j.state === "error" || j.state === "canceled")) { queue = queue.filter((x) => x !== j); download(j.url, true); }
+  flush();
+  return { ok: true };
+}
+loadQueue().then(pump).catch(() => {}); // resume after a worker restart
+
+// Popup one-click: queue the current video unless it is already saved or queued (opening the popup again must not re-download).
+async function enqueueOne({ url, again }) {
+  const [c] = videoUrls([url]);
+  if (!c) return { error: "Not a video link" };
+  const key = dedupeKey(c);
+  if (!again) {
+    const saved = (await get("library", [])).find((v) => v.file && dedupeKey(v.url) === key);
+    if (saved) return { saved: true, url: c, title: saved.title };
+    await loadQueue();
+    if (queue.some((j) => isLive(j) && dedupeKey(j.url) === key)) return { queued: true, already: true, url: c };
   }
+  download(c, true).then((r) => r.ok || notify("Download failed", r.error));
+  return { queued: true, url: c };
+}
+
+// Select mode: queue the ticked videos and answer at once; a notification reports the end of the batch.
+async function enqueueMany({ hrefs, folder }) {
+  const urls = videoUrls(hrefs || [], 200);
+  if (!urls.length) return { error: "No video links selected" };
+  const { skipDuplicates = true } = await get("settings", {});
+  const have = new Set((await get("library", [])).filter((v) => v.file).map((v) => dedupeKey(v.url)));
+  const saved = skipDuplicates ? urls.filter((u) => have.has(dedupeKey(u))) : [];
+  if (saved.length && cleanFolder(folder)) await moveToFolder(saved, folder); // already saved: still file them
+  const todo = urls.filter((u) => !saved.includes(u));
+  downloadMany(todo, folder).then((r) => todo.length && notify("Queue finished", `${r.ok} saved${r.failed ? `, ${r.failed} failed` : ""}`));
+  return { queued: todo.length, saved: saved.length };
 }
 
 async function oneClick(tab) {
@@ -181,7 +236,7 @@ chrome.alarms.onAlarm.addListener((a) => a.name === "update" && maybeUpdate().ca
 chrome.runtime.onStartup.addListener(() => { hello(); schedule(); });
 chrome.runtime.onInstalled.addListener(() => {
   hello(); schedule();
-  chrome.contextMenus.create({ id: "dl-link", title: "Download video from this link", contexts: ["link"] });
+  chrome.contextMenus.create({ id: "dl-link", title: "Add this link to the download queue", contexts: ["link"] });
   chrome.contextMenus.create({ id: "select", title: "Select videos on this page…", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dl-all", title: "Download all videos on this page", contexts: ["action", "page"] });
   chrome.contextMenus.create({ id: "dashboard", title: "Open library & insights", contexts: ["action"] });
@@ -190,7 +245,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "dl-link") return oneClick({ ...tab, url: info.linkUrl });
   if (info.menuItemId === "dl-all") return downloadAll(tab);
-  if (info.menuItemId === "select") return chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["select.js"] }).catch((e) => notify("Cannot select here", String(e.message || e)));
+  if (info.menuItemId === "select") return chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["detect.js", "select.js"] }).catch((e) => notify("Cannot select here", String(e.message || e)));
   if (info.menuItemId === "dashboard") return openDashboard();
 });
 
@@ -261,7 +316,7 @@ const libEdit = (fn) => locked(async () => {
 });
 
 // dashboard / content script -> background
-const CONTENT_TYPES = ["page-state", "page-download"];
+const CONTENT_TYPES = ["page-state", "page-download", "enqueue-many"];
 chrome.runtime.onMessage.addListener((m, sender, send) => {
   // privileged actions only from our own pages; the content script may only ask about / download its own page
   const fromExtensionPage = typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
@@ -275,6 +330,9 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
     : m.type === "ping" || m.type === "update" ? call({ type: m.type })
     : m.type === "download" ? downloadMany(videoUrls(m.urls || [], 200), m.folder).then(({ ok, skipped, failed }) => ({ ok, skipped, failed }))
     : m.type === "download-one" ? oneClick({ url: m.url })
+    : m.type === "enqueue" ? enqueueOne(m)
+    : m.type === "queue" ? queueAction(m)
+    : m.type === "enqueue-many" ? enqueueMany(m)
     : m.type === "lib-folder" ? moveToFolder(videoUrls(m.urls || [], 500), m.folder)
     : m.type === "folder-add" ? addFolderName(m.name)
     : m.type === "folder-delete" ? deleteFolder(m.name)

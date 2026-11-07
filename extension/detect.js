@@ -4,7 +4,7 @@
   if (window.__oneclickDetect) return;
   const PATTERNS = [
     /^https?:\/\/(www\.)?tiktok\.com\/@[\w.-]*\/video\/\d+/,
-    /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(reel|reels|p|tv)\/[\w-]+/,
+    /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(reel|reels|p|tv)\/(?!audio\/)[\w-]+/,
     /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
     /^https?:\/\/(www\.)?youtube\.com\/watch\?(?:.*&)?v=[\w-]+/,
     /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/status\/\d+/,
@@ -19,7 +19,7 @@
     if (!id) return null;
     const card = w.closest("[id^='one-column-item'],[id^='media-card'],article") || w.parentElement;
     const a = card && card.querySelector("a[href^='/@'],a[href*='tiktok.com/@']");
-    const handle = a ? (/@([\w.-]+)/.exec(a.getAttribute("href")) || [])[1] || "" : "";
+    const handle = (a && (/@([\w.-]+)/.exec(a.getAttribute("href")) || [])[1]) || (/^\/@([\w.-]+)/.exec(location.pathname) || [])[1] || ""; // profile pages: the page owner
     return { url: `https://www.tiktok.com/@${handle}/video/${id}`, el: card || w };
   }).filter(Boolean);
   function items() {

@@ -1,11 +1,20 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Xark Once Click Video Agent</title><link rel="stylesheet" href="popup.css"></head>
 <body>
-<h1>Xark Once Click Video Agent</h1>
-<button id="dl" class="primary">⬇ Download this video</button>
-<p id="hint" class="note"></p>
-<button id="sel">☑ Select videos on this page</button>
-<button id="dash">📊 Dashboard · library · collections · AI</button>
-<p id="status" class="note"></p>
+<header>
+  <img src="icon.png" alt="" width="22" height="22">
+  <b>Xark Video Agent</b>
+  <span id="helper" class="dot" title="Checking helper…"></span>
+</header>
+<section id="now" class="now"><div class="state">Looking for a video…</div><div class="sub"></div></section>
+<div class="actions">
+  <button id="sel"><span>☑</span> Select videos</button>
+  <button id="dash"><span>▤</span> Dashboard</button>
+</div>
+<section class="queue">
+  <div class="qhead"><b>Queue</b> <span id="qsum" class="mute"></span><button id="clear" class="link" hidden>Clear finished</button></div>
+  <ul id="jobs"></ul>
+</section>
+<footer><label><input type="checkbox" id="auto"> Download as soon as I click the icon</label></footer>
 <script type="module" src="popup.js"></script>
 </body></html>

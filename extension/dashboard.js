@@ -123,7 +123,8 @@ async function load() {
 }
 
 async function saveSettings() {
-  const settings = { quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked };
+  const { settings: prev = {} } = await chrome.storage.local.get("settings");
+  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked };
   await chrome.storage.local.set({ settings });
   $("#setMsg").textContent = "Saved";
   setTimeout(() => ($("#setMsg").textContent = ""), 1500);

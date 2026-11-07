@@ -2,7 +2,7 @@
 // Keep in sync with detect.js (a test checks both lists are identical).
 export const PATTERNS = [
   /^https?:\/\/(www\.)?tiktok\.com\/@[\w.-]*\/video\/\d+/,
-  /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(reel|reels|p|tv)\/[\w-]+/, // Instagram also uses /<user>/reel/<id>/
+  /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(reel|reels|p|tv)\/(?!audio\/)[\w-]+/, // Instagram also uses /<user>/reel/<id>/
   /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
   /^https?:\/\/(www\.)?youtube\.com\/watch\?(?:.*&)?v=[\w-]+/,
   /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/status\/\d+/,

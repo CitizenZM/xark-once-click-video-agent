@@ -1,17 +1,66 @@
 import { videoUrls } from "./urls.js";
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = (u) => String(u || "").replace(/^https?:\/\/(www\.)?/, "");
+const send = (m) => chrome.runtime.sendMessage(m);
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-const isVideo = !!(tab && tab.url && videoUrls([tab.url]).length);
-$("dl").disabled = !isVideo;
-$("hint").textContent = isVideo ? "" : "This tab is not a video page. Use “Select videos” on a feed or profile.";
-$("dl").onclick = async () => {
-  $("dl").disabled = true; $("status").textContent = "Downloading…";
-  const r = await chrome.runtime.sendMessage({ type: "download-one", url: tab.url });
-  $("status").textContent = r && r.ok ? "✓ Saved. Open the dashboard to see it." : "✗ " + ((r && r.error) || "Failed");
-  $("dl").disabled = false;
-};
+
+function now(kind, state, sub, button) {
+  $("now").className = "now " + kind;
+  $("now").innerHTML = `<div class="state">${esc(state)}</div><div class="sub" title="${esc(sub)}">${esc(sub)}</div>${button ? `<button id="again">${esc(button)}</button>` : ""}`;
+}
+
+// Which video is this tab showing? The URL, or (feeds) the most visible player on the page.
+async function currentVideo() {
+  if (tab && videoUrls([tab.url]).length) return videoUrls([tab.url])[0];
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["detect.js"] });
+    const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.__oneclickDetect.current() });
+    return r && r.result ? videoUrls([r.result])[0] || null : null;
+  } catch { return null; }
+}
+
+async function oneClick(again = false) {
+  const url = await currentVideo();
+  if (!url) return now("", "No video on this tab", "Open a video, or use Select videos on a feed or profile.");
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  if (!again && settings.autoDownload === false) return now("info", "Ready", short(url), "Download this video");
+  const r = await send({ type: "enqueue", url, again });
+  if (r.error) return now("bad", r.error, short(url));
+  if (r.saved) return now("ok", "Already saved", r.title || short(url), "Download again");
+  now("info", r.already ? "Already in the queue" : "Added to the queue", short(url));
+}
+$("now").addEventListener("click", (e) => { if (e.target.id === "again") oneClick(true); });
+
+function renderJobs(jobs = []) {
+  const live = jobs.filter((j) => j.state === "queued" || j.state === "running");
+  const run = jobs.filter((j) => j.state === "running").length;
+  $("qsum").textContent = live.length ? `${run} running · ${live.length - run} waiting` : jobs.length ? "all done" : "";
+  $("clear").hidden = live.length === jobs.length;
+  const label = { queued: "waiting", running: "", done: "saved", error: "failed", canceled: "canceled" };
+  const order = { running: 0, queued: 1 };
+  const sorted = jobs.map((j, i) => ({ j, i })).sort((a, b) => (order[a.j.state] ?? 2) - (order[b.j.state] ?? 2) || (a.j.state in order ? a.i - b.i : b.i - a.i)).map((x) => x.j);
+  $("jobs").innerHTML = sorted.slice(0, 30).map((j) => `<li class="${esc(j.state)}" title="${esc(j.error || j.url)}">
+      <span class="t">${esc(j.title || short(j.url))}</span>
+      <span class="s">${j.state === "running" ? (j.pct || 0) + "%" : label[j.state] || esc(j.state)}
+        ${j.state === "queued" ? `<button class="x" data-a="cancel" data-id="${esc(j.id)}">✕</button>` : ""}
+        ${j.state === "error" || j.state === "canceled" ? `<button class="x" data-a="retry" data-id="${esc(j.id)}">retry</button>` : ""}</span>
+      ${j.state === "running" ? `<span class="bar"><i style="width:${Math.max(3, j.pct || 0)}%"></i></span>` : ""}</li>`).join("")
+    || `<li class="empty">Nothing queued. Click the icon on a video, or use Select videos.</li>`;
+}
+$("jobs").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) send({ type: "queue", action: b.dataset.a, id: b.dataset.id }); });
+$("clear").onclick = () => send({ type: "queue", action: "clear" });
+
 $("sel").onclick = async () => {
-  try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["select.js"] }); window.close(); }
-  catch (e) { $("status").textContent = "Cannot select on this page: " + (e.message || e); }
+  try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["detect.js", "select.js"] }); window.close(); }
+  catch (e) { now("bad", "Can't select on this page", e.message || String(e)); }
 };
 $("dash").onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") }); window.close(); };
+
+const { settings = {}, jobs = [] } = await chrome.storage.local.get(["settings", "jobs"]);
+$("auto").checked = settings.autoDownload !== false;
+$("auto").onchange = async () => { const { settings: s = {} } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...s, autoDownload: $("auto").checked } }); };
+renderJobs(jobs);
+chrome.storage.onChanged.addListener((c) => c.jobs && renderJobs(c.jobs.newValue));
+oneClick();
+send({ type: "ping" }).then((r) => { const ok = r && r.type === "pong"; $("helper").className = "dot " + (ok ? "ok" : "bad"); $("helper").title = ok ? "Helper ready" : "Helper not installed: open the dashboard"; });
