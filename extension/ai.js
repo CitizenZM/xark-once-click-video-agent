@@ -31,15 +31,20 @@ export function parseJson(text) {
   return JSON.parse(m[0]);
 }
 
+// Sonnet 5.5 thinks by default (effort high) and thinking counts toward max_tokens, so keep effort low
+// for these short JSON tasks and leave room for the answer.
+export const REQUEST = (text) => ({ model: MODEL, max_tokens: 8000, output_config: { effort: "low" }, messages: [{ role: "user", content: text }] });
+
 export async function ask(key, text, fetchImpl = fetch) {
   const r = await fetchImpl("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: "user", content: text }] }),
+    body: JSON.stringify(REQUEST(text)),
   });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((body.error && body.error.message) || `API error ${r.status}`);
-  return parseJson((body.content || []).map((c) => c.text || "").join(""));
+  if (body.stop_reason === "max_tokens") throw new Error("The answer was cut off (output limit reached). Try again with fewer videos.");
+  return parseJson((body.content || []).filter((c) => c.type === "text").map((c) => c.text || "").join(""));
 }
 
 // Turn the model's assignments into {collection: [url]}, ignoring unknown indexes and empty names.

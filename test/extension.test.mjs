@@ -303,9 +303,13 @@ test("filterLibrary by collection; AI prompt is capped and has no urls; assignme
   assert.deepEqual(groupAssignments({ assignments: [{ i: 0, collection: "A" }, { i: 5, collection: "B" }, { i: 1, collection: "" }, { i: 1, collection: "A" }] }, ["u0", "u1"]), { A: ["u0", "u1"] });
   assert.deepEqual(parseJson('Sure!\n```json\n{"a":1}\n```'), { a: 1 });
   assert.throws(() => parseJson("no json"));
-  let seen; const fake = async (url, o) => { seen = { url, o }; return { ok: true, json: async () => ({ content: [{ text: '{"summary":"x"}' }] }) }; };
-  assert.deepEqual(await aiAsk("k", "hi", fake), { summary: "x" });
+  let seen; const fake = async (url, o) => { seen = { url, o }; return { ok: true, json: async () => ({ stop_reason: "end_turn", content: [{ type: "thinking", thinking: "{\"no\":1}" }, { type: "text", text: '{"summary":"x"}' }] }) }; };
+  assert.deepEqual(await aiAsk("k", "hi", fake), { summary: "x" });                            // thinking blocks ignored
   assert.equal(seen.url, "https://api.anthropic.com/v1/messages"); assert.equal(seen.o.headers["x-api-key"], "k");
+  const sent = JSON.parse(seen.o.body);                                                        // what actually goes over the wire
+  assert.equal(sent.model, "claude-sonnet-5-5"); assert.equal(sent.max_tokens, 8000); assert.deepEqual(sent.output_config, { effort: "low" });
+  assert.equal(sent.thinking, undefined);                                                      // "disabled" would 400 on Sonnet 5.5
+  await assert.rejects(aiAsk("k", "hi", async () => ({ ok: true, json: async () => ({ stop_reason: "max_tokens", content: [{ type: "text", text: '{"summ' }] }) })), /cut off/);
   await assert.rejects(aiAsk("k", "hi", async () => ({ ok: false, status: 401, json: async () => ({ error: { message: "bad key" } }) })), /bad key/);
 });
 
