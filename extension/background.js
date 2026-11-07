@@ -1,5 +1,6 @@
 import { videoUrls, dedupeKey } from "./urls.js";
 import { createTranscriber } from "./transcribe.js";
+import { setupGrowth, setupMirror } from "./growth-run.js";
 
 const HOST = "com.barron.oneclick_dl";
 let port = null;
@@ -277,7 +278,8 @@ async function maybeUpdate() {
   const r = await call({ type: "update" });
   await chrome.storage.local.set({ lastUpdate: Date.now(), updateResult: r.output || "" });
 }
-const schedule = () => chrome.alarms.create("update", { periodInMinutes: 1440 });
+const growth = setupGrowth({ get, locked, call }), mirror = setupMirror({ get, call });
+const schedule = () => { growth.schedule(); chrome.alarms.create("update", { periodInMinutes: 1440 }); };
 chrome.alarms.onAlarm.addListener((a) => a.name === "update" && maybeUpdate().catch(() => {}));
 
 chrome.runtime.onStartup.addListener(() => { hello(); schedule(); });

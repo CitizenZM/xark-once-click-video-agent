@@ -340,6 +340,12 @@ def handle(msg, on_pct=None):
     if kind == "transcribe":
         import transcribe
         return transcribe.transcribe(msg.get("file"))
+    if kind == "stats":
+        import stats
+        return {"type": "stats", "ok": True, "results": stats.fetch_stats(msg.get("urls"), sys.modules[__name__])}
+    if kind == "sync-library":
+        import library_mirror
+        return library_mirror.sync(msg.get("items"))
     return download(msg or {}, on_pct)
 
 

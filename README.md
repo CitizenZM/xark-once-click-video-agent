@@ -39,6 +39,15 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 
 The model is about 150 MB and English only. Videos already in the library get a "Transcribe" link in the Hook column.
 
+## Use your library from Claude (MCP)
+The extension keeps a copy of your library (titles, creators, counts, tags, notes, collections; no file paths) in `~/.oneclick/library.json`, readable only by you, a few seconds after it changes. A small MCP server reads that file, so Claude can answer questions about your saved videos with the same numbers the dashboard shows.
+```bash
+claude mcp add xark-video -- python3 ~/.oneclick-downloader/host/mcp_server.py
+```
+Then ask, for example: "which format gets the most views in my saved videos?", "find my saved videos about serum", "write a creative brief from my skincare collection". Tools: `search_videos(query, platform?, collection?, limit?)`, `creator_stats(name?)`, `format_stats()`, `keyword_stats(min?)`, `creative_brief(collection?)`. Needs only `python3`, no packages. Run `node --test test/parity.test.mjs` after changing `extension/insights.js`: the Python port in `host/insights_py.py` must stay in step (`python3 host/test_mcp.py`).
+
+**Growth tracking**: once a day the extension asks the helper for the current view, like and comment counts of videos saved 1, 7 and 30 days ago (at most 50 a day, 2 seconds apart) and keeps them with the video. The dashboard Overview shows "Growing fastest (last check)".
+
 ## Develop
 ```bash
 python3 host/test_host.py && node --test test/extension.test.mjs   # tests

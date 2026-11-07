@@ -1,5 +1,6 @@
 import { analyze, recommend, filterLibrary, outliers, creatorStats, formatStats, keywordStats, creativeBrief } from "./insights.js";
 import { buildPrompt, ask, groupAssignments } from "./ai.js";
+import { fastestGrowing } from "./growth.js";
 import { toTSV, toXLSX, toShareHTML } from "./export.js";
 
 const $ = (s) => document.querySelector(s);
@@ -48,7 +49,8 @@ function renderInsights(lib) {
     <div class="card"><h3>Saved per day (last 14)</h3>${days.length ? `<div class="cols">${days.map((d) => `<div title="${esc(d.k)}: ${d.n}" style="height:${(d.n / maxd) * 100}%"></div>`).join("")}</div><div class="colsx">${days.map((d) => `<span>${esc(d.k.slice(8))}</span>`).join("")}</div>` : `<p class="empty">No data yet</p>`}</div>
     <div class="card"><h3>Outliers: beat their baseline</h3><ul class="list">${outliers(lib).map((o) => `<li><a href="${esc(link(o.video.url))}" target="_blank" rel="noopener">${esc(o.video.title || o.video.url)}</a><small>${esc(o.video.uploader)} · ${esc(o.basis)}</small></li>`).join("") || `<li class="empty">Needs a few saved videos per platform (or follower counts)</li>`}</ul></div>
     <div class="card"><h3>Like rate by platform</h3>${a.likeRateByPlatform.filter((p) => p.rate != null).map((p) => `<div class="bar"><span class="lab">${esc(p.k)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(4, (p.rate / Math.max(...a.likeRateByPlatform.map((x) => x.rate || 0))) * 100)}%"></span></span><span class="val">${pct(p.rate)}</span></div>`).join("") || `<p class="empty">No data yet</p>`}</div>
-    <div class="card"><h3>Most viewed</h3><ul class="list">${a.topVideos.map((v) => `<li><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a><small>${esc(v.uploader)} · ${short(v.view_count)} views</small></li>`).join("") || `<li class="empty">No data yet</li>`}</ul></div>`;
+    <div class="card"><h3>Most viewed</h3><ul class="list">${a.topVideos.map((v) => `<li><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a><small>${esc(v.uploader)} · ${short(v.view_count)} views</small></li>`).join("") || `<li class="empty">No data yet</li>`}</ul></div>
+    <div class="card"><h3>Growing fastest (last check)</h3><ul class="list">${fastestGrowing(lib).map((g) => `<li><a href="${esc(link(g.video.url))}" target="_blank" rel="noopener">${esc(g.video.title || g.video.url)}</a><small>${esc(g.video.uploader)} · +${(g.rate * 100).toFixed(1)}% per day · ${g.checks} check${g.checks > 1 ? "s" : ""}</small></li>`).join("") || `<li class="empty">Videos are re-checked 1, 7 and 30 days after saving</li>`}</ul></div>`;
 }
 
 function renderRecs(lib) {
