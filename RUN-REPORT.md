@@ -12,3 +12,10 @@
 - dashboard rendered in in-app browser with stubbed chrome API: 10 cards, 0 console errors, Helper-ready card, KPIs, headlines OK
 - Not verified: extension loaded in real Chrome after reload; real TikTok/IG downloads; Windows; Web Store submission
 - Assumptions: output ~/Downloads/OneClick; batch cap 50; recommendations derive only from the user's library + 4 fixed public ad libraries (no invented accounts)
+
+## 2026-11-06 v3.5.0 — all gap features (agent team)
+Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and merged by the coordinator.
+- Tests: `node --test test/*.test.mjs` 47 pass; `python3 -m unittest discover -s host -p "test_*.py"` 64 OK; CI success 032f6df; Vercel zip 3.5.0; tag v3.5.0.
+- Real checks: F1 sort/outliers on a real TikTok profile (16/16 views, 4 outliers, top 10 descending); F3 real TikTok download verified by ffprobe (h264+aac 26.3 s); skip-long on a real video (found and fixed: engine is silent under --print); F2 real 3m54s review transcribed in 5.1 s with correct hook; F5 live stats (views 454,900 → 456,600); F6 real Meta ad (720x1280, 53 s, cover 1080x1920) and Creative Center ad after playing; F7 MCP over stdio with fixture; dashboard merged UI in stub browser, no console errors.
+- Integration issues found and fixed: F7 Python analysis copy drifted after F2 (parity test caught it, ported); the auto-sync hook rebased an unpushed merge mid-session (finished the rebase, now push right after each merge).
+- Not verified: real-page harness (ego lite notification prompt blocks it); 3.5.0 inside the user's Chrome (needs one reload); logged-in Instagram Stories; MCP inside a real Claude client; TikTok photo posts unsupported by engine.
