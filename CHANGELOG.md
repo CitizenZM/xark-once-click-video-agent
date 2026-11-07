@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.4.0
+- Select mode: the whole video tile is now the click target (clicks no longer open the post on Instagram/TikTok); "+ Queue" on each tile adds that video at once. Tested with real mouse clicks on TikTok and Instagram keyword search.
+- Optional always-on "+ Queue" button when hovering any video (Settings → in-page buttons).
+- Fixed: Retry/Remove did nothing on jobs saved by older builds (numeric ids); failed rows now show the reason with Retry and Remove buttons.
+- Dashboard rebuilt into tabs with a shared Analyze filter (collection, platform, period): Creators (lift, views per follower, formats, hashtags), Formats (content types from captions), Keywords (words and hashtags with lift), Ideas (evidence-based creative brief + AI ad concepts).
+- Host tests no longer write to the real helper log.
+
 ## 3.3.0
 - One click again: clicking the icon queues the video you are watching right away (also on TikTok For You, where there is no video link). Opening the popup on an already saved video does not download it twice.
 - Real download queue: persisted, 3 at a time, resumes after Chrome restarts the extension, cancel waiting jobs, retry failed ones, clear finished. Live in the popup.

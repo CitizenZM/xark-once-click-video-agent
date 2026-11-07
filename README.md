@@ -44,7 +44,7 @@ MIT licensed.
 ## What you get
 - **One click**: click the icon and the video you are watching joins the download queue (turn off in the popup). The popup shows the live queue, Select videos and Dashboard. `Alt+Shift+D` also downloads the current tab.
 - **Select videos**: checkboxes on every video tile, Select visible, Auto-scroll +20, pick a collection, Add to queue. Or right-click any video link → Add this link to the download queue.
-- **Dashboard** (popup → Dashboard): library, charts, outliers, creators and hashtags to explore, queue, settings.
+- **Dashboard** (popup → Dashboard), in tabs: Overview · Creators · Formats · Keywords · Ideas · Library · Download · Settings. One Analyze filter (collection, platform, period) drives every analysis tab. See docs/DASHBOARD-PLAN.md.
 - **Collections**: make folders of saved video links, choose a collection when you select or paste videos, move videos in bulk, copy a collection's links.
 - **AI assistant (optional)**: paste your own Anthropic API key in the dashboard. Buttons *Recommend from my library* and *Auto-sort unfiled videos into collections* send a capped summary (titles, creators, tags, first caption line, counts) to api.anthropic.com only when pressed. See PRIVACY.md.
 
