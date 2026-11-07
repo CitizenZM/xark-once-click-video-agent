@@ -58,3 +58,22 @@ th { color: var(--mute); font-weight: 500; }
 .inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mute); }
 select, .row select { padding: 7px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
 #aiOut h4 { margin: 12px 0 4px; font-size: 13px; } #aiOut ul { margin: 0; padding-left: 18px; font-size: 13px; } #aiOut .sum { font-size: 14px; }
+/* ---- tabs, scope, analysis tables ---- */
+header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: 18px; border-bottom: 1px solid var(--line); }
+header h1 { font-size: 20px; }
+nav#tabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 10px; scrollbar-width: none; }
+nav#tabs a { padding: 9px 12px; color: var(--mute); font-weight: 600; font-size: 14px; border-bottom: 2px solid transparent; white-space: nowrap; text-decoration: none; }
+nav#tabs a:hover { color: var(--ink); } nav#tabs a.on { color: var(--accent); border-bottom-color: var(--accent); }
+main > #setup { margin-top: 16px; }
+.scope { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-top: 14px; position: sticky; top: 92px; z-index: 4; }
+.scope b { font-size: 13px; }
+table.sortable th { cursor: pointer; user-select: none; } table.sortable th.on { color: var(--accent); }
+th.num, td.num { text-align: right; }
+td small { display: block; color: var(--mute); font-size: 11px; }
+.lift { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--line); font-weight: 600; font-size: 12px; }
+.lift.hi { background: rgba(18, 183, 106, .15); color: var(--ok); } .lift.lo { background: rgba(217, 45, 32, .12); color: var(--warn); }
+.bar .fill.low { background: var(--mute) !important; }
+.cloud { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin: 12px 0 14px; }
+.cloud a { color: var(--ink); } .cloud a.hi { color: var(--ok); font-weight: 600; }
+.concept h4 { margin: 0 0 6px; font-size: 15px; } .concept p { margin: 4px 0; font-size: 13px; } .concept ol { margin: 6px 0; padding-left: 18px; font-size: 13px; }
+@media (max-width: 640px) { .scope { position: static; } }

@@ -10,12 +10,17 @@ export function sample(lib, n = 60) {
   }));
 }
 
-export function buildPrompt(mode, lib, folders) {
+export function buildPrompt(mode, lib, folders, stats = {}) {
   const src = (mode === "sort" ? lib.filter((v) => !v.folder) : lib).slice(0, 60);
   const items = sample(src);
   const data = JSON.stringify(items);
   if (mode === "sort") {
     return { urls: src.map((v) => v.url), text: `You organise a marketer's saved short videos into collections.\nExisting collections: ${JSON.stringify(folders)}.\nVideos (JSON): ${data}\n\nAssign each video to ONE collection, reusing existing names when they fit and creating at most 6 new short names (2-3 words, by topic, hook style or product category). Reply with JSON only: {"assignments":[{"i":0,"collection":"name"}]}` };
+  }
+  if (mode === "brief") {
+    const st = JSON.stringify({ formats: (stats.formats || []).map((f) => ({ format: f.format, videos: f.n, lift: f.lift && +f.lift.toFixed(2), likeRate: f.avgLikeRate && +f.avgLikeRate.toFixed(4) })),
+      keywords: (stats.keywords || []).map((k) => ({ keyword: k.keyword, videos: k.n, lift: k.lift && +k.lift.toFixed(2) })) });
+    return { urls: src.map((v) => v.url), text: `You are a performance creative strategist for affiliate and DTC brands.\nReference videos the marketer saved (JSON, capped): ${data}\nMeasured patterns in this set (lift = median views vs the set's median): ${st}\n\nWrite 5 short-form video ad concepts that reuse the patterns that measurably work here (prefer formats and keywords with lift > 1). Do not copy any video. Reply with JSON only:\n{"concepts":[{"name":"short name","format":"format","length":"e.g. 20-30s","hook":"spoken or on-screen line for the first 2 seconds","beats":["shot or line", "..."],"cta":"call to action","why":"which measured pattern this uses"}]}` };
   }
   return { urls: src.map((v) => v.url), text: `You advise an affiliate and performance marketer who saves reference short videos.\nTheir saved videos (JSON, capped): ${data}\n\nUsing only patterns visible in this data, reply with JSON only:\n{"summary":"2-3 sentences on what they collect and what works","patterns":["short pattern..."],"hooks":["opening-line or format ideas to test"],"search_ideas":[{"platform":"TikTok|Instagram|YouTube","query":"search or hashtag to try","why":"one sentence"}],"accounts_to_verify":[{"platform":"...","handle":"...","why":"..."}]}\nRules: at most 5 items per list; never invent statistics; accounts_to_verify are guesses the user must check, include only if you are fairly sure they exist.` };
 }

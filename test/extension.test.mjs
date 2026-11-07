@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { videoUrls, dedupeKey, canonical, PATTERNS } from "../extension/urls.js";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { analyze, recommend, filterLibrary, outliers } from "../extension/insights.js";
+import { analyze, recommend, filterLibrary, outliers, formatsOf, creatorStats, formatStats, keywordStats, creativeBrief } from "../extension/insights.js";
 import { buildPrompt, parseJson, groupAssignments, ask as aiAsk } from "../extension/ai.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
@@ -304,4 +304,45 @@ test("urls: Instagram /<user>/reel/ links, canonical form, audio pages excluded;
   assert.deepEqual(videoUrls(["https://www.instagram.com/a/reel/X1/", "https://www.instagram.com/reel/X1/"]), ["https://www.instagram.com/reel/X1"]);
   const win = {}; vm.runInNewContext(readFileSync(new URL("../extension/detect.js", import.meta.url), "utf8"), { window: win });
   assert.deepEqual([...win.__oneclickDetect.PATTERNS].map((r) => r.source), PATTERNS.map((r) => r.source));
+});
+
+test("analysis: formats from captions, creator stats, keyword lift, evidence-based brief, AI concept prompt", () => {
+  const mk = (i, who, desc, views, likes, dur, extra = {}) => ({ url: `https://www.tiktok.com/@${who}/video/${i}`, platform: "TikTok", uploader: who, uploader_id: who,
+    title: desc.split("\n")[0], description: desc, view_count: views, like_count: likes, duration: dur, tags: [], at: NOW - i, ...extra });
+  const l = [
+    mk(1, "fitjoe", "How to make a protein shake in 30s #protein", 90000, 9000, 25, { channel_follower_count: 30000 }),
+    mk(2, "fitjoe", "How to hit 150g protein a day #protein #mealprep", 120000, 10000, 40, { channel_follower_count: 30000 }),
+    mk(3, "ana", "Whey vs plant protein: which is better? #protein", 20000, 800, 50),
+    mk(4, "ana", "My morning routine #grwm", 5000, 300, 70),
+    mk(5, "bo", "Use code SAVE20 for my favourite whey #ad", 3000, 60, 15),
+  ];
+  assert.deepEqual(formatsOf(l[0]), ["Tutorial / how-to", "Recipe / food"]);
+  assert.ok(formatsOf(l[2]).includes("Comparison") && formatsOf(l[2]).includes("Question hook"));
+  assert.ok(formatsOf(l[4]).includes("Sponsored / ad"));
+  assert.deepEqual(formatsOf({ title: "nice", description: "" }), ["Other"]);
+
+  const cs = creatorStats(l);
+  const joe = cs.find((c) => c.creator === "fitjoe");
+  assert.deepEqual([joe.n, joe.medianViews, joe.followers, joe.best.url], [2, 105000, 30000, l[1].url]);
+  assert.equal(joe.lift.toFixed(2), (105000 / 20000).toFixed(2));          // library median views = 20000
+  assert.equal(joe.viewsPerFollower.toFixed(1), "3.5");
+  assert.ok(joe.tags.includes("protein") && joe.formats.includes("Tutorial / how-to"));
+
+  const how = formatStats(l).find((f) => f.format === "Tutorial / how-to");
+  assert.deepEqual([how.n, how.medianViews], [2, 105000]);
+
+  const kw = keywordStats(l);
+  const prot = kw.find((k) => k.keyword === "protein"), tag = kw.find((k) => k.keyword === "#protein");
+  assert.deepEqual([prot.n, prot.creators, tag.n], [3, 2, 3]);
+  assert.ok(!kw.some((k) => ["the", "how", "my", "for"].includes(k.keyword)));     // stop words dropped
+  assert.ok(!kw.some((k) => k.n < 2));                                              // only repeated words
+
+  const b = creativeBrief(l);
+  assert.match(b.ideas[0].title, /Tutorial \/ how-to/); assert.match(b.ideas[0].basis, /2 saved videos/);
+  assert.equal(b.hooks[0], "How to hit 150g protein a day #protein #mealprep");
+  assert.deepEqual(b.topCreators, ["fitjoe", "ana"]);
+  assert.equal(creativeBrief(l.slice(0, 2)), null);
+
+  const p = buildPrompt("brief", l, [], { formats: formatStats(l), keywords: keywordStats(l) });
+  assert.match(p.text, /"concepts"/); assert.match(p.text, /Tutorial \/ how-to/); assert.ok(!p.text.includes("tiktok.com/@"));
 });

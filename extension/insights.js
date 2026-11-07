@@ -128,3 +128,93 @@ export function recommend(lib) {
     .map((m) => ({ handle: m.k, mentions: m.n, basis: `@-mentioned in ${m.n} of your saved captions` }));
   return { creators, hashtags: tags, mentions, channels: AD_CHANNELS };
 }
+
+// ---------- deeper analysis: creators, formats, keywords, creative brief ----------
+const likeRate = eng;
+const textOf = (v) => `${v.title || ""} ${String(v.description || "").slice(0, 400)}`;
+const medOrNull = (xs) => median(xs);
+
+// Content format, from words in the title/caption/tags. A video can have several.
+export const FORMATS = [
+  ["Tutorial / how-to", /\b(how to|tutorial|step[- ]by[- ]step|guide|tips?|hack|learn)\b/i],
+  ["Review", /\b(review|honest|worth it|tested|rating|verdict)\b/i],
+  ["Unboxing / haul", /\b(unbox(ing)?|haul|what i got|first look)\b/i],
+  ["Before / after", /\b(before (and|&) after|transformation|glow ?up|results?)\b/i],
+  ["Comparison", /\b(vs\.?|versus|compare|comparison|which is better)\b/i],
+  ["List / top N", /\b(top \d+|\d+ (things|ways|reasons|tips|products|mistakes))\b/i],
+  ["Routine / GRWM / day in life", /\b(grwm|get ready with me|routine|day in (my|the) life|diml|morning|night ?time)\b/i],
+  ["Recipe / food", /\b(recipe|cook(ing)?|meal ?prep|protein (shake|bar|pancakes?)|ingredients?)\b/i],
+  ["POV / skit", /\b(pov|skit|when you|me when|comedy|funny)\b/i],
+  ["Story / testimonial", /\b(story ?time|my journey|i lost|i gained|testimonial|changed my life)\b/i],
+  ["Challenge / trend", /\b(challenge|trend|trending|duet|stitch)\b/i],
+  ["Sponsored / ad", /(#ad\b|#sponsored|\bpaid partnership\b|\bpartner(ed)? with\b|\bcode [A-Z0-9]{3,}\b|\bdiscount code\b)/i],
+];
+export function formatsOf(v) {
+  const t = `${textOf(v)} ${(v.tags || []).join(" ")}`;
+  const hit = FORMATS.filter(([, re]) => re.test(t)).map(([n]) => n);
+  if (/\?/.test(String(v.description || v.title || "").split("\n")[0])) hit.push("Question hook");
+  return hit.length ? hit : ["Other"];
+}
+
+const groupStats = (vs, base) => {
+  const med = medOrNull(vs.map((v) => v.view_count));
+  const rates = vs.map(likeRate).filter((e) => e != null);
+  return { n: vs.length, medianViews: med, avgLikeRate: avg(rates), avgSeconds: avg(vs.map((v) => v.duration).filter((d) => d > 0)),
+    lift: med && base ? med / base : null };
+};
+
+export function creatorStats(lib) {
+  const base = median(lib.map((v) => v.view_count));
+  const by = new Map();
+  for (const v of lib) { const k = creatorKey(v); if (!by.has(k)) by.set(k, []); by.get(k).push(v); }
+  return [...by].map(([k, vs]) => {
+    const best = [...vs].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0];
+    const followers = Math.max(0, ...vs.map((v) => v.channel_follower_count || 0)) || null;
+    const tags = count(vs.flatMap(hashtagsOf)).slice(0, 3).map((t) => t.k);
+    const formats = count(vs.flatMap(formatsOf)).filter((f) => f.k !== "Other").slice(0, 2).map((f) => f.k);
+    const s = groupStats(vs, base);
+    return { creator: k, platform: vs[0].platform, ...s, totalViews: vs.reduce((a, v) => a + (v.view_count || 0), 0), followers,
+      viewsPerFollower: followers && s.medianViews ? s.medianViews / followers : null, best, tags, formats, lastSaved: Math.max(...vs.map((v) => v.at || 0)) };
+  }).sort((a, b) => b.n - a.n || (b.medianViews || 0) - (a.medianViews || 0));
+}
+
+export function formatStats(lib) {
+  const base = median(lib.map((v) => v.view_count));
+  const by = new Map();
+  for (const v of lib) for (const f of formatsOf(v)) { if (!by.has(f)) by.set(f, []); by.get(f).push(v); }
+  return [...by].map(([format, vs]) => ({ format, ...groupStats(vs, base),
+    example: [...vs].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0] })).sort((a, b) => b.n - a.n);
+}
+
+const STOP = new Set(("the a an and or but if then so to of in on at for with from by is are was were be been it its this that these those i me my we our you your he she they them " +
+  "his her their what which who how why when where all any some more most no not only just can will would should could do does did have has had get got " +
+  "into out up down over than too very also about as like one two new now here there day today video videos reel reels post follow link bio comment " +
+  "comments share save tiktok instagram youtube shorts fyp foryou foryoupage viral explore trending dont don't im i'm it's thats that's make made makes use using used try need know want see look watch let lets going really much many every").split(" "));
+export function keywordStats(lib, { min = 2 } = {}) {
+  const base = median(lib.map((v) => v.view_count));
+  const by = new Map();
+  for (const v of lib) {
+    const words = new Set(textOf(v).toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/#[\p{L}\p{N}_]+/gu, " ").match(/[\p{L}][\p{L}\p{N}'-]{2,}/gu) || []);
+    const keys = new Set([...[...words].filter((w) => !STOP.has(w)), ...hashtagsOf(v).filter((t) => !STOP.has(t)).map((t) => "#" + t)]);
+    for (const k of keys) { if (!by.has(k)) by.set(k, []); by.get(k).push(v); }
+  }
+  return [...by].filter(([, vs]) => vs.length >= min).map(([keyword, vs]) => ({ keyword, ...groupStats(vs, base),
+    creators: new Set(vs.map(creatorKey)).size })).sort((a, b) => b.n - a.n || (b.lift || 0) - (a.lift || 0));
+}
+
+// A short, evidence-based creative brief from the library (no AI needed). Every line says what it is based on.
+export function creativeBrief(lib) {
+  if (lib.length < 3) return null;
+  const fm = formatStats(lib).filter((f) => f.n >= 2 && f.format !== "Other" && f.lift != null).sort((a, b) => b.lift - a.lift);
+  const kw = keywordStats(lib).filter((k) => k.n >= 2 && k.lift != null).sort((a, b) => b.lift - a.lift);
+  const a = analyze(lib);
+  const len = a.buckets.filter((b) => b.n >= 2 && b.avgEng != null).sort((x, y) => y.avgEng - x.avgEng)[0];
+  const top2 = [...lib].sort((x, y) => (y.view_count || 0) - (x.view_count || 0));
+  const hooks = [...new Set(top2.map((v) => String(v.description || v.title || "").split("\n")[0].trim()).filter((h) => h.length > 8))].slice(0, 4);
+  const out = [];
+  if (fm[0]) out.push({ title: `Lead with the "${fm[0].format}" format`, basis: `${fm[0].n} saved videos, median views ${fm[0].lift.toFixed(1)}x your library median` });
+  if (fm[1]) out.push({ title: `Test "${fm[1].format}" as the second angle`, basis: `${fm[1].n} videos, ${fm[1].lift.toFixed(1)}x median views` });
+  if (len) out.push({ title: `Keep it ${len.k}`, basis: `highest like rate in your library (${(len.avgEng * 100).toFixed(1)}%, ${len.n} videos)` });
+  if (kw.length) out.push({ title: `Work these words into hooks and captions: ${kw.slice(0, 5).map((k) => k.keyword).join(", ")}`, basis: "keywords whose videos get the most views (2+ videos each)" });
+  return { ideas: out, hooks, topCreators: creatorStats(lib).filter((c) => c.n >= 2).slice(0, 3).map((c) => c.creator) };
+}

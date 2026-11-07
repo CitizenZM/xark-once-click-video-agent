@@ -1,4 +1,4 @@
-import { analyze, recommend, filterLibrary, outliers } from "./insights.js";
+import { analyze, recommend, filterLibrary, outliers, creatorStats, formatStats, keywordStats, creativeBrief } from "./insights.js";
 import { buildPrompt, ask, groupAssignments } from "./ai.js";
 
 const $ = (s) => document.querySelector(s);
@@ -60,6 +60,7 @@ function renderRecs(lib) {
     <div class="card"><h3>Ad libraries</h3><ul class="list">${r.channels.map((c) => `<li>${link(c.url, c.name)}<small>${esc(c.why)}</small></li>`).join("")}</ul></div>`;
 }
 
+let all = [];
 let view = [], shown = 200, current = [], folders = [];
 const allFolders = (lib, stored) => [...new Set([...stored, ...lib.map((v) => v.folder).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
 const opts = (first, list, counts) => `<option value="${first[0]}">${esc(first[1])}</option>` + list.map((f) => `<option value="${esc(f)}">${esc(f)}${counts ? ` (${counts[f] || 0})` : ""}</option>`).join("");
@@ -109,7 +110,7 @@ async function load() {
   const { library = [], errors = [], settings = {}, jobs = [], folders: stored = [] } = await chrome.storage.local.get(["library", "errors", "settings", "jobs", "folders"]);
   folders = allFolders(library, stored);
   renderJobs(jobs);
-  renderInsights(library); renderRecs(library); renderTable(library);
+  all = library; renderScopeOptions(library); renderAnalysis(); renderTable(library);
   $("#quality").value = settings.quality || "best";
   $("#naming").value = settings.naming || "creator-title-id";
   $("#folder").value = settings.folder || "";
@@ -170,9 +171,9 @@ $("#aiclear").onclick = async () => { await chrome.storage.local.remove("aiKey")
 const list = (title, arr, fmt) => (arr && arr.length ? `<h4>${title}</h4><ul>${arr.slice(0, 5).map((x) => `<li>${fmt(x)}</li>`).join("")}</ul>` : "");
 async function runAi(mode) {
   const key = await aiKey(); if (!key) return ($("#aiStatus").textContent = "Save your API key first");
-  const { library = [] } = await chrome.storage.local.get("library");
+  const library = mode === "sort" ? all : scoped(); // recommendations and concepts follow the Analyze filter
   if (!library.length) return ($("#aiStatus").textContent = "Save a few videos first");
-  const p = buildPrompt(mode, library, folders);
+  const p = buildPrompt(mode, library, folders, { formats: formatStats(library).slice(0, 8), keywords: keywordStats(library).slice(0, 15) });
   if (mode === "sort" && !p.urls.length) return ($("#aiStatus").textContent = "Nothing unfiled");
   $("#aiStatus").textContent = "Asking the model…"; $("#aiOut").innerHTML = "";
   let res; try { res = await ask(key, p.text); } catch (e) { return ($("#aiStatus").textContent = "✗ " + e.message); }
@@ -185,11 +186,18 @@ async function runAi(mode) {
     return;
   }
   const q = (x) => esc(x == null ? "" : x);
+  if (mode === "brief") {
+    $("#aiOut").innerHTML = `<div class="grid">${(res.concepts || []).slice(0, 5).map((c) => `<div class="card concept"><h4>${q(c.name)}</h4>
+      <p><b>Format:</b> ${q(c.format)} · <b>Length:</b> ${q(c.length)}</p><p><b>Hook (first 2s):</b> “${q(c.hook)}”</p>
+      <ol>${(c.beats || []).slice(0, 6).map((b) => `<li>${q(b)}</li>`).join("")}</ol><p><b>CTA:</b> ${q(c.cta)}</p><p class="note">${q(c.why)}</p></div>`).join("")}</div>`;
+    return;
+  }
   $("#aiOut").innerHTML = `<p class="sum">${q(res.summary)}</p>` + list("Patterns", res.patterns, q) + list("Hooks to test", res.hooks, q)
     + list("Searches to try", res.search_ideas, (x) => `${q(x.platform)}: <b>${q(x.query)}</b> <small>${q(x.why)}</small>`)
     + list("Accounts to check (AI guesses: verify they exist)", res.accounts_to_verify, (x) => `${q(x.platform)} @${q(String(x.handle || "").replace(/^@/, ""))} <small>${q(x.why)}</small>`);
 }
 $("#airec").onclick = () => runAi("recommend");
+$("#aibrief").onclick = () => runAi("brief");
 $("#aisort").onclick = () => runAi("sort");
 aiInit();
 
@@ -199,3 +207,115 @@ chrome.storage.onChanged.addListener((c) => {
   if (c.jobs) renderJobs(c.jobs.newValue || []);
   if (c.library || c.errors || c.folders) load();
 });
+
+
+// ---------- tabs ----------
+const TABS = ["overview", "creators", "formats", "keywords", "ideas", "library", "download", "settings"];
+function showTab() {
+  const t = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview";
+  document.querySelectorAll(".panel").forEach((p) => (p.hidden = p.dataset.tab !== t));
+  document.querySelectorAll("#tabs a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + t));
+  $("#scope").hidden = !["overview", "creators", "formats", "keywords", "ideas"].includes(t);
+}
+addEventListener("hashchange", showTab);
+showTab();
+const goLibrary = (q) => { $("#q").value = q; $("#fcol").value = ""; $("#fplat").value = ""; location.hash = "#library"; renderTable(all); };
+
+// ---------- Analyze scope (collection / platform / period) ----------
+function renderScopeOptions(lib) {
+  for (const [id, list, first] of [["#scol", folders, "All collections"], ["#splat", [...new Set(lib.map((v) => v.platform))].sort(), "All platforms"]]) {
+    const el = $(id), keep = el.value;
+    el.innerHTML = `<option value="">${first}</option>` + (id === "#scol" ? `<option value="__none">Unfiled</option>` : "") + list.map((x) => `<option>${esc(x)}</option>`).join("");
+    el.value = [...el.options].some((o) => o.value === keep) ? keep : "";
+  }
+}
+function scoped() {
+  const col = $("#scol").value, plat = $("#splat").value, days = Number($("#sdays").value);
+  const since = days ? Date.now() - days * 86400000 : 0;
+  return all.filter((v) => (!col || (col === "__none" ? !v.folder : v.folder === col)) && (!plat || v.platform === plat) && (v.at || 0) >= since);
+}
+function renderAnalysis() {
+  const lib = scoped();
+  $("#scount").textContent = lib.length === all.length ? `${lib.length} videos` : `${lib.length} of ${all.length} videos`;
+  renderInsights(lib); renderRecs(lib); renderCreators(lib); renderFormats(lib); renderKeywords(lib); renderBrief(lib);
+}
+for (const id of ["#scol", "#splat", "#sdays"]) $(id).addEventListener("change", renderAnalysis);
+
+// ---------- sortable tables ----------
+const sorts = {};
+function sortable(el, key, cols, rows, empty) {
+  const st = sorts[key] || (sorts[key] = { by: cols.find((c) => c.def)?.k || cols[0].k, dir: -1 });
+  const val = (r, k) => { const v = cols.find((c) => c.k === k).v(r); return v == null ? -Infinity : v; };
+  const sorted = [...rows].sort((a, b) => { const x = val(a, st.by), y = val(b, st.by); return (typeof x === "string" ? x.localeCompare(y) : x - y) * st.dir; });
+  el.innerHTML = `<tr>${cols.map((c) => `<th data-k="${c.k}" class="${c.num ? "num" : ""} ${st.by === c.k ? "on" : ""}" title="${esc(c.tip || "Sort")}">${esc(c.h)}${st.by === c.k ? (st.dir < 0 ? " ↓" : " ↑") : ""}</th>`).join("")}</tr>` +
+    (sorted.length ? sorted.slice(0, 300).map((r) => `<tr>${cols.map((c) => `<td class="${c.num ? "num" : ""}">${c.html(r)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${cols.length}" class="empty">${empty}</td></tr>`);
+  el.onclick = (e) => {
+    const th = e.target.closest("th[data-k]");
+    if (th) { st.dir = st.by === th.dataset.k ? -st.dir : -1; st.by = th.dataset.k; return sortable(el, key, cols, rows, empty); }
+    const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); }
+  };
+}
+const liftHtml = (x) => (x == null ? "" : `<span class="lift ${x >= 1.5 ? "hi" : x < 0.75 ? "lo" : ""}">${x.toFixed(1)}x</span>`);
+const go = (q, text) => `<a href="#" data-go="${esc(q)}">${esc(text)}</a>`;
+const secs = (x) => (x ? Math.round(x) + "s" : "");
+
+function renderCreators(lib) {
+  const q = $("#cq").value.trim().toLowerCase();
+  const rows = creatorStats(lib).filter((c) => !q || c.creator.toLowerCase().includes(q));
+  sortable($("#ctable"), "creators", [
+    { k: "creator", h: "Creator", v: (r) => r.creator.toLowerCase(), html: (r) => go(r.creator, r.creator) + `<small>${esc(r.platform)}${r.formats.length ? " · " + esc(r.formats.join(", ")) : ""}</small>` },
+    { k: "n", h: "Saved", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
+    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, tip: "Their median views ÷ the median of this view", v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
+    { k: "followers", h: "Followers", num: 1, v: (r) => r.followers, html: (r) => (r.followers ? short(r.followers) : "") },
+    { k: "vpf", h: "Views / follower", num: 1, tip: "Median views ÷ followers: above 1 means they reach beyond their audience", v: (r) => r.viewsPerFollower, html: (r) => (r.viewsPerFollower != null ? r.viewsPerFollower.toFixed(2) : "") },
+    { k: "len", h: "Avg length", num: 1, v: (r) => r.avgSeconds, html: (r) => secs(r.avgSeconds) },
+    { k: "tags", h: "Top hashtags", v: (r) => r.tags.join(" "), html: (r) => r.tags.map((t) => go("#" + t, "#" + t)).join(" ") },
+    { k: "best", h: "Best video", v: (r) => r.best.view_count || 0, html: (r) => `<a href="${esc(link(r.best.url))}" target="_blank" rel="noopener">${esc((r.best.title || r.best.url).slice(0, 60))}</a>` },
+  ], rows, "Save a few videos to see creators.");
+}
+$("#cq").addEventListener("input", () => renderCreators(scoped()));
+
+function renderFormats(lib) {
+  const rows = formatStats(lib);
+  const top = rows.filter((r) => r.format !== "Other" && r.lift != null).sort((a, b) => b.lift - a.lift).slice(0, 8), max = Math.max(1, ...top.map((r) => r.lift));
+  $("#fchart").innerHTML = `<h3>Which formats get the most views <span class="note">(median views vs your typical saved video)</span></h3>` +
+    (top.length ? top.map((r) => `<div class="bar"><span class="lab">${esc(r.format)}</span><span class="track"><span class="fill ${r.lift >= 1 ? "" : "low"}" style="display:block;width:${Math.max(4, (r.lift / max) * 100)}%"></span></span><span class="val">${r.lift.toFixed(1)}x</span></div>`).join("") : `<p class="empty">Needs saved videos with captions.</p>`);
+  sortable($("#ftable"), "formats", [
+    { k: "format", h: "Format", v: (r) => r.format, html: (r) => esc(r.format) },
+    { k: "n", h: "Videos", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
+    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
+    { k: "len", h: "Avg length", num: 1, v: (r) => r.avgSeconds, html: (r) => secs(r.avgSeconds) },
+    { k: "ex", h: "Best example", v: (r) => r.example.view_count || 0, html: (r) => `<a href="${esc(link(r.example.url))}" target="_blank" rel="noopener">${esc((r.example.title || r.example.url).slice(0, 60))}</a> <small>${esc(r.example.uploader || "")}</small>` },
+  ], rows, "No videos in this view.");
+}
+
+function renderKeywords(lib) {
+  const q = $("#kq").value.trim().toLowerCase(), tagsOnly = $("#konlytags").checked;
+  const rows = keywordStats(lib).filter((k) => (!q || k.keyword.includes(q)) && (!tagsOnly || k.keyword.startsWith("#")));
+  const cloud = [...rows].sort((a, b) => b.n - a.n).slice(0, 40), maxN = Math.max(1, ...cloud.map((k) => k.n));
+  $("#kcloud").innerHTML = cloud.map((k) => `<a href="#" data-go="${esc(k.keyword)}" class="${k.lift >= 1.5 ? "hi" : ""}" style="font-size:${12 + Math.round((k.n / maxN) * 12)}px" title="${k.n} videos · ${k.lift ? k.lift.toFixed(1) + "x views" : ""}">${esc(k.keyword)}</a>`).join("") || `<p class="empty">Needs 2+ videos sharing a word.</p>`;
+  sortable($("#ktable"), "keywords", [
+    { k: "keyword", h: "Keyword", v: (r) => r.keyword, html: (r) => go(r.keyword, r.keyword) },
+    { k: "n", h: "Videos", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
+    { k: "creators", h: "Creators", num: 1, v: (r) => r.creators, html: (r) => r.creators },
+    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
+  ], rows, "No keyword appears in 2 or more videos yet.");
+}
+$("#kq").addEventListener("input", () => renderKeywords(scoped()));
+$("#konlytags").addEventListener("change", () => renderKeywords(scoped()));
+$("#kcloud").addEventListener("click", (e) => { const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); } });
+
+function renderBrief(lib) {
+  const b = creativeBrief(lib);
+  if (!b) return ($("#brief").innerHTML = `<div class="card"><p class="empty">Save at least 3 videos (with captions) to get a brief.</p></div>`);
+  $("#brief").innerHTML = `<div class="card"><h3>What to make next</h3><ul class="list">${b.ideas.map((i) => `<li>${esc(i.title)}<small>${esc(i.basis)}</small></li>`).join("") || `<li class="empty">Not enough repeated formats or keywords yet.</li>`}</ul></div>
+    <div class="card"><h3>Opening lines that worked</h3><ul class="list">${b.hooks.map((h) => `<li>“${esc(h.slice(0, 140))}”</li>`).join("") || `<li class="empty">No captions yet.</li>`}</ul><p class="note">First caption lines of your most viewed saved videos: reuse the structure, not the words.</p></div>
+    <div class="card"><h3>Creators to model</h3><ul class="list">${b.topCreators.map((c) => `<li>${go(c, c)}</li>`).join("") || `<li class="empty">Save 2+ videos from a creator.</li>`}</ul></div>`;
+  $("#brief").onclick = (e) => { const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); } };
+}

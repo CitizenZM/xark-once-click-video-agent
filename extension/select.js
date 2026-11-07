@@ -12,8 +12,8 @@
     .chk{position:absolute;left:8px;top:8px;width:26px;height:26px;border-radius:8px;border:2px solid #fff;background:rgba(15,23,42,.55);box-shadow:0 1px 6px rgba(0,0,0,.4);
       color:#fff;font:700 16px/22px -apple-system,sans-serif;text-align:center}
     .tile.on .chk{background:#2563eb;border-color:#2563eb}.tile.on .chk::after{content:"✓"}
-    .add{position:absolute;right:8px;top:8px;height:28px;padding:0 10px;border-radius:999px;border:0;background:#0f172a;color:#fff;cursor:pointer;opacity:0;
-      font:700 12px/28px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+    .add{position:absolute;right:8px;top:8px;height:32px;padding:0 14px;border-radius:999px;border:0;background:#0f172a;color:#fff;cursor:pointer;opacity:0;
+      font:700 13px/32px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.4)}
     .tile:hover .add,.add.done{opacity:1}.add:hover{background:#2563eb}.add.done{background:#16a34a}
     .bar{position:fixed;z-index:2147483647;left:50%;bottom:20px;transform:translateX(-50%);display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:calc(100vw - 24px);
       background:#0f172a;color:#f1f5f9;font:500 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:8px 10px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}

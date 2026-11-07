@@ -8,13 +8,25 @@
 </head>
 <body>
 <header>
-  <h1>Xark Once Click Video Agent</h1>
-  <p class="sub">Your saved videos, what they have in common, and where to look next.</p>
+  <div class="brand"><h1>Xark Once Click Video Agent</h1></div>
+  <nav id="tabs">
+    <a href="#overview">Overview</a><a href="#creators">Creators</a><a href="#formats">Formats</a><a href="#keywords">Keywords</a><a href="#ideas">Ideas</a>
+    <a href="#library">Library</a><a href="#download">Download</a><a href="#settings">Settings</a>
+  </nav>
 </header>
 <main>
   <section id="setup" class="card"></section>
   <section id="queue" class="card" hidden><h3>Downloading</h3><div id="jobs"></div></section>
 
+  <div id="scope" class="scope row">
+    <b>Analyze</b>
+    <select id="scol"><option value="">All collections</option></select>
+    <select id="splat"><option value="">All platforms</option></select>
+    <select id="sdays"><option value="0">All time</option><option value="7">Saved in last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select>
+    <span id="scount" class="note"></span>
+  </div>
+
+<div class="panel" data-tab="overview">
   <section>
     <h2>Overview</h2>
     <div id="kpis" class="kpis"></div>
@@ -28,17 +40,80 @@
     <p class="note">Accounts and hashtags below come only from your own saved videos. The ad libraries are fixed public sources.</p>
     <div id="recs" class="grid"></div>
   </section>
+</div>
 
+<div class="panel" data-tab="creators" hidden>
   <section>
-    <h2>AI assistant</h2>
+    <h2>Creators</h2>
+    <p class="note">Every creator you saved, with the numbers of the videos you saved from them. Click a column to sort, a name to see their videos. “Lift” = their median views ÷ the median of everything in this view.</p>
+    <div class="row"><input id="cq" class="grow" type="search" placeholder="Filter creators"></div>
+    <div class="tablewrap"><table id="ctable" class="sortable"></table></div>
+  </section>
+</div>
+
+<div class="panel" data-tab="formats" hidden>
+  <section>
+    <h2>Formats</h2>
+    <p class="note">Content type is read from words in the title, caption and hashtags (for example “how to”, “vs”, “before and after”, “POV”, “#ad”). A video can have several. Lift above 1.0x means that format gets more views than your typical saved video.</p>
+    <div id="fchart" class="card"></div>
+    <div class="tablewrap" style="margin-top:14px"><table id="ftable" class="sortable"></table></div>
+  </section>
+</div>
+
+<div class="panel" data-tab="keywords" hidden>
+  <section>
+    <h2>Keywords</h2>
+    <p class="note">Words and hashtags that appear in 2 or more of your saved videos, with how those videos perform. Click a keyword to see its videos.</p>
+    <div class="row"><input id="kq" class="grow" type="search" placeholder="Filter keywords"><label class="inline"><input type="checkbox" id="konlytags"> Hashtags only</label></div>
+    <div id="kcloud" class="cloud"></div>
+    <div class="tablewrap"><table id="ktable" class="sortable"></table></div>
+  </section>
+</div>
+
+<div class="panel" data-tab="ideas" hidden>
+  <section>
+    <h2>Creative brief</h2>
+    <p class="note">Built from the videos in the current Analyze view. Each line says what it is based on.</p>
+    <div id="brief" class="grid"></div>
+  </section>
+  <section>
+    <h2>AI assistant <span class="note">(optional, uses your own key)</span></h2>
     <div class="card">
       <p class="note">Optional. Uses your own Anthropic API key, stored only in this browser. When you press a button, a capped summary of your library (titles, creators, hashtags, first caption line, view and like counts) is sent to api.anthropic.com. Nothing is sent otherwise.</p>
       <div class="row"><input id="aikey" class="grow" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button id="aisave" class="ghost">Save key</button><button id="aiclear" class="ghost">Remove key</button></div>
-      <div class="row"><button id="airec">Recommend from my library</button><button id="aisort">Auto-sort unfiled videos into collections</button><span id="aiStatus" class="note"></span></div>
+      <div class="row"><button id="aibrief">Write 5 ad concepts</button><button id="airec" class="ghost">Recommend from my library</button><button id="aisort" class="ghost">Auto-sort unfiled videos into collections</button><span id="aiStatus" class="note"></span></div>
       <div id="aiOut"></div>
     </div>
   </section>
+</div>
 
+<div class="panel" data-tab="library" hidden>
+  <section>
+    <h2>Library <span id="count" class="note"></span></h2>
+    <div class="row">
+      <input id="q" class="grow" type="search" placeholder="Search title, creator, tags, notes">
+      <select id="fcol"><option value="">All collections</option></select>
+      <select id="fplat"><option value="">All platforms</option></select>
+      <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
+    </div>
+    <div class="row">
+      <button id="newcol" class="ghost">+ New collection</button>
+      <button id="delcol" class="ghost danger" hidden>Delete this collection</button>
+      <button id="copy" class="ghost">Copy links in this view</button>
+      <span class="note">Move ticked to</span><select id="mvcol"><option value="">(unfiled)</option></select><button id="mv" class="ghost">Move</button>
+    </div>
+    <div class="row">
+      <button id="csv" class="ghost">Export CSV</button>
+      <button id="json" class="ghost">Export JSON</button>
+      <button id="clear" class="ghost danger">Clear library</button>
+    </div>
+    <div class="tablewrap"><table id="table"></table></div>
+    <h3>Recent errors</h3>
+    <ul id="errors" class="errors"></ul>
+  </section>
+</div>
+
+<div class="panel" data-tab="download" hidden>
   <section>
     <h2>Download</h2>
     <div class="card">
@@ -65,7 +140,9 @@
       <span id="pStatus" class="note"></span>
     </div>
   </section>
+</div>
 
+<div class="panel" data-tab="settings" hidden>
   <section>
     <h2>Settings</h2>
     <div class="card settings">
@@ -82,30 +159,7 @@
       <span id="setMsg" class="note"></span>
     </div>
   </section>
-
-  <section>
-    <h2>Library <span id="count" class="note"></span></h2>
-    <div class="row">
-      <input id="q" class="grow" type="search" placeholder="Search title, creator, tags, notes">
-      <select id="fcol"><option value="">All collections</option></select>
-      <select id="fplat"><option value="">All platforms</option></select>
-      <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
-    </div>
-    <div class="row">
-      <button id="newcol" class="ghost">+ New collection</button>
-      <button id="delcol" class="ghost danger" hidden>Delete this collection</button>
-      <button id="copy" class="ghost">Copy links in this view</button>
-      <span class="note">Move ticked to</span><select id="mvcol"><option value="">(unfiled)</option></select><button id="mv" class="ghost">Move</button>
-    </div>
-    <div class="row">
-      <button id="csv" class="ghost">Export CSV</button>
-      <button id="json" class="ghost">Export JSON</button>
-      <button id="clear" class="ghost danger">Clear library</button>
-    </div>
-    <div class="tablewrap"><table id="table"></table></div>
-    <h3>Recent errors</h3>
-    <ul id="errors" class="errors"></ul>
-  </section>
+</div>
 </main>
 <script type="module" src="dashboard.js"></script>
 </body>
