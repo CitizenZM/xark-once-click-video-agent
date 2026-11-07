@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.1
+Fixes found by testing 3.5.0 against real data in Chrome.
+- Instagram creators were labelled with Instagram's numeric account id; they now show the account name, and one account stays one creator. Profile links use a handle only when a saved link contains one.
+- Library search (and keyword/hashtag drill-down, MCP search) now also looks in captions, transcripts and links, so clicking a keyword shows its videos instead of "0 of 9".
+- TikTok covers are renamed with the account handle, the same as the video file.
+
 ## 3.5.0
 Built by a coordinated agent team (one branch per feature, merged and re-tested together). See docs/GAP-DEV-PLAN.md.
 - Page sort and outliers (select mode): Sort by views, Mark outliers (≥2x the page median), Select top 10. Reads view counts shown on TikTok profiles and Instagram Reels tabs.

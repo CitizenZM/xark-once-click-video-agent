@@ -29,6 +29,11 @@ class Parity(unittest.TestCase):
     def check(self, name, got):
         self.assertEqual(rounded(got), rounded(EXPECTED[name]), name)
 
+    def test_instagram_numeric_uploader_id_is_not_the_creator_name(self):
+        v = [{"url": "https://www.instagram.com/thegoodbug_/reel/A1", "platform": "Instagram", "uploader": "The Good Bug", "uploader_id": "49303246398"},
+             {"url": "https://www.instagram.com/p/B2/", "platform": "Instagram", "uploader": "Adam Fulat", "uploader_id": "2244753198"}]
+        self.assertEqual([I.handle_of(x) for x in v], ["The Good Bug", "Adam Fulat"])
+
     def test_creator_stats(self): self.check("creatorStats", I.creator_stats(LIB))
     def test_format_stats(self): self.check("formatStats", I.format_stats(LIB))
     def test_keyword_stats(self): self.check("keywordStats", I.keyword_stats(LIB))

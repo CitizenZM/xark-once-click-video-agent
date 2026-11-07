@@ -70,6 +70,21 @@ test("TikTok creators are keyed by the handle in the URL, not the numeric upload
   assert.equal(recommend(tt).creators[0].url, "https://www.tiktok.com/@glow.ana");
 });
 
+test("Instagram creators: one account stays one creator, named by account name, not the numeric uploader_id", () => {
+  const ig = [{ url: "https://www.instagram.com/thegoodbug_/reel/A1", platform: "Instagram", uploader: "The Good Bug", uploader_id: "49303246398", at: NOW },
+    { url: "https://www.instagram.com/p/A2/", platform: "Instagram", uploader: "The Good Bug", uploader_id: "49303246398", at: NOW },
+    { url: "https://www.instagram.com/p/B2/", platform: "Instagram", uploader: "Adam Fulat", uploader_id: "2244753198", at: NOW }];
+  assert.deepEqual(analyze(ig).creators.map((c) => [c.k, c.n]).sort(), [["Adam Fulat", 1], ["The Good Bug", 2]]);
+  const urls = Object.fromEntries(recommend(ig).creators.map((c) => [c.name, c.url]));
+  assert.equal(urls["The Good Bug"], "https://www.instagram.com/thegoodbug_/"); // handle taken from the reel link
+  assert.equal(urls["Adam Fulat"], null); // no handle anywhere: no made-up profile link
+});
+
+test("Library search finds what the keyword table counts: caption, transcript and link", () => {
+  const l = [{ url: "https://www.instagram.com/thegoodbug_/reel/A1", title: "x", description: "Gut health #calories", transcript: "easy recovery", platform: "Instagram", at: NOW }];
+  for (const q of ["#calories", "recovery", "thegoodbug_"]) assert.equal(filterLibrary(l, { q }).length, 1, q);
+});
+
 test("recommend: derived from library only, profile + tag links, excludes known creators from mentions", () => {
   const r = recommend(lib);
   assert.equal(r.creators[0].url, "https://www.tiktok.com/@ana");

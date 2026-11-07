@@ -26,3 +26,10 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - Real helper download with cover: mp4 h264/aac 720×1280 9.5 s. Bug found: TikTok cover kept the numeric account id in its name (root cause: `normalize()` renamed only the video). Fixed, test added (fails before fix); re-download gives matching `khaby.lame - …` mp4 + jpg.
 - Not reachable from Claude in Chrome: toolbar popup, native context menu, Alt+Shift+D, chrome-extension:// dashboard.
 - Tests: 65 Python OK, 47 node pass.
+
+## 2026-11-06 23:00 — 3.5.1: automated UI check with real library data
+- Claude in Chrome cannot open chrome-extension:// pages or press Chrome shortcuts and native menus; ego lite rejects Extensions.loadUnpacked and blocks chrome-extension://; branded Chrome 156 ignores --load-extension, and CLAUDE.md forbids launching another browser. So popup.html and dashboard.html (shipped code) ran in the in-app browser with a chrome.* stub seeded from ~/.oneclick/library.json (9 real items).
+- Popup: auto-queued current video on open; status dot green; Retry on an old numeric-id job → queued; Pause→Resume stored true/false; Remove, Clear finished, Select videos (injects detect.js+select.js, closes), Dashboard (opens tab) all send the right message.
+- Dashboard: all 8 tabs render, no console errors. Bugs found and fixed (tests fail before, pass after): Instagram creators shown as numeric ids and one account split in two; keyword/hashtag drill-downs showed 0 because search skipped caption/transcript/link. After fix: 8 creators, The Good Bug = 2; drill-downs match the keyword table (protein 5→6, whey 3→4 due to substring search).
+- Settings: cover/parallel/waitSec/maxMinutes saved under the keys background.js reads.
+- Tests: 49 node pass, 66 Python OK; zips rebuilt at 3.5.1.

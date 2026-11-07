@@ -71,10 +71,11 @@ BUCKETS = ["<15s", "15-30s", "30-60s", "60s+"]
 
 
 def handle_of(v):
-    if v.get("platform") == "TikTok":
-        m = re.search(r"tiktok\.com/@([\w.]+)", v.get("url") or "")
-        if m:
-            return m.group(1)
+    m = v.get("platform") == "TikTok" and re.search(r"tiktok\.com/@([\w.]+)", v.get("url") or "")
+    if m:
+        return m.group(1)
+    if re.fullmatch(r"\d+", str(v.get("uploader_id") or "")) and v.get("uploader"):
+        return v["uploader"]  # numeric account id (Instagram): the account name, so one account stays one creator
     return v.get("uploader_id") or v.get("uploader") or "unknown"
 
 

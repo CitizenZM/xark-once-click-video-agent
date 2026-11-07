@@ -62,7 +62,7 @@ def search_videos(args):
 
     def hay(v):
         parts = [v.get("title"), v.get("uploader"), v.get("uploader_id"), v.get("note"), v.get("folder"), v.get("platform"),
-                 v.get("description"), v.get("hook"), v.get("transcript")] + [str(t) for t in (v.get("tags") or [])]
+                 v.get("description"), v.get("hook"), v.get("transcript"), v.get("url")] + [str(t) for t in (v.get("tags") or [])]
         return " ".join(str(p) for p in parts if p).casefold()
 
     hits = [v for v in lib if (not platform or str(v.get("platform") or "").casefold() == platform) and all(w in hay(v) for w in words)]

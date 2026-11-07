@@ -15,7 +15,11 @@ const hashtagsOf = (v) => [
 const bucketOf = (d) => (d == null ? "unknown" : d < 15 ? "<15s" : d < 30 ? "15-30s" : d < 60 ? "30-60s" : "60s+");
 const BUCKETS = ["<15s", "15-30s", "30-60s", "60s+"];
 // TikTok's uploader_id is numeric; the handle lives in the URL (older saved entries have only the numeric id).
-const handleOf = (v) => (v.platform === "TikTok" && /tiktok\.com\/@([\w.]+)/.exec(v.url || "")?.[1]) || v.uploader_id || v.uploader || "unknown";
+// Instagram's uploader_id is numeric too and its links often carry no handle (/p/<id>/), so a numeric id gives way to the
+// account name: every video of one account then lands under one creator. urlHandle() is only used for profile links.
+const urlHandle = (v) => (v.platform === "TikTok" ? /tiktok\.com\/@([\w.]+)/ : v.platform === "Instagram" ? /instagram\.com\/(?!p\/|reels?\/|tv\/|stories\/)([\w.]+)\/(?:reels?|p|tv)\// : null)?.exec(v.url || "")?.[1];
+const handleOf = (v) => (v.platform === "TikTok" && urlHandle(v))
+  || (/^\d+$/.test(v.uploader_id || "") && v.uploader) || v.uploader_id || v.uploader || "unknown";
 const creatorKey = handleOf;
 const day = (t) => new Date(t).toISOString().slice(0, 10);
 
@@ -81,7 +85,7 @@ export function analyze(lib) {
 // Library table: text search over title/creator/tags/notes, platform filter, sort.
 export function filterLibrary(lib, { q = "", platform = "", sort = "new", folder = "", source = "" } = {}) {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const hay = (v) => [v.title, v.uploader, v.uploader_id, v.note, v.folder, v.platform, ...(v.tags || [])].join(" ").toLowerCase();
+  const hay = (v) => [v.title, v.uploader, v.uploader_id, v.note, v.folder, v.platform, v.description, v.transcript, v.url, ...(v.tags || [])].join(" ").toLowerCase();
   const out = lib.filter((v) => (!platform || v.platform === platform) && (!source || (source === "ads" ? !!v.source : !v.source)) && (!folder || (folder === "__none" ? !v.folder : v.folder === folder)) && words.every((w) => hay(v).includes(w)));
   const by = { new: (a, b) => b.at - a.at, views: (a, b) => (b.view_count || 0) - (a.view_count || 0),
     like: (a, b) => (eng(b) ?? -1) - (eng(a) ?? -1), length: (a, b) => (b.duration || 0) - (a.duration || 0) };
@@ -111,8 +115,9 @@ export function recommend(lib) {
   const known = new Set(lib.map((v) => creatorKey(v).toLowerCase().replace(/^@/, "")));
   const creators = a.creators
     .map((c) => {
-      const v = lib.find((x) => creatorKey(x) === c.k);
-      const url = PROFILE[v.platform] && handleOf(v) !== "unknown" ? PROFILE[v.platform](handleOf(v)) : null;
+      const mine = lib.filter((x) => creatorKey(x) === c.k), v = mine[0];
+      const h = mine.map(urlHandle).find(Boolean) || (/^[\w.]+$/.test(c.k) && c.k !== "unknown" ? c.k : null);
+      const url = PROFILE[v.platform] && h ? PROFILE[v.platform](h) : null;
       return { name: c.k, platform: v.platform, saved: c.n, avgEng: c.avgEng, url,
         basis: `${c.n} saved video${c.n > 1 ? "s" : ""}${c.avgEng != null ? `, ${(c.avgEng * 100).toFixed(1)}% like rate` : ""}` };
     })
