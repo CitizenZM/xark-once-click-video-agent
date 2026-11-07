@@ -1,0 +1,891 @@
+{
+ "creatorStats": [
+  {
+   "creator": "glow.ana",
+   "platform": "TikTok",
+   "n": 3,
+   "medianViews": 120000,
+   "avgLikeRate": 0.06328239954725524,
+   "avgSeconds": 32.333333333333336,
+   "lift": 1.263157894736842,
+   "totalViews": 525000,
+   "followers": 50000,
+   "viewsPerFollower": 2.4,
+   "best": {
+    "url": "https://www.tiktok.com/@glow.ana/video/7002",
+    "title": "Honest review: the serum",
+    "platform": "TikTok",
+    "uploader": "glow.ana",
+    "uploader_id": "107955",
+    "duration": 34,
+    "view_count": 310000,
+    "like_count": 21000,
+    "comment_count": null,
+    "channel_follower_count": 50000,
+    "tags": [
+     "review"
+    ],
+    "description": "Honest review of the viral serum - is it worth it? #review #skincare",
+    "upload_date": "20261001",
+    "at": 1793750400000,
+    "folder": "skincare",
+    "hook": "Honest review of the viral serum - is it worth it?"
+   },
+   "tags": [
+    "skincare",
+    "grwm",
+    "review"
+   ],
+   "formats": [
+    "Before / after",
+    "Question hook"
+   ],
+   "lastSaved": 1793836800000
+  },
+  {
+   "creator": "kitchen.kai",
+   "platform": "TikTok",
+   "n": 3,
+   "medianViews": 87000,
+   "avgLikeRate": 0.044444444444444446,
+   "avgSeconds": 46,
+   "lift": 0.9157894736842105,
+   "totalViews": 658000,
+   "followers": null,
+   "viewsPerFollower": null,
+   "best": {
+    "url": "https://www.tiktok.com/@kitchen.kai/video/7101",
+    "title": "Protein pancakes recipe",
+    "platform": "TikTok",
+    "uploader": "kitchen.kai",
+    "uploader_id": "220001",
+    "duration": 18,
+    "view_count": 540000,
+    "like_count": 48000,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "recipe",
+     "food"
+    ],
+    "description": "Protein pancakes recipe: 3 ingredients, 5 minutes. Save this! #recipe #mealprep",
+    "upload_date": "20261001",
+    "at": 1793664000000,
+    "folder": "food",
+    "transcript": "today we are making protein pancakes with only three ingredients"
+   },
+   "tags": [
+    "mealprep",
+    "food",
+    "recipe"
+   ],
+   "formats": [
+    "Recipe / food",
+    "Routine / GRWM / day in life"
+   ],
+   "lastSaved": 1793664000000
+  },
+  {
+   "creator": "@devreviews",
+   "platform": "Youtube",
+   "n": 2,
+   "medianViews": 620000,
+   "avgLikeRate": 0.04495682888540031,
+   "avgSeconds": 117.5,
+   "lift": 6.526315789473684,
+   "totalViews": 1240000,
+   "followers": 1200000,
+   "viewsPerFollower": 0.5166666666666667,
+   "best": {
+    "url": "https://www.youtube.com/watch?v=yt0001",
+    "title": "Phone A vs Phone B: which is better?",
+    "platform": "Youtube",
+    "uploader": "Dev Reviews",
+    "uploader_id": "@devreviews",
+    "duration": 140,
+    "view_count": 980000,
+    "like_count": 41000,
+    "comment_count": null,
+    "channel_follower_count": 1200000,
+    "tags": [
+     "tech"
+    ],
+    "description": "Phone A vs Phone B comparison. Which is better for creators? #comparison #tech",
+    "upload_date": "20261001",
+    "at": 1793318400000
+   },
+   "tags": [
+    "comparison",
+    "creator",
+    "tech"
+   ],
+   "formats": [
+    "Comparison",
+    "List / top N"
+   ],
+   "lastSaved": 1793318400000
+  },
+  {
+   "creator": "bo_official",
+   "platform": "Instagram",
+   "n": 2,
+   "medianViews": 33500,
+   "avgLikeRate": 0.06853535353535353,
+   "avgSeconds": 37.5,
+   "lift": 0.3526315789473684,
+   "totalViews": 67000,
+   "followers": null,
+   "viewsPerFollower": null,
+   "best": {
+    "url": "https://www.instagram.com/reel/Cabc123/",
+    "title": "Great hook here",
+    "platform": "Instagram",
+    "uploader": "Bo Lin",
+    "uploader_id": "bo_official",
+    "duration": 27,
+    "view_count": 45000,
+    "like_count": 3100,
+    "comment_count": 210,
+    "channel_follower_count": null,
+    "tags": [
+     "fashion"
+    ],
+    "description": "Great hook here: how to style one blazer 3 ways #fashion #hack @brandco",
+    "upload_date": "20261001",
+    "at": 1793491200000
+   },
+   "tags": [
+    "fashion",
+    "hack",
+    "haul"
+   ],
+   "formats": [
+    "List / top N",
+    "Tutorial / how-to"
+   ],
+   "lastSaved": 1793491200000
+  },
+  {
+   "creator": "pov_guy",
+   "platform": "Twitter",
+   "n": 1,
+   "medianViews": 18000,
+   "avgLikeRate": 0.05,
+   "avgSeconds": 12,
+   "lift": 0.18947368421052632,
+   "totalViews": 18000,
+   "followers": null,
+   "viewsPerFollower": null,
+   "best": {
+    "url": "https://x.com/pov_guy/status/9001",
+    "title": "POV: you finally find the one",
+    "platform": "Twitter",
+    "uploader": "POV Guy",
+    "uploader_id": "pov_guy",
+    "duration": 12,
+    "view_count": 18000,
+    "like_count": 900,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "funny"
+    ],
+    "description": "POV: when you find the perfect serum #funny #skit #ad paid partnership code SAVE20",
+    "upload_date": "20261001",
+    "at": 1793059200000
+   },
+   "tags": [
+    "ad",
+    "funny",
+    "skit"
+   ],
+   "formats": [
+    "POV / skit",
+    "Sponsored / ad"
+   ],
+   "lastSaved": 1793059200000
+  },
+  {
+   "creator": "mystery",
+   "platform": "TikTok",
+   "n": 1,
+   "medianViews": null,
+   "avgLikeRate": null,
+   "avgSeconds": null,
+   "lift": null,
+   "totalViews": 0,
+   "followers": null,
+   "viewsPerFollower": null,
+   "best": {
+    "url": "https://www.tiktok.com/@mystery/video/7201",
+    "title": "untitled",
+    "platform": "TikTok",
+    "uploader": "mystery",
+    "uploader_id": "330002",
+    "duration": null,
+    "view_count": null,
+    "like_count": null,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [],
+    "description": "",
+    "upload_date": "20261001",
+    "at": 1792972800000
+   },
+   "tags": [],
+   "formats": [],
+   "lastSaved": 1792972800000
+  }
+ ],
+ "formatStats": [
+  {
+   "format": "Routine / GRWM / day in life",
+   "n": 3,
+   "medianViews": 87000,
+   "avgLikeRate": 0.04,
+   "avgSeconds": 47.333333333333336,
+   "lift": 0.9157894736842105,
+   "example": {
+    "url": "https://www.tiktok.com/@glow.ana/video/7001",
+    "title": "3 step skincare routine",
+    "platform": "TikTok",
+    "uploader": "glow.ana",
+    "uploader_id": "107955",
+    "duration": 22,
+    "view_count": 120000,
+    "like_count": 9600,
+    "comment_count": null,
+    "channel_follower_count": 50000,
+    "tags": [
+     "skincare",
+     "routine"
+    ],
+    "description": "3 step skincare routine for dry skin #skincare #GRWM @brandco",
+    "upload_date": "20261001",
+    "at": 1793836800000,
+    "folder": "skincare",
+    "note": "strong hook"
+   }
+  },
+  {
+   "format": "List / top N",
+   "n": 3,
+   "medianViews": 87000,
+   "avgLikeRate": 0.03898860398860399,
+   "avgSeconds": 59,
+   "lift": 0.9157894736842105,
+   "example": {
+    "url": "https://www.youtube.com/watch?v=yt0002",
+    "title": "Top 5 mistakes new creators make",
+    "platform": "Youtube",
+    "uploader": "Dev Reviews",
+    "uploader_id": "@devreviews",
+    "duration": 95,
+    "view_count": 260000,
+    "like_count": 12500,
+    "comment_count": null,
+    "channel_follower_count": 1200000,
+    "tags": [
+     "creator"
+    ],
+    "description": "Top 5 mistakes new creators make - tutorial and tips #creator #tips",
+    "upload_date": "20261001",
+    "at": 1793232000000
+   }
+  },
+  {
+   "format": "Question hook",
+   "n": 2,
+   "medianViews": 645000,
+   "avgLikeRate": 0.054789335088874264,
+   "avgSeconds": 87,
+   "lift": 6.7894736842105265,
+   "example": {
+    "url": "https://www.youtube.com/watch?v=yt0001",
+    "title": "Phone A vs Phone B: which is better?",
+    "platform": "Youtube",
+    "uploader": "Dev Reviews",
+    "uploader_id": "@devreviews",
+    "duration": 140,
+    "view_count": 980000,
+    "like_count": 41000,
+    "comment_count": null,
+    "channel_follower_count": 1200000,
+    "tags": [
+     "tech"
+    ],
+    "description": "Phone A vs Phone B comparison. Which is better for creators? #comparison #tech",
+    "upload_date": "20261001",
+    "at": 1793318400000
+   }
+  },
+  {
+   "format": "Recipe / food",
+   "n": 2,
+   "medianViews": 313500,
+   "avgLikeRate": 0.044444444444444446,
+   "avgSeconds": 36.5,
+   "lift": 3.3,
+   "example": {
+    "url": "https://www.tiktok.com/@kitchen.kai/video/7101",
+    "title": "Protein pancakes recipe",
+    "platform": "TikTok",
+    "uploader": "kitchen.kai",
+    "uploader_id": "220001",
+    "duration": 18,
+    "view_count": 540000,
+    "like_count": 48000,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "recipe",
+     "food"
+    ],
+    "description": "Protein pancakes recipe: 3 ingredients, 5 minutes. Save this! #recipe #mealprep",
+    "upload_date": "20261001",
+    "at": 1793664000000,
+    "folder": "food",
+    "transcript": "today we are making protein pancakes with only three ingredients"
+   }
+  },
+  {
+   "format": "Tutorial / how-to",
+   "n": 2,
+   "medianViews": 152500,
+   "avgLikeRate": 0.05848290598290598,
+   "avgSeconds": 61,
+   "lift": 1.605263157894737,
+   "example": {
+    "url": "https://www.youtube.com/watch?v=yt0002",
+    "title": "Top 5 mistakes new creators make",
+    "platform": "Youtube",
+    "uploader": "Dev Reviews",
+    "uploader_id": "@devreviews",
+    "duration": 95,
+    "view_count": 260000,
+    "like_count": 12500,
+    "comment_count": null,
+    "channel_follower_count": 1200000,
+    "tags": [
+     "creator"
+    ],
+    "description": "Top 5 mistakes new creators make - tutorial and tips #creator #tips",
+    "upload_date": "20261001",
+    "at": 1793232000000
+   }
+  },
+  {
+   "format": "Review",
+   "n": 1,
+   "medianViews": 310000,
+   "avgLikeRate": 0.06774193548387097,
+   "avgSeconds": 34,
+   "lift": 3.263157894736842,
+   "example": {
+    "url": "https://www.tiktok.com/@glow.ana/video/7002",
+    "title": "Honest review: the serum",
+    "platform": "TikTok",
+    "uploader": "glow.ana",
+    "uploader_id": "107955",
+    "duration": 34,
+    "view_count": 310000,
+    "like_count": 21000,
+    "comment_count": null,
+    "channel_follower_count": 50000,
+    "tags": [
+     "review"
+    ],
+    "description": "Honest review of the viral serum - is it worth it? #review #skincare",
+    "upload_date": "20261001",
+    "at": 1793750400000,
+    "folder": "skincare",
+    "hook": "Honest review of the viral serum - is it worth it?"
+   }
+  },
+  {
+   "format": "Before / after",
+   "n": 1,
+   "medianViews": 95000,
+   "avgLikeRate": 0.042105263157894736,
+   "avgSeconds": 41,
+   "lift": 1,
+   "example": {
+    "url": "https://www.tiktok.com/@glow.ana/video/7003",
+    "title": "Before and after 30 days",
+    "platform": "TikTok",
+    "uploader": "glow.ana",
+    "uploader_id": "107955",
+    "duration": 41,
+    "view_count": 95000,
+    "like_count": 4000,
+    "comment_count": null,
+    "channel_follower_count": 50000,
+    "tags": [
+     "skincare"
+    ],
+    "description": "Before and after 30 days of this serum, results shocked me 😱 #skincare #transformation",
+    "upload_date": "20261001",
+    "at": 1793577600000
+   }
+  },
+  {
+   "format": "Unboxing / haul",
+   "n": 1,
+   "medianViews": 22000,
+   "avgLikeRate": 0.06818181818181818,
+   "avgSeconds": 48,
+   "lift": 0.23157894736842105,
+   "example": {
+    "url": "https://www.instagram.com/reel/Cdef456/",
+    "title": "Unboxing the spring haul",
+    "platform": "Instagram",
+    "uploader": "Bo Lin",
+    "uploader_id": "bo_official",
+    "duration": 48,
+    "view_count": 22000,
+    "like_count": 1500,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "haul"
+    ],
+    "description": "Unboxing the spring haul - first look at every piece #haul #fashion",
+    "upload_date": "20261001",
+    "at": 1793145600000
+   }
+  },
+  {
+   "format": "Comparison",
+   "n": 1,
+   "medianViews": 980000,
+   "avgLikeRate": 0.04183673469387755,
+   "avgSeconds": 140,
+   "lift": 10.31578947368421,
+   "example": {
+    "url": "https://www.youtube.com/watch?v=yt0001",
+    "title": "Phone A vs Phone B: which is better?",
+    "platform": "Youtube",
+    "uploader": "Dev Reviews",
+    "uploader_id": "@devreviews",
+    "duration": 140,
+    "view_count": 980000,
+    "like_count": 41000,
+    "comment_count": null,
+    "channel_follower_count": 1200000,
+    "tags": [
+     "tech"
+    ],
+    "description": "Phone A vs Phone B comparison. Which is better for creators? #comparison #tech",
+    "upload_date": "20261001",
+    "at": 1793318400000
+   }
+  },
+  {
+   "format": "POV / skit",
+   "n": 1,
+   "medianViews": 18000,
+   "avgLikeRate": 0.05,
+   "avgSeconds": 12,
+   "lift": 0.18947368421052632,
+   "example": {
+    "url": "https://x.com/pov_guy/status/9001",
+    "title": "POV: you finally find the one",
+    "platform": "Twitter",
+    "uploader": "POV Guy",
+    "uploader_id": "pov_guy",
+    "duration": 12,
+    "view_count": 18000,
+    "like_count": 900,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "funny"
+    ],
+    "description": "POV: when you find the perfect serum #funny #skit #ad paid partnership code SAVE20",
+    "upload_date": "20261001",
+    "at": 1793059200000
+   }
+  },
+  {
+   "format": "Sponsored / ad",
+   "n": 1,
+   "medianViews": 18000,
+   "avgLikeRate": 0.05,
+   "avgSeconds": 12,
+   "lift": 0.18947368421052632,
+   "example": {
+    "url": "https://x.com/pov_guy/status/9001",
+    "title": "POV: you finally find the one",
+    "platform": "Twitter",
+    "uploader": "POV Guy",
+    "uploader_id": "pov_guy",
+    "duration": 12,
+    "view_count": 18000,
+    "like_count": 900,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [
+     "funny"
+    ],
+    "description": "POV: when you find the perfect serum #funny #skit #ad paid partnership code SAVE20",
+    "upload_date": "20261001",
+    "at": 1793059200000
+   }
+  },
+  {
+   "format": "Other",
+   "n": 1,
+   "medianViews": null,
+   "avgLikeRate": null,
+   "avgSeconds": null,
+   "lift": null,
+   "example": {
+    "url": "https://www.tiktok.com/@mystery/video/7201",
+    "title": "untitled",
+    "platform": "TikTok",
+    "uploader": "mystery",
+    "uploader_id": "330002",
+    "duration": null,
+    "view_count": null,
+    "like_count": null,
+    "comment_count": null,
+    "channel_follower_count": null,
+    "tags": [],
+    "description": "",
+    "upload_date": "20261001",
+    "at": 1792972800000
+   }
+  }
+ ],
+ "keywordStats": [
+  {
+   "keyword": "#skincare",
+   "n": 3,
+   "medianViews": 120000,
+   "avgLikeRate": 0.06328239954725524,
+   "avgSeconds": 32.333333333333336,
+   "lift": 1.263157894736842,
+   "creators": 1
+  },
+  {
+   "keyword": "serum",
+   "n": 3,
+   "medianViews": 95000,
+   "avgLikeRate": 0.05328239954725524,
+   "avgSeconds": 29,
+   "lift": 1,
+   "creators": 2
+  },
+  {
+   "keyword": "creators",
+   "n": 2,
+   "medianViews": 620000,
+   "avgLikeRate": 0.04495682888540031,
+   "avgSeconds": 117.5,
+   "lift": 6.526315789473684,
+   "creators": 1
+  },
+  {
+   "keyword": "#mealprep",
+   "n": 2,
+   "medianViews": 313500,
+   "avgLikeRate": 0.044444444444444446,
+   "avgSeconds": 36.5,
+   "lift": 3.3,
+   "creators": 1
+  },
+  {
+   "keyword": "#routine",
+   "n": 2,
+   "medianViews": 103500,
+   "avgLikeRate": 0.04,
+   "avgSeconds": 38.5,
+   "lift": 1.0894736842105264,
+   "creators": 2
+  },
+  {
+   "keyword": "brandco",
+   "n": 2,
+   "medianViews": 82500,
+   "avgLikeRate": 0.07444444444444445,
+   "avgSeconds": 24.5,
+   "lift": 0.868421052631579,
+   "creators": 2
+  },
+  {
+   "keyword": "ways",
+   "n": 2,
+   "medianViews": 66000,
+   "avgLikeRate": 0.034444444444444444,
+   "avgSeconds": 41,
+   "lift": 0.6947368421052632,
+   "creators": 2
+  },
+  {
+   "keyword": "#fashion",
+   "n": 2,
+   "medianViews": 33500,
+   "avgLikeRate": 0.06853535353535353,
+   "avgSeconds": 37.5,
+   "lift": 0.3526315789473684,
+   "creators": 1
+  }
+ ],
+ "keywordStats_min3": [
+  {
+   "keyword": "#skincare",
+   "n": 3,
+   "medianViews": 120000,
+   "avgLikeRate": 0.06328239954725524,
+   "avgSeconds": 32.333333333333336,
+   "lift": 1.263157894736842,
+   "creators": 1
+  },
+  {
+   "keyword": "serum",
+   "n": 3,
+   "medianViews": 95000,
+   "avgLikeRate": 0.05328239954725524,
+   "avgSeconds": 29,
+   "lift": 1,
+   "creators": 2
+  }
+ ],
+ "creativeBrief": {
+  "ideas": [
+   {
+    "title": "Lead with the \"Question hook\" format",
+    "basis": "2 saved videos, median views 6.8x your library median"
+   },
+   {
+    "title": "Test \"Recipe / food\" as the second angle",
+    "basis": "2 videos, 3.3x median views"
+   },
+   {
+    "title": "Keep it 15-30s",
+    "basis": "highest like rate in your library (7.9%, 3 videos)"
+   },
+   {
+    "title": "Work these words into hooks and captions: creators, #mealprep, #skincare, #routine, serum",
+    "basis": "keywords whose videos get the most views (2+ videos each)"
+   }
+  ],
+  "hooks": [
+   "Phone A vs Phone B comparison. Which is better for creators? #comparison #tech",
+   "Protein pancakes recipe: 3 ingredients, 5 minutes. Save this! #recipe #mealprep",
+   "Honest review of the viral serum - is it worth it? #review #skincare",
+   "Top 5 mistakes new creators make - tutorial and tips #creator #tips"
+  ],
+  "topCreators": [
+   "glow.ana",
+   "kitchen.kai",
+   "@devreviews"
+  ]
+ },
+ "formatPatterns": [
+  [
+   "Tutorial / how-to",
+   "\\b(how to|tutorial|step[- ]by[- ]step|guide|tips?|hack|learn)\\b",
+   "i"
+  ],
+  [
+   "Review",
+   "\\b(review|honest|worth it|tested|rating|verdict)\\b",
+   "i"
+  ],
+  [
+   "Unboxing / haul",
+   "\\b(unbox(ing)?|haul|what i got|first look)\\b",
+   "i"
+  ],
+  [
+   "Before / after",
+   "\\b(before (and|&) after|transformation|glow ?up|results?)\\b",
+   "i"
+  ],
+  [
+   "Comparison",
+   "\\b(vs\\.?|versus|compare|comparison|which is better)\\b",
+   "i"
+  ],
+  [
+   "List / top N",
+   "\\b(top \\d+|\\d+ (things|ways|reasons|tips|products|mistakes))\\b",
+   "i"
+  ],
+  [
+   "Routine / GRWM / day in life",
+   "\\b(grwm|get ready with me|routine|day in (my|the) life|diml|morning|night ?time)\\b",
+   "i"
+  ],
+  [
+   "Recipe / food",
+   "\\b(recipe|cook(ing)?|meal ?prep|protein (shake|bar|pancakes?)|ingredients?)\\b",
+   "i"
+  ],
+  [
+   "POV / skit",
+   "\\b(pov|skit|when you|me when|comedy|funny)\\b",
+   "i"
+  ],
+  [
+   "Story / testimonial",
+   "\\b(story ?time|my journey|i lost|i gained|testimonial|changed my life)\\b",
+   "i"
+  ],
+  [
+   "Challenge / trend",
+   "\\b(challenge|trend|trending|duet|stitch)\\b",
+   "i"
+  ],
+  [
+   "Sponsored / ad",
+   "(#ad\\b|#sponsored|\\bpaid partnership\\b|\\bpartner(ed)? with\\b|\\bcode [A-Z0-9]{3,}\\b|\\bdiscount code\\b)",
+   "i"
+  ]
+ ],
+ "stopWords": [
+  "a",
+  "about",
+  "all",
+  "also",
+  "an",
+  "and",
+  "any",
+  "are",
+  "as",
+  "at",
+  "be",
+  "been",
+  "bio",
+  "but",
+  "by",
+  "can",
+  "comment",
+  "comments",
+  "could",
+  "day",
+  "did",
+  "do",
+  "does",
+  "don't",
+  "dont",
+  "down",
+  "every",
+  "explore",
+  "follow",
+  "for",
+  "foryou",
+  "foryoupage",
+  "from",
+  "fyp",
+  "get",
+  "going",
+  "got",
+  "had",
+  "has",
+  "have",
+  "he",
+  "her",
+  "here",
+  "his",
+  "how",
+  "i",
+  "i'm",
+  "if",
+  "im",
+  "in",
+  "instagram",
+  "into",
+  "is",
+  "it",
+  "it's",
+  "its",
+  "just",
+  "know",
+  "let",
+  "lets",
+  "like",
+  "link",
+  "look",
+  "made",
+  "make",
+  "makes",
+  "many",
+  "me",
+  "more",
+  "most",
+  "much",
+  "my",
+  "need",
+  "new",
+  "no",
+  "not",
+  "now",
+  "of",
+  "on",
+  "one",
+  "only",
+  "or",
+  "our",
+  "out",
+  "over",
+  "post",
+  "really",
+  "reel",
+  "reels",
+  "save",
+  "see",
+  "share",
+  "she",
+  "shorts",
+  "should",
+  "so",
+  "some",
+  "than",
+  "that",
+  "that's",
+  "thats",
+  "the",
+  "their",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "those",
+  "tiktok",
+  "to",
+  "today",
+  "too",
+  "trending",
+  "try",
+  "two",
+  "up",
+  "use",
+  "used",
+  "using",
+  "very",
+  "video",
+  "videos",
+  "viral",
+  "want",
+  "was",
+  "watch",
+  "we",
+  "were",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "will",
+  "with",
+  "would",
+  "you",
+  "your",
+  "youtube"
+ ]
+}
