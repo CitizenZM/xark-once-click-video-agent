@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.5.0
+Built by a coordinated agent team (one branch per feature, merged and re-tested together). See docs/GAP-DEV-PLAN.md.
+- Page sort and outliers (select mode): Sort by views, Mark outliers (≥2x the page median), Select top 10. Reads view counts shown on TikTok profiles and Instagram Reels tabs.
+- Download queue: Pause/Resume, parallel downloads 1–3, wait between downloads, skip videos longer than N minutes, ffprobe file check, automatic retry when a site rate-limits, export the last batch as CSV.
+- Local transcription (whisper.cpp, optional): transcript and spoken opening hook per video; feeds Keywords and the creative brief.
+- View-growth tracking: daily re-check of views/likes/comments at 1, 7 and 30 days; "Growing fastest" card.
+- MCP server: ask Claude about your library (search, creator/format/keyword stats, creative brief).
+- Ad sources: Meta Ad Library ads and TikTok Creative Center ads (play the ad first); Ads only / Organic filter.
+- Covers (optional .jpg) and Instagram Stories (uses your Chrome login).
+- Export: Copy as table (paste into Google Sheets), .xlsx download, share a collection as a single HTML page.
+- Chrome Web Store build without YouTube.
+- Fixed: "skip longer than" was reported as a success with no file (engine is silent under --print); a run that saves no file is now an error.
+- Not supported: TikTok photo posts (engine: Unsupported URL).
+
 ## 3.4.0
 - Select mode: the whole video tile is now the click target (clicks no longer open the post on Instagram/TikTok); "+ Queue" on each tile adds that video at once. Tested with real mouse clicks on TikTok and Instagram keyword search.
 - Optional always-on "+ Queue" button when hovering any video (Settings → in-page buttons).
