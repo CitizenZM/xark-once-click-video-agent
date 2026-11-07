@@ -6,10 +6,19 @@ export const PATTERNS = [
   /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
   /^https?:\/\/(www\.)?youtube\.com\/watch\?(?:.*&)?v=[\w-]+/,
   /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/status\/\d+/,
+  /^https?:\/\/(www\.)?instagram\.com\/stories\/[\w.]+\/\d+/,
+  /^https?:\/\/(www\.)?facebook\.com\/ads\/library\/\?(?:.*&)?id=\d+/,
+  /^https?:\/\/ads\.tiktok\.com\/business\/creativecenter\/topads\/\d+/,
 ];
 
 // Same video, different URL shapes (Instagram /p/ vs /reel/ vs /<user>/reel/, tracking params) -> one key.
 export function dedupeKey(url) {
+  const st = /instagram\.com\/stories\/[\w.]+\/(\d+)/.exec(url);
+  if (st) return "igs:" + st[1];
+  const fb = /facebook\.com\/ads\/library\/\?(?:.*&)?id=(\d+)/.exec(url);
+  if (fb) return "fbad:" + fb[1];
+  const cc = /ads\.tiktok\.com\/business\/creativecenter\/topads\/(\d+)/.exec(url);
+  if (cc) return "ttcc:" + cc[1];
   const ig = /instagram\.com\/(?:[\w.]+\/)?(?:reel|reels|p|tv)\/([\w-]+)/.exec(url);
   if (ig) return "ig:" + ig[1];
   const tt = /tiktok\.com\/@[\w.-]*\/video\/(\d+)/.exec(url);
@@ -24,6 +33,11 @@ export function canonical(href) {
   let u;
   try { u = new URL(href); } catch { return null; }
   if (!PATTERNS.some((p) => p.test(u.href))) return null;
+  if (/(^|\.)facebook\.com$/.test(u.hostname)) return `https://www.facebook.com/ads/library/?id=${u.searchParams.get("id")}`;
+  const cc = /^\/business\/creativecenter\/topads\/(\d+)/.exec(u.pathname);
+  if (u.hostname === "ads.tiktok.com" && cc) return `https://ads.tiktok.com/business/creativecenter/topads/${cc[1]}`;
+  const st = /^\/stories\/([\w.]+)\/(\d+)/.exec(u.pathname);
+  if (/instagram\.com$/.test(u.hostname) && st) return `https://www.instagram.com/stories/${st[1]}/${st[2]}`;
   if (u.pathname === "/watch") return `${u.origin}/watch?v=${u.searchParams.get("v")}`;
   const ig = /^\/(?:[\w.]+\/)?(reel|reels|p|tv)\/([\w-]+)/.exec(u.pathname);
   if (/instagram\.com$/.test(u.hostname) && ig) return `https://www.instagram.com/${ig[1] === "reels" ? "reel" : ig[1]}/${ig[2]}`;

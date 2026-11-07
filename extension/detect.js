@@ -8,6 +8,9 @@
     /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
     /^https?:\/\/(www\.)?youtube\.com\/watch\?(?:.*&)?v=[\w-]+/,
     /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/status\/\d+/,
+    /^https?:\/\/(www\.)?instagram\.com\/stories\/[\w.]+\/\d+/,
+    /^https?:\/\/(www\.)?facebook\.com\/ads\/library\/\?(?:.*&)?id=\d+/,
+    /^https?:\/\/ads\.tiktok\.com\/business\/creativecenter\/topads\/\d+/,
   ];
   const UNIT = { k: 1e3, m: 1e6, b: 1e9, "万": 1e4, "亿": 1e8 };
   const parseCount = (text) => {
@@ -45,13 +48,31 @@
     const v = t ? parseCount(t.textContent) : null;
     return v != null ? v : parseCount(anchor && anchor.innerText);
   };
+  // Meta Ad Library search results: a card shows "Library ID: <digits>" as plain text (no ad link). The card is the biggest
+  // ancestor holding exactly one of those labels; ads without a <video> are skipped (the helper only saves video ads).
+  function metaAdCards() {
+    if (!/(^|\.)facebook\.com$/.test(location.hostname) || !location.pathname.startsWith("/ads/library")) return [];
+    const labels = [...document.querySelectorAll("span,div")].filter((e) => !e.children.length && /^Library ID:?\s*\d+$/.test(e.textContent.trim()));
+    const count = new Map();
+    for (const l of labels) for (let e = l, i = 0; e && i < 16; e = e.parentElement, i++) count.set(e, (count.get(e) || 0) + 1);
+    const out = [];
+    for (const l of labels) {
+      let card = null;
+      for (let e = l.parentElement, i = 0; e && i < 16 && count.get(e) === 1; e = e.parentElement, i++) if (big(e)) card = e;
+      if (card && card.querySelector("video")) out.push({ url: `https://www.facebook.com/ads/library/?id=${/\d+/.exec(l.textContent)[0]}`, el: card });
+    }
+    return out;
+  }
+  // TikTok Creative Center has no extractor: a played card carries a <video> whose src is the mp4 the helper can download directly.
+  const directOf = (el) => { const v = el.querySelector && el.querySelector("video"), s = v && (v.currentSrc || v.src); return /^https:\/\//.test(s || "") ? s : undefined; };
   function items() {
     const out = new Map();
     for (const a of document.links) {
       if (!isVideo(a.href)) continue;
       const el = tileOf(a);
-      if (el && !out.has(a.href)) out.set(a.href, { url: a.href, el, views: metricsOf(el, a) });
+      if (el && !out.has(a.href)) out.set(a.href, { url: a.href, el, views: metricsOf(el, a), ...(location.hostname === "ads.tiktok.com" ? { direct: directOf(el) } : {}) });
     }
+    for (const c of metaAdCards()) if (!out.has(c.url)) out.set(c.url, { ...c, views: null });
     if (/tiktok\.com$/.test(location.hostname)) for (const p of tiktokPlayers()) if (!out.has(p.url)) out.set(p.url, { ...p, views: metricsOf(p.el, null) });
     return [...out.values()];
   }

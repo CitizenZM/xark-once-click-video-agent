@@ -80,7 +80,7 @@ function renderTable(lib) {
   fc.value = fkeep === "__none" || folders.includes(fkeep) ? fkeep : "";
   $("#delcol").hidden = !folders.includes(fc.value);
   for (const id of ["#mvcol", "#dcol"]) { const el = $(id), k = el.value; el.innerHTML = opts(["", id === "#mvcol" ? "(unfiled)" : "(none)"], folders); el.value = folders.includes(k) ? k : ""; }
-  const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, sort: $("#fsort").value, folder: fc.value });
+  const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, source: $("#fsrc").value, sort: $("#fsort").value, folder: fc.value });
   view = rows;
   $("#count").textContent = rows.length === lib.length ? `(${lib.length})` : `(${rows.length} of ${lib.length})`;
   $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Hook</th><th>Length</th><th>Views</th><th>Likes</th><th>Note</th><th></th></tr>` +
@@ -102,7 +102,7 @@ $("#mv").onclick = async () => { const urls = ticked(); if (!urls.length) return
 $("#newcol").onclick = async () => { const name = prompt("Collection name"); if (!name) return; const r = await send({ type: "folder-add", name }); if (r && r.error) alert(r.error); };
 $("#delcol").onclick = async () => { const f = $("#fcol").value; if (confirm(`Delete collection "${f}"? Its videos stay in the library as unfiled.`)) { await send({ type: "folder-delete", name: f }); $("#fcol").value = ""; } };
 $("#copy").onclick = async () => { const text = view.map((v) => v.url).join("\n"); await navigator.clipboard.writeText(text); $("#copy").textContent = `Copied ${view.length}`; setTimeout(() => ($("#copy").textContent = "Copy links in this view"), 1500); };
-for (const id of ["#q", "#fplat", "#fsort", "#fcol"]) $(id).addEventListener("input", () => { shown = 200; renderTable(current); });
+for (const id of ["#q", "#fplat", "#fsrc", "#fsort", "#fcol"]) $(id).addEventListener("input", () => { shown = 200; renderTable(current); });
 
 const csvCell = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
 function save(name, text, type) {
@@ -120,6 +120,7 @@ async function load() {
   $("#naming").value = settings.naming || "creator-title-id";
   $("#folder").value = settings.folder || "";
   $("#skipdup").checked = settings.skipDuplicates !== false;
+  $("#cover").checked = !!settings.cover;
   $("#autoupd").checked = settings.autoUpdate !== false;
   $("#autotr").checked = !!settings.autoTranscribe;
   $("#btns").checked = !!settings.showButton;
@@ -142,12 +143,12 @@ async function load() {
 
 async function saveSettings() {
   const { settings: prev = {} } = await chrome.storage.local.get("settings");
-  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, autoTranscribe: $("#autotr").checked, showButton: $("#btns").checked, parallel: Number($("#parallel").value), waitSec: Number($("#waitsec").value), maxMinutes: Number($("#maxmin").value) };
+  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, cover: $("#cover").checked, autoUpdate: $("#autoupd").checked, autoTranscribe: $("#autotr").checked, showButton: $("#btns").checked, parallel: Number($("#parallel").value), waitSec: Number($("#waitsec").value), maxMinutes: Number($("#maxmin").value) };
   await chrome.storage.local.set({ settings });
   $("#setMsg").textContent = "Saved";
   setTimeout(() => ($("#setMsg").textContent = ""), 1500);
 }
-for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd", "#autotr", "#parallel", "#waitsec", "#maxmin"]) $(id).onchange = saveSettings;
+for (const id of ["#quality", "#naming", "#folder", "#cover", "#skipdup", "#autoupd", "#autotr", "#parallel", "#waitsec", "#maxmin"]) $(id).onchange = saveSettings;
 $("#btns").onchange = async (e) => {
   const origins = chrome.runtime.getManifest().optional_host_permissions.filter((o) => !o.includes("anthropic.com"));
   if (e.target.checked) {

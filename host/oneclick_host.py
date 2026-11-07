@@ -9,6 +9,8 @@ import ipaddress, json, os, re, shutil, struct, subprocess, sys, threading, time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+import media
+
 # Chrome starts the helper with a minimal PATH, so search the usual install locations first.
 # User-level installs (pipx) first: the updater manages that copy, so it must be the one in use.
 PATH = os.pathsep.join(p for p in [os.path.expanduser("~/.local/bin"), "/opt/homebrew/bin", "/usr/local/bin",
@@ -32,9 +34,10 @@ DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclic
 EXT_DIR = os.environ.get("ONECLICK_EXT_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "extension")
 WATCH_SEC = float(os.environ.get("ONECLICK_WATCH_SEC") or 2)
 FIELDS = ("id,title,uploader,uploader_id,extractor_key,webpage_url,duration,view_count,"
-          "like_count,comment_count,channel_follower_count,upload_date,description,tags,filepath")
+          "like_count,comment_count,channel_follower_count,upload_date,description,tags,thumbnail,filepath")
 FRIENDLY = (
     ("login required", "Login required: log in to the site in Chrome, then retry"),
+    ("--cookies-from-browser", "Login required: log in to the site in Chrome, then retry"),  # Instagram Stories: "content is unreachable. Use --cookies-from-browser"
     ("rate-limit", "Rate limited by the site: wait a few minutes"),
     ("private video", "This video is private"),
     ("unsupported url", "No downloadable video found on this page"),
@@ -122,6 +125,7 @@ def run(url, opts, cookies=False, on_pct=None):
         cmd += ["-f", fmt, "-S", "vcodec:h264,acodec:m4a", "--merge-output-format", "mp4"]
     if opts.get("max_seconds"):  # "?" keeps videos whose duration is unknown
         cmd += ["--match-filter", "duration <=? %d" % opts["max_seconds"]]
+    cmd += media.extra_args(opts)
     if cookies:
         cmd += ["--cookies-from-browser", "chrome"]
     cmd += ["--newline", "--progress-template", "download:[PCT] %(progress._percent_str)s"]
@@ -206,20 +210,27 @@ def download(msg, on_pct=None):
     u = urlparse(url)
     if not valid_url(url):
         return {"ok": False, "error": "invalid url"}
+    direct = msg.get("direct")
+    if direct and not (media.direct_ok(url, direct) and valid_url(direct)):
+        return {"ok": False, "error": "invalid direct url"}
+    if media.source_of(url) == "tiktok-cc" and not direct:  # no extractor for this site: only a played card exposes the mp4
+        return {"ok": False, "error": "Play the ad on the page first, then save it"}
+    target = direct or url
     try:
         opts = {"quality": msg.get("quality", "best"), "dir": out_dir(msg.get("folder")),
-                "naming": msg.get("naming") if msg.get("naming") in NAMING else "creator-title-id"}
+                "naming": msg.get("naming") if msg.get("naming") in NAMING else "creator-title-id",
+                "cover": bool(msg.get("cover")), "direct": bool(direct), "ad_id": media.cc_id(url)}
         try:
             opts["max_seconds"] = max(0, int(msg.get("maxSeconds") or 0))
         except (TypeError, ValueError):
             opts["max_seconds"] = 0
         for attempt in range(3):  # retry only network-type failures, with growing delay
-            code, out = run(url, opts, on_pct=on_pct)
+            code, out = run(target, opts, on_pct=on_pct)
             if code == 0 or not any(t in out.lower() for t in TRANSIENT):
                 break
             time.sleep(RETRY_BASE * (attempt + 1))
         if code != 0 and u.hostname in COOKIE_HOSTS:
-            code, out = run(url, opts, cookies=True, on_pct=on_pct)
+            code, out = run(target, opts, cookies=True, on_pct=on_pct)
     except Exception as e:  # bad folder, missing engine, ...
         return {"ok": False, "error": str(e)}
     if code != 0:
@@ -233,7 +244,7 @@ def download(msg, on_pct=None):
             except ValueError:
                 continue
             meta["file"] = meta.pop("filepath", None)
-            meta = normalize(meta)
+            meta = media.finish(normalize(meta), url, direct)
             ok = verify_file(meta["file"], opts["quality"] == "audio")
             if ok is False:
                 return {"ok": False, "error": "File is incomplete (failed check)"}

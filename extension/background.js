@@ -121,7 +121,7 @@ function notify(title, message) {
 }
 
 // Add a video to the queue; resolves with the helper's result when that video is finished.
-async function download(url, force = false, batchId = newBatch()) {
+async function download(url, force = false, batchId = newBatch(), direct) {
   const { skipDuplicates = true } = await get("settings", {});
   const key = dedupeKey(url);
   await loadQueue();
@@ -135,7 +135,7 @@ async function download(url, force = false, batchId = newBatch()) {
   }
   const live = queue.find((j) => isLive(j) && dedupeKey(j.url) === key); // clicked again while queued: same job
   if (live) return waitFor(live.id);
-  const j = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), url, state: "queued", pct: 0, at: Date.now(), batchId };
+  const j = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), url, state: "queued", pct: 0, at: Date.now(), batchId, ...(direct ? { direct } : {}) };
   queue.push(j);
   const done = waitFor(j.id);
   pump();
@@ -162,11 +162,11 @@ async function pumpOnce() {
   flush();
 }
 async function run(j) {
-  const { quality = "best", folder = "", naming = "creator-title-id", maxMinutes = 0, autoTranscribe = false } = await get("settings", {});
+  const { quality = "best", folder = "", naming = "creator-title-id", maxMinutes = 0, autoTranscribe = false, cover = false } = await get("settings", {});
   const maxSeconds = Math.max(0, Number(maxMinutes) || 0) * 60;
   let r;
   try {
-    const send = () => call({ url: j.url, quality, folder, naming, ...(maxSeconds ? { maxSeconds } : {}) }, (pct) => patchJob(j, { pct }));
+    const send = () => call({ url: j.url, quality, folder, naming, ...(maxSeconds ? { maxSeconds } : {}), ...(cover ? { cover: true } : {}), ...(j.direct ? { direct: j.direct } : {}) }, (pct) => patchJob(j, { pct }));
     r = await send();
     // an old engine is the usual cause of sudden 403s: update once an hour at most, then retry
     if (!r.ok && /update engine/.test(r.error || "") && Date.now() - lastHeal > 3600000) {
@@ -184,6 +184,7 @@ async function run(j) {
     return pump();
   } else {
     if (r.ok) await addToLibrary(r.meta); else await addError(j.url, r.error);
+    j.direct = undefined; // a signed, short-lived CDN link: no reason to keep it
     patchJob(j, r.ok ? { state: "done", pct: 100, title: (r.meta && r.meta.title) || "", file: (r.meta && r.meta.file) || "", reason: undefined } : { state: "error", error: r.error, reason: undefined });
   }
   settle(j, r);
@@ -225,7 +226,7 @@ async function enqueueOne({ url, again }) {
 }
 
 // Select mode: queue the ticked videos and answer at once; a notification reports the end of the batch.
-async function enqueueMany({ hrefs, folder }) {
+async function enqueueMany({ hrefs, folder, directs }) {
   const urls = videoUrls(hrefs || [], 200);
   if (!urls.length) return { error: "No video links selected" };
   const { skipDuplicates = true } = await get("settings", {});
@@ -234,7 +235,9 @@ async function enqueueMany({ hrefs, folder }) {
   if (saved.length && cleanFolder(folder)) await moveToFolder(saved, folder); // already saved: still file them
   const todo = urls.filter((u) => !saved.includes(u)), batch = newBatch();
   await Promise.all(saved.map((u) => download(u, false, batch))); // already-saved links still appear in the batch report
-  downloadMany(todo, folder, batch).then((r) => todo.length && notify("Queue finished", `${r.ok} saved${r.failed ? `, ${r.failed} failed` : ""}`));
+  const direct = new Map(); // canonical url -> direct https link (only for links we would download anyway)
+  for (const [h, d] of Object.entries(directs || {})) { const [c] = videoUrls([h]); if (c && dedupeKey(c).startsWith("ttcc:") && typeof d === "string" && d.startsWith("https://")) direct.set(c, d); }
+  downloadMany(todo, folder, batch, direct).then((r) => todo.length && notify("Queue finished", `${r.ok} saved${r.failed ? `, ${r.failed} failed` : ""}`));
   return { queued: todo.length, saved: saved.length };
 }
 
@@ -337,8 +340,8 @@ async function moveToFolder(urls, folder) {
   return libEdit((lib) => lib.map((v) => (keys.has(dedupeKey(v.url)) ? { ...v, folder: f || undefined } : v)));
 }
 const summary = (rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok && !r.skipped).length });
-async function downloadMany(urls, folder, batchId = newBatch()) {
-  const rs = await Promise.all(urls.map((u) => download(u, false, batchId)));
+async function downloadMany(urls, folder, batchId = newBatch(), directs) {
+  const rs = await Promise.all(urls.map((u) => download(u, false, batchId, directs && directs.get(u))));
   if (cleanFolder(folder)) await moveToFolder(urls.filter((_, i) => rs[i].ok), folder);
   return { rs, ...summary(rs) };
 }

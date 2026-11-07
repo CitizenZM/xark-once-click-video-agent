@@ -94,6 +94,7 @@
       <input id="q" class="grow" type="search" placeholder="Search title, creator, tags, notes">
       <select id="fcol"><option value="">All collections</option></select>
       <select id="fplat"><option value="">All platforms</option></select>
+      <select id="fsrc"><option value="">All sources</option><option value="ads">Ads only</option><option value="organic">Organic only</option></select>
       <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
     </div>
     <div class="row">
@@ -160,6 +161,7 @@
       <label><input type="checkbox" id="autoupd"> Update engine automatically (weekly, and once when a site starts refusing downloads)</label>
       <label><input type="checkbox" id="btns"> On TikTok, Instagram, YouTube and X: show a Save button, and a “+ Queue” button when you hover any video (asks for site access; reload open tabs after turning on)</label>
       <label><input type="checkbox" id="autotr"> Transcribe videos after download (needs whisper.cpp, runs on this computer)</label>
+      <label><input type="checkbox" id="cover"> Also save the cover image (a .jpg next to each video)</label>
       <label><input type="checkbox" id="skipdup"> Skip videos already saved (batch and pasted links)</label>
       <label>Parallel downloads
         <select id="parallel"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select>

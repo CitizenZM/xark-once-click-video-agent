@@ -38,7 +38,11 @@
   const picked = new Set(), added = new Set(), tiles = new Map(); // url -> tile element
   let found = [], flags = new Map(), sortOn = false, hotOn = false; // url -> {rank, multiple, outlier}
   const NOVIEWS = "This page doesn't show view counts (on Instagram, open the Reels tab)";
-  const send = (hrefs) => chrome.runtime.sendMessage({ type: "enqueue-many", hrefs, folder: $("col").value.trim() });
+  const send = (hrefs) => {
+    const directs = {}; // Creative Center cards that have been played carry the mp4 itself (no extractor exists for that site)
+    for (const f of found) if (f.direct && hrefs.includes(f.url)) directs[f.url] = f.direct;
+    return chrome.runtime.sendMessage({ type: "enqueue-many", hrefs, folder: $("col").value.trim(), directs });
+  };
   const paint = () => { $("n").textContent = `${picked.size} selected`; $("go").disabled = !picked.size; };
   const toggle = (url, on = !picked.has(url)) => { on ? picked.add(url) : picked.delete(url); const t = tiles.get(url); if (t) t.classList.toggle("on", on); paint(); };
   function make(url) {
