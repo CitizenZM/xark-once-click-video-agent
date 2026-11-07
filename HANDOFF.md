@@ -60,3 +60,8 @@
 - 完成: 3.5.1: automated UI test of popup+dashboard with real library (stubbed chrome in in-app browser); fixed Instagram creator names/grouping and keyword drill-down search; Chrome auto-reloaded to 3.5.1
 - 验证: 49 node pass, 66 python OK, CI success befe5fd, log hello v3.5.1 22:59:40
 - 下一步: Native context menu and Alt+Shift+D remain hand-check only
+
+### 2026-11-07 08:43 · claude-opus-5-5
+- 完成: Sonnet full test pass (49+66), monetization + cost-per-run doc
+- 验证: node --test 49 pass; unittest 66 OK; git push ok
+- 下一步: Decide pricing tiers; fix ai.js thinking/max_tokens with an API key to verify
