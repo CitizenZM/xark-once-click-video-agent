@@ -155,7 +155,7 @@ URL = "https://www.tiktok.com/@a/video/1"
 
 class Reliability(unittest.TestCase):
     def test_max_seconds_adds_match_filter_and_skip_is_reported_as_too_long(self):
-        path, d = stub('echo "$@" > "$(dirname "$0")/args"; echo "[download] x does not pass filter (duration <=? 180), skipping .." ')
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; true  # real engine is quiet here because of --print: no output at all ')
         r = session([{"id": 1, "url": URL, "maxSeconds": 180}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[1]
         self.assertEqual((r["ok"], r.get("skipped")), (False, "too long"))
         self.assertIn("--match-filter duration <=? 180", open(os.path.join(d, "args")).read())
@@ -163,6 +163,8 @@ class Reliability(unittest.TestCase):
         r2 = session([{"id": 2, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[2]
         self.assertNotIn("--match-filter", open(os.path.join(d, "args")).read())
         self.assertNotIn("skipped", r2)
+        # no metadata and no length limit: nothing was saved, so it must not count as a success
+        self.assertEqual((r2["ok"], r2.get("error")), (False, "engine finished without saving a file"))
 
     def test_ffprobe_without_video_stream_is_incomplete(self):
         path, d, probe = make_video("", '{"streams":[{"codec_type":"audio"}],"format":{"duration":"5.0"}}')

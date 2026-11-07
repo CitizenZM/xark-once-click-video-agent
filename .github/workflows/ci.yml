@@ -7,6 +7,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: python3 host/test_host.py
+      - run: python3 -m unittest discover -s host -p "test_*.py"
       - run: node --test test/*.test.mjs
       - run: bash scripts/build-zip.sh

@@ -238,9 +238,10 @@ def download(msg, on_pct=None):
             if ok is False:
                 return {"ok": False, "error": "File is incomplete (failed check)"}
             return {"ok": True, "meta": meta, "verified": ok is True}
-    if opts["max_seconds"] and "does not pass filter" in out.lower():  # engine skipped it and exited 0
+    # --print puts engine in quiet mode, so a --match-filter skip prints nothing: exit 0 with no metadata line.
+    if opts["max_seconds"]:
         return {"ok": False, "skipped": "too long"}
-    return {"ok": True, "meta": {"webpage_url": url, "file": None}, "verified": False}
+    return {"ok": False, "error": "engine finished without saving a file"}
 
 
 def ping():
