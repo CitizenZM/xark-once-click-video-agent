@@ -1,5 +1,6 @@
 import { analyze, recommend, filterLibrary, outliers, creatorStats, formatStats, keywordStats, creativeBrief } from "./insights.js";
 import { buildPrompt, ask, groupAssignments } from "./ai.js";
+import { toTSV, toXLSX, toShareHTML } from "./export.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -120,6 +121,14 @@ async function load() {
   $("#errors").innerHTML = errors.slice(-8).reverse().map((e) => `<li>${esc(new Date(e.at).toLocaleString())}: ${esc(e.error)} <small>(${esc(e.url)})</small></li>`).join("") || `<li class="empty" style="color:var(--mute)">None</li>`;
   $("#csv").onclick = () => save("library.csv", ["saved,collection,platform,creator,title,url,duration,views,likes", ...library.map((v) => [new Date(v.at).toISOString(), v.folder, v.platform, v.uploader, v.title, v.url, v.duration, v.view_count, v.like_count].map(csvCell).join(","))].join("\n"), "text/csv");
   $("#json").onclick = () => save("library.json", JSON.stringify(library, null, 2), "application/json");
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  const exportMsg = (t) => { $("#exportMsg").textContent = t; };
+  $("#tsv").onclick = async () => { try { await navigator.clipboard.writeText(toTSV(view)); exportMsg(`Copied ${view.length} rows — paste into Google Sheets`); } catch (e) { exportMsg("Copy failed: " + e.message); } };
+  $("#xlsx").onclick = () => save(`library-${stamp()}.xlsx`, toXLSX(view), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  $("#share").onclick = () => {
+    const name = ($("#fcol").value && $("#fcol").value !== "__none" ? $("#fcol").value : "Library");
+    save(`${name.replace(/[^\w.-]+/g, "_")}.html`, toShareHTML({ name, videos: view, generatedAt: Date.now() }), "text/html");
+  };
   $("#clear").onclick = async () => { if (confirm("Delete the saved-video list? Downloaded files stay on disk.")) { await chrome.storage.local.set({ library: [], errors: [] }); load(); } };
 }
 
