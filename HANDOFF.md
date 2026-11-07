@@ -35,3 +35,8 @@
 - 完成: v3.4.0: select mode whole-tile click target + per-tile + Queue (real-mouse tested TikTok + IG keyword search), hover + Queue in opt-in content script, legacy numeric-id retry fix + failed row redesign, dashboard tabs with Analyze filter + Creators/Formats/Keywords/Ideas (brief + AI concepts), docs/DASHBOARD-PLAN.md
 - 验证: node 11 + host 15 pass (retry test fails without fix); real mouse select TikTok (ego) + IG search (user Chrome, stub send); dashboard tabs in stub browser 0 errors; CI success b2d18a8; Vercel zip 3.4.0; Chrome hello v3.4.0
 - 下一步: User: try select on IG search + hover + Queue; next per plan: thumbnail grid, creator drawer, stats re-check
+
+### 2026-11-06 17:36 · claude-opus-5-5
+- 完成: Competitor scan of 18 Chrome extensions in 5 groups (downloaders, IG/TikTok bulk, sorters, creator analytics, ad swipe files) -> docs/COMPETITORS.md with gap list
+- 验证: Sources: Chrome Web Store listings fetched 2026-11-06 via TinyFish + vendor articles; committed and pushed
+- 下一步: Pick P1: on-page sort/outlier, local transcription, batch reliability
