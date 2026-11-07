@@ -24,6 +24,8 @@ NAMING = {
 }
 TRANSIENT = ("timed out", "connection reset", "http error 5", "temporary failure", "unable to download webpage",
              "remote end closed", "read error", "network is unreachable")
+RATE_LIMIT_ERROR = "The site is rate-limiting downloads; retrying in a minute"
+MIN_BYTES = 10 * 1024
 RETRY_BASE = float(os.environ.get("ONECLICK_RETRY_SEC") or 2)
 PCT_RE = re.compile(r"\[PCT\]\s*([\d.]+)%")
 DEV_FILE = os.environ.get("ONECLICK_DEV_FILE") or os.path.expanduser("~/.oneclick-dev")
@@ -118,6 +120,8 @@ def run(url, opts, cookies=False, on_pct=None):
     else:
         fmt = "bv*[height<=1080]+ba/b[height<=1080]" if quality == "1080" else "bv*+ba/b"
         cmd += ["-f", fmt, "-S", "vcodec:h264,acodec:m4a", "--merge-output-format", "mp4"]
+    if opts.get("max_seconds"):  # "?" keeps videos whose duration is unknown
+        cmd += ["--match-filter", "duration <=? %d" % opts["max_seconds"]]
     if cookies:
         cmd += ["--cookies-from-browser", "chrome"]
     cmd += ["--newline", "--progress-template", "download:[PCT] %(progress._percent_str)s"]
@@ -148,6 +152,40 @@ def friendly(stderr):
     return last[:300]
 
 
+def rate_limited(out):
+    low = (out or "").lower()
+    if "http error 429" in low or "too many requests" in low:
+        return True
+    return ("rate limit" in low or "rate-limit" in low) and "login required" not in low
+
+
+def ffprobe_path():
+    if "ONECLICK_FFPROBE" in os.environ:  # tests: a stub path, or empty for "not installed"
+        return os.environ["ONECLICK_FFPROBE"] or None
+    return shutil.which("ffprobe", path=PATH)
+
+
+def verify_file(path, audio_only):
+    """True = looks complete, False = unreadable or incomplete, None = could not check (no ffprobe)."""
+    probe = ffprobe_path()
+    if not probe or not path or not os.path.isfile(path):
+        return None
+    try:
+        p = subprocess.run([probe, "-v", "error", "-print_format", "json", "-show_streams", "-show_format", path],
+                           capture_output=True, text=True, timeout=60, env={**os.environ, "PATH": PATH})
+    except Exception:
+        return None
+    if p.returncode != 0:
+        return False
+    try:
+        info = json.loads(p.stdout or "{}")
+        kinds = {s.get("codec_type") for s in info.get("streams", [])}
+        duration = float((info.get("format") or {}).get("duration") or 0)
+    except (ValueError, TypeError):
+        return False
+    return ("audio" if audio_only else "video") in kinds and duration > 0 and os.path.getsize(path) > MIN_BYTES
+
+
 def normalize(meta):
     """TikTok's uploader_id is a number; the handle is in `uploader`. Fix the metadata and the file name."""
     if meta.get("extractor_key") == "TikTok" and meta.get("uploader"):
@@ -171,6 +209,10 @@ def download(msg, on_pct=None):
     try:
         opts = {"quality": msg.get("quality", "best"), "dir": out_dir(msg.get("folder")),
                 "naming": msg.get("naming") if msg.get("naming") in NAMING else "creator-title-id"}
+        try:
+            opts["max_seconds"] = max(0, int(msg.get("maxSeconds") or 0))
+        except (TypeError, ValueError):
+            opts["max_seconds"] = 0
         for attempt in range(3):  # retry only network-type failures, with growing delay
             code, out = run(url, opts, on_pct=on_pct)
             if code == 0 or not any(t in out.lower() for t in TRANSIENT):
@@ -181,6 +223,8 @@ def download(msg, on_pct=None):
     except Exception as e:  # bad folder, missing engine, ...
         return {"ok": False, "error": str(e)}
     if code != 0:
+        if rate_limited(out):
+            return {"ok": False, "retryable": True, "error": RATE_LIMIT_ERROR}
         return {"ok": False, "error": friendly(out)}
     for line in reversed(out.strip().splitlines()):
         if line.startswith("{"):
@@ -189,8 +233,14 @@ def download(msg, on_pct=None):
             except ValueError:
                 continue
             meta["file"] = meta.pop("filepath", None)
-            return {"ok": True, "meta": normalize(meta)}
-    return {"ok": True, "meta": {"webpage_url": url, "file": None}}
+            meta = normalize(meta)
+            ok = verify_file(meta["file"], opts["quality"] == "audio")
+            if ok is False:
+                return {"ok": False, "error": "File is incomplete (failed check)"}
+            return {"ok": True, "meta": meta, "verified": ok is True}
+    if opts["max_seconds"] and "does not pass filter" in out.lower():  # engine skipped it and exited 0
+        return {"ok": False, "skipped": "too long"}
+    return {"ok": True, "meta": {"webpage_url": url, "file": None}, "verified": False}
 
 
 def ping():

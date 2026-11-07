@@ -12,8 +12,9 @@
   <button id="dash"><span>▤</span> Dashboard</button>
 </div>
 <section class="queue">
-  <div class="qhead"><b>Queue</b> <span id="qsum" class="mute"></span><button id="clear" class="link" hidden>Clear finished</button></div>
+  <div class="qhead"><b>Queue</b> <span id="qsum" class="mute"></span><button id="pause" class="link">⏸ Pause</button><button id="clear" class="link" hidden>Clear finished</button></div>
   <ul id="jobs"></ul>
+  <div class="qtools"><button id="export" class="link" hidden>Export last batch (CSV)</button></div>
 </section>
 <footer><label><input type="checkbox" id="auto"> Download as soon as I click the icon</label></footer>
 <script type="module" src="popup.js"></script>

@@ -8,7 +8,7 @@ HOST = os.path.join(os.path.dirname(__file__), "oneclick_host.py")
 def session(msgs, env_extra):
     """Send all msgs, close stdin, return {id: reply}."""
     data = b"".join(struct.pack("<I", len(b)) + b for b in (json.dumps(m).encode() for m in msgs))
-    p = subprocess.run([sys.executable, HOST], input=data, capture_output=True, env={**os.environ, **env_extra})
+    p = subprocess.run([sys.executable, HOST], input=data, capture_output=True, env={**os.environ, "ONECLICK_FFPROBE": "", **env_extra})  # no real ffprobe unless a test supplies a stub
     out, i = {}, 0
     while i < len(p.stdout):
         n = struct.unpack("<I", p.stdout[i:i + 4])[0]
@@ -135,6 +135,72 @@ class T(unittest.TestCase):
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]
         self.assertEqual((r["type"], r["engine"], r["outDir"]), ("pong", "9.9.9", d))
 
+
+
+def make_video(body_after, probe_json=None):
+    """Stub engine that writes a 20 KB file and reports it; optional stub ffprobe printing probe_json."""
+    path, d = stub('echo "$@" > "$(dirname "$0")/args"; f="$(dirname "$0")/v.mp4"; head -c 20000 /dev/zero > "$f"; '
+                   'echo \'{"id":"1","filepath":"\'"$f"\'"}\'' + body_after)
+    probe = None
+    if probe_json is not None:
+        probe = os.path.join(d, "ffprobe")
+        with open(probe, "w") as f:
+            f.write("#!/bin/bash\necho '%s'\n" % probe_json)
+        os.chmod(probe, 0o755)
+    return path, d, probe
+
+
+URL = "https://www.tiktok.com/@a/video/1"
+
+
+class Reliability(unittest.TestCase):
+    def test_max_seconds_adds_match_filter_and_skip_is_reported_as_too_long(self):
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; echo "[download] x does not pass filter (duration <=? 180), skipping .." ')
+        r = session([{"id": 1, "url": URL, "maxSeconds": 180}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[1]
+        self.assertEqual((r["ok"], r.get("skipped")), (False, "too long"))
+        self.assertIn("--match-filter duration <=? 180", open(os.path.join(d, "args")).read())
+        # without the setting the flag is absent
+        r2 = session([{"id": 2, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[2]
+        self.assertNotIn("--match-filter", open(os.path.join(d, "args")).read())
+        self.assertNotIn("skipped", r2)
+
+    def test_ffprobe_without_video_stream_is_incomplete(self):
+        path, d, probe = make_video("", '{"streams":[{"codec_type":"audio"}],"format":{"duration":"5.0"}}')
+        r = session([{"id": 1, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "ONECLICK_FFPROBE": probe})[1]
+        self.assertEqual((r["ok"], r["error"]), (False, "File is incomplete (failed check)"))
+
+    def test_ffprobe_good_file_is_verified_and_audio_only_needs_audio(self):
+        good = '{"streams":[{"codec_type":"video"},{"codec_type":"audio"}],"format":{"duration":"5.0"}}'
+        path, d, probe = make_video("", good)
+        r = session([{"id": 1, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "ONECLICK_FFPROBE": probe})[1]
+        self.assertTrue(r["ok"]); self.assertIs(r["verified"], True)
+        path, d, probe = make_video("", '{"streams":[{"codec_type":"video"}],"format":{"duration":"5.0"}}')
+        r = session([{"id": 2, "url": URL, "quality": "audio"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "ONECLICK_FFPROBE": probe})[2]
+        self.assertFalse(r["ok"])  # audio-only wants an audio stream
+        path, d, probe = make_video("", '{"streams":[{"codec_type":"video"}],"format":{"duration":"0"}}')
+        r = session([{"id": 3, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "ONECLICK_FFPROBE": probe})[3]
+        self.assertFalse(r["ok"])  # zero duration
+
+    def test_tiny_file_is_incomplete(self):
+        path, d, probe = make_video("", '{"streams":[{"codec_type":"video"}],"format":{"duration":"5.0"}}')
+        path2, d2 = stub('f="$(dirname "$0")/v.mp4"; echo tiny > "$f"; echo \'{"filepath":"\'"$f"\'"}\'')
+        r = session([{"id": 1, "url": URL}], {"ONECLICK_ENGINE": path2, "ONECLICK_OUT": d2, "ONECLICK_FFPROBE": probe})[1]
+        self.assertEqual(r["error"], "File is incomplete (failed check)")
+
+    def test_missing_ffprobe_skips_check_and_reports_unverified(self):
+        path, d, _ = make_video("")
+        r = session([{"id": 1, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d, "ONECLICK_FFPROBE": ""})[1]
+        self.assertTrue(r["ok"]); self.assertIs(r["verified"], False)
+
+    def test_http_429_is_retryable_with_friendly_text(self):
+        for text in ("ERROR: unable to download: HTTP Error 429: Too Many Requests", "ERROR: rate limit reached, slow down"):
+            path, d = stub('echo "%s" >&2; exit 1' % text)
+            r = session([{"id": 1, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[1]
+            self.assertEqual((r["ok"], r.get("retryable")), (False, True), text)
+            self.assertIn("rate-limiting", r["error"])
+        path, d = stub('echo "ERROR: Private video" >&2; exit 1')
+        r = session([{"id": 2, "url": URL}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[2]
+        self.assertNotIn("retryable", r)
 
 
 class Dev(unittest.TestCase):
