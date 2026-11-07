@@ -30,3 +30,8 @@
 - 完成: v3.3.0: popup one-click auto-queues current video (incl. TikTok For You), persistent 3-at-a-time queue with cancel/retry, select mode rebuilt (detect.js) + Instagram /user/reel/ fix, popup redesign
 - 验证: node 10 + host 15 pass; select tested on real TikTok profile/ForYou + IG reels/profile via ego (33/2/12/12 found, payload ok); CI + Vercel zip 3.3.0; Chrome hello v3.3.0
 - 下一步: User: try icon one-click on TikTok For You and IG, select mode on a profile
+
+### 2026-11-06 17:22 · claude-opus-5-5
+- 完成: v3.4.0: select mode whole-tile click target + per-tile + Queue (real-mouse tested TikTok + IG keyword search), hover + Queue in opt-in content script, legacy numeric-id retry fix + failed row redesign, dashboard tabs with Analyze filter + Creators/Formats/Keywords/Ideas (brief + AI concepts), docs/DASHBOARD-PLAN.md
+- 验证: node 11 + host 15 pass (retry test fails without fix); real mouse select TikTok (ego) + IG search (user Chrome, stub send); dashboard tabs in stub browser 0 errors; CI success b2d18a8; Vercel zip 3.4.0; Chrome hello v3.4.0
+- 下一步: User: try select on IG search + hover + Queue; next per plan: thumbnail grid, creator drawer, stats re-check
