@@ -15,6 +15,8 @@
     .add{position:absolute;right:8px;top:8px;height:32px;padding:0 14px;border-radius:999px;border:0;background:#0f172a;color:#fff;cursor:pointer;opacity:0;
       font:700 13px/32px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.4)}
     .tile:hover .add,.add.done{opacity:1}.add:hover{background:#2563eb}.add.done{background:#16a34a}
+    .badge{position:absolute;pointer-events:none;font:800 13px/1 -apple-system,sans-serif;padding:5px 8px;border-radius:999px;box-shadow:0 1px 6px rgba(0,0,0,.45)}
+    .rank{right:8px;bottom:8px;background:#0f172a;color:#fff}.hot{left:50%;top:8px;transform:translateX(-50%);background:#16a34a;color:#fff}
     .bar{position:fixed;z-index:2147483647;left:50%;bottom:20px;transform:translateX(-50%);display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:calc(100vw - 24px);
       background:#0f172a;color:#f1f5f9;font:500 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:8px 10px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
     .n{font-weight:700;padding:0 6px;min-width:90px}
@@ -25,13 +27,17 @@
     <div class="bar"><span class="n" id="n"></span>
       <button id="all" title="Tick every video visible now">Select visible</button>
       <button id="more" title="Scroll down and tick new videos as they load">Auto-scroll +20</button>
+      <button id="sort" title="Show each tile's rank by views">Sort by views</button>
+      <button id="hot" title="Badge videos with at least 2x the page median views">Mark outliers</button>
+      <button id="top" title="Tick the 10 videos with the most views">Select top 10</button>
       <button id="none">Clear</button>
       <input id="col" list="cols" placeholder="Collection (optional)" maxlength="60"><datalist id="cols"></datalist>
       <button class="go" id="go">Add to queue</button>
       <button id="x" title="Close (Esc)">✕</button><span class="msg" id="msg">Click a video to select it · + adds it to the queue now</span></div>`;
   const $ = (id) => root.querySelector("#" + id);
   const picked = new Set(), added = new Set(), tiles = new Map(); // url -> tile element
-  let found = [];
+  let found = [], flags = new Map(), sortOn = false, hotOn = false; // url -> {rank, multiple, outlier}
+  const NOVIEWS = "This page doesn't show view counts (on Instagram, open the Reels tab)";
   const send = (hrefs) => chrome.runtime.sendMessage({ type: "enqueue-many", hrefs, folder: $("col").value.trim() });
   const paint = () => { $("n").textContent = `${picked.size} selected`; $("go").disabled = !picked.size; };
   const toggle = (url, on = !picked.has(url)) => { on ? picked.add(url) : picked.delete(url); const t = tiles.get(url); if (t) t.classList.toggle("on", on); paint(); };
@@ -63,12 +69,25 @@
       t.style.display = vis ? "" : "none";
       if (vis) Object.assign(t.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
     }
+    const fl = D.outlierFlags(found.map((f) => f.views));
+    flags = new Map(found.map((f, i) => [f.url, fl[i]]));
+    const any = fl.some((f) => f.rank);
+    for (const id of ["sort", "hot", "top"]) { $(id).disabled = !any; const b = $(id); b.dataset.t = b.dataset.t || b.title; b.title = any ? b.dataset.t : NOVIEWS; }
+    for (const { url } of found) {
+      const t = tiles.get(url), f = flags.get(url);
+      t.querySelectorAll(".badge").forEach((b) => b.remove());
+      if (sortOn && f.rank) t.insertAdjacentHTML("beforeend", `<span class="badge rank">#${f.rank}</span>`);
+      if (hotOn && f.outlier) t.insertAdjacentHTML("beforeend", `<span class="badge hot">${f.multiple.toFixed(1)}x</span>`);
+    }
     for (const [url, t] of tiles) if (!now.has(url)) { t.remove(); tiles.delete(url); }
     if (!found.length) $("msg").textContent = "No videos found here yet. Scroll a little, or right-click a video link → Add to the download queue.";
     paint();
   }
   const visible = () => found.filter(({ el }) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
   $("all").onclick = () => visible().forEach((f) => toggle(f.url, true));
+  $("sort").onclick = () => { sortOn = !sortOn; $("sort").style.outline = sortOn ? "2px solid #2563eb" : ""; place(); };
+  $("hot").onclick = () => { hotOn = !hotOn; $("hot").style.outline = hotOn ? "2px solid #16a34a" : ""; place(); };
+  $("top").onclick = () => found.filter((f) => f.views > 0).sort((a, b) => b.views - a.views).slice(0, 10).forEach((f) => toggle(f.url, true));
   $("none").onclick = () => [...picked].forEach((u) => toggle(u, false));
   let scrolling = false;
   $("more").onclick = async () => {
@@ -96,7 +115,7 @@
   const tick = setInterval(place, 400);
   addEventListener("scroll", place, true); addEventListener("resize", place); addEventListener("keydown", key, true);
   function stop() { scrolling = false; clearInterval(tick); removeEventListener("scroll", place, true); removeEventListener("resize", place); removeEventListener("keydown", key, true); host.remove(); delete window.__oneclickSelect; }
-  window.__oneclickSelect = { stop };
+  window.__oneclickSelect = { stop, click: (id) => $(id).click() }; // click(): lets the real-page test press the bar's buttons (the shadow root is closed)
   $("x").onclick = stop;
   document.documentElement.appendChild(host);
   chrome.storage.local.get(["folders", "library"]).then(({ folders = [], library = [] }) => {

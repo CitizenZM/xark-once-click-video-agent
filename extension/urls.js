@@ -39,3 +39,22 @@ export function videoUrls(hrefs, limit = 50) {
   }
   return [...seen.values()];
 }
+
+// Page view counts ("451.3K", "6.2M", "1.2万") -> number. detect.js carries a copy of these two (a test checks parity).
+const UNIT = { k: 1e3, m: 1e6, b: 1e9, "万": 1e4, "亿": 1e8 };
+export const parseCount = (text) => {
+  const m = /^([\d][\d,]*(?:\.\d+)?)\s*([kKmMbB万亿])?(?:\s*views?)?$/i.exec(String(text == null ? "" : text).trim());
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(/,/g, ""));
+  return Number.isFinite(n) ? Math.round(n * (m[2] ? UNIT[m[2].toLowerCase()] : 1)) : null;
+};
+// views[] (number|null) -> per item { rank (1 = most views, ties share a rank, null without views), multiple (views / median), outlier (multiple >= 2) }
+export const outlierFlags = (views) => {
+  const has = views.filter((v) => v > 0).sort((a, b) => b - a);
+  const mid = has.length >> 1, median = has.length ? (has.length % 2 ? has[mid] : (has[mid - 1] + has[mid]) / 2) : 0;
+  return views.map((v) => {
+    if (!(v > 0)) return { rank: null, multiple: null, outlier: false };
+    const multiple = v / median;
+    return { rank: has.indexOf(v) + 1, multiple, outlier: has.length >= 4 && multiple >= 2 };
+  });
+};

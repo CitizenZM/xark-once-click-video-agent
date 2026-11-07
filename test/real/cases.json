@@ -1,7 +1,7 @@
 [
-  { "name": "TikTok profile grid", "url": "https://www.tiktok.com/@khaby.lame", "minItems": 10, "clickTile": true, "expect": "tiktok.com/@khaby.lame/video/" },
+  { "name": "TikTok profile grid", "url": "https://www.tiktok.com/@khaby.lame", "minItems": 10, "clickTile": true, "views": true, "expect": "tiktok.com/@khaby.lame/video/" },
   { "name": "TikTok For You (no links, player ids)", "url": "https://www.tiktok.com/foryou", "minItems": 1, "current": true, "expect": "tiktok.com/@" },
-  { "name": "Instagram reels tab (/<user>/reel/ links)", "url": "https://www.instagram.com/natgeo/reels/", "minItems": 6, "clickTile": true, "expect": "instagram.com/natgeo/reel/" },
+  { "name": "Instagram reels tab (/<user>/reel/ links)", "url": "https://www.instagram.com/natgeo/reels/", "minItems": 6, "clickTile": true, "views": true, "expect": "instagram.com/natgeo/reel/" },
   { "name": "Instagram profile grid", "url": "https://www.instagram.com/natgeo/", "minItems": 6, "expect": "instagram.com/natgeo/" },
   { "name": "YouTube Shorts tab", "url": "https://www.youtube.com/@MrBeast/shorts", "minItems": 6, "expect": "youtube.com/shorts/" }
 ]

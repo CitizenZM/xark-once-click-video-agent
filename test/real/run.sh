@@ -13,7 +13,7 @@ fs.writeFileSync(process.argv[1], JSON.stringify({ det: fs.readFileSync("extensi
 ego-browser nodejs <<EOF | tee "$OUT/result.txt"
 const fs = await import("node:fs/promises");
 const { det, sel, cases } = JSON.parse(await fs.readFile("$OUT/inj.json", "utf8"));
-const task = await taskSpace("oneclick real-page tests");
+const task = await taskSpace(process.env.ONECLICK_REAL_SPACE || "oneclick real-page tests");
 const page = task.page("p1");
 let fail = 0;
 for (const c of cases) {
@@ -27,7 +27,7 @@ for (const c of cases) {
       const items = window.__oneclickDetect.items();
       const vis = items.map((i) => ({ url: i.url, r: i.el.getBoundingClientRect() })).filter((i) => i.r.top > 60 && i.r.bottom < innerHeight - 80 && i.r.width > 0);
       return { url: location.href, n: items.length, sample: items.slice(0, 2).map((i) => i.url), current: window.__oneclickDetect.current(),
-        tile: vis[0] ? { url: vis[0].url, x: vis[0].r.left + vis[0].r.width / 2, y: vis[0].r.top + vis[0].r.height / 2 } : null };
+        all: items.map((i) => ({ url: i.url, views: i.views })), tile: vis[0] ? { url: vis[0].url, x: vis[0].r.left + vis[0].r.width / 2, y: vis[0].r.top + vis[0].r.height / 2 } : null };
     }, { det, sel });
     if (/login|accounts\\/login|auth_platform/.test(info.url)) { r.ok = null; r.notes.push("login wall: skipped"); }
     else {
@@ -35,6 +35,22 @@ for (const c of cases) {
       if (info.n < c.minItems) { r.ok = false; r.notes.push(\`found \${info.n} < \${c.minItems}\`); }
       if (c.expect && !(info.sample.concat(info.current || []).some((u) => u.includes(c.expect)))) { r.ok = false; r.notes.push("no link matches " + c.expect); }
       if (c.current) { r.current = info.current; if (!info.current) { r.ok = false; r.notes.push("current() found nothing"); } }
+      if (c.views) {
+        const withViews = info.all.filter((i) => i.views > 0).length;
+        r.withViews = withViews;
+        if (withViews < 6) { r.ok = false; r.notes.push(\`only \${withViews} items have views\`); }
+        else {
+          const got = await page.evaluate(async () => {
+            window.__sent.length = 0; const S = window.__oneclickSelect;
+            S.click("none"); S.click("top"); S.click("go"); await new Promise((r) => setTimeout(r, 400));
+            return (window.__sent[0] && window.__sent[0].hrefs) || [];
+          });
+          r.top = got.length;
+          const byUrl = new Map(info.all.map((i) => [i.url, i.views])), vs = got.map((u) => byUrl.get(u));
+          if (got.length !== 10) { r.ok = false; r.notes.push("Select top 10 gave " + got.length); }
+          else if (vs.some((v, i) => !(v > 0) || (i && v > vs[i - 1]))) { r.ok = false; r.notes.push("top 10 not sorted by views desc: " + vs.join(",")); }
+        }
+      }
       if (c.clickTile && info.tile) {
         const before = await page.url();
         await page.mouse.click(info.tile.x, info.tile.y, { label: "click tile middle" });
