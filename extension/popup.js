@@ -37,15 +37,17 @@ function renderJobs(jobs = []) {
   const run = jobs.filter((j) => j.state === "running").length;
   $("qsum").textContent = live.length ? `${run} running · ${live.length - run} waiting` : jobs.length ? "all done" : "";
   $("clear").hidden = live.length === jobs.length;
-  const label = { queued: "waiting", running: "", done: "saved", error: "failed", canceled: "canceled" };
+  const label = { queued: "Waiting", running: "", done: "Saved", error: "Failed", canceled: "Canceled" };
+  const btn = (a, id, t) => `<button class="x" data-a="${a}" data-id="${esc(id)}">${t}</button>`;
   const order = { running: 0, queued: 1 };
   const sorted = jobs.map((j, i) => ({ j, i })).sort((a, b) => (order[a.j.state] ?? 2) - (order[b.j.state] ?? 2) || (a.j.state in order ? a.i - b.i : b.i - a.i)).map((x) => x.j);
-  $("jobs").innerHTML = sorted.slice(0, 30).map((j) => `<li class="${esc(j.state)}" title="${esc(j.error || j.url)}">
-      <span class="t">${esc(j.title || short(j.url))}</span>
-      <span class="s">${j.state === "running" ? (j.pct || 0) + "%" : label[j.state] || esc(j.state)}
-        ${j.state === "queued" ? `<button class="x" data-a="cancel" data-id="${esc(j.id)}">✕</button>` : ""}
-        ${j.state === "error" || j.state === "canceled" ? `<button class="x" data-a="retry" data-id="${esc(j.id)}">retry</button>` : ""}</span>
-      ${j.state === "running" ? `<span class="bar"><i style="width:${Math.max(3, j.pct || 0)}%"></i></span>` : ""}</li>`).join("")
+  $("jobs").innerHTML = sorted.slice(0, 30).map((j) => `<li class="${esc(j.state)}">
+      <span class="t" title="${esc(j.url)}">${esc(j.title || short(j.url))}</span>
+      <span class="s">${j.state === "running" ? (j.pct || 0) + "%" : label[j.state] || esc(j.state)}</span>
+      ${j.state === "running" ? `<span class="bar"><i style="width:${Math.max(3, j.pct || 0)}%"></i></span>` : ""}
+      ${j.state === "error" ? `<span class="err" title="${esc(j.error)}">${esc(j.error || "Unknown error")}</span>` : ""}
+      ${j.state === "queued" ? `<span class="acts">${btn("cancel", j.id, "Cancel")}</span>` : ""}
+      ${j.state === "error" || j.state === "canceled" ? `<span class="acts">${btn("retry", j.id, "↻ Retry")}${btn("remove", j.id, "Remove")}</span>` : ""}</li>`).join("")
     || `<li class="empty">Nothing queued. Click the icon on a video, or use Select videos.</li>`;
 }
 $("jobs").addEventListener("click", (e) => { const b = e.target.closest("button[data-a]"); if (b) send({ type: "queue", action: b.dataset.a, id: b.dataset.id }); });

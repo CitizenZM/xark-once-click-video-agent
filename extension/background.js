@@ -86,7 +86,7 @@ const waiters = new Map();   // job id -> [resolve]
 const isLive = (j) => j.state === "queued" || j.state === "running";
 async function loadQueue() {
   // a job that was running when the worker stopped never got its answer: queue it again
-  if (!queue) queue = (await get("jobs", [])).map((j) => (j.state === "running" ? { ...j, state: "queued", pct: 0 } : j));
+  if (!queue) queue = (await get("jobs", [])).map((j) => ({ ...j, id: String(j.id), ...(j.state === "running" ? { state: "queued", pct: 0 } : {}) })); // ids are strings (older builds stored numbers)
   return queue;
 }
 function flush() {
@@ -158,11 +158,12 @@ async function run(j) {
 }
 async function queueAction({ action, id }) {
   await loadQueue();
-  const j = queue.find((x) => x.id === id);
+  const j = queue.find((x) => String(x.id) === String(id));
   if (action === "clear") queue = queue.filter(isLive);
   else if (!j) return { error: "not found" };
   else if (action === "cancel" && j.state === "queued") { patchJob(j, { state: "canceled" }); settle(j, { ok: false, error: "canceled" }); }
   else if (action === "retry" && (j.state === "error" || j.state === "canceled")) { queue = queue.filter((x) => x !== j); download(j.url, true); }
+  else if (action === "remove" && !isLive(j)) queue = queue.filter((x) => x !== j);
   flush();
   return { ok: true };
 }
@@ -254,7 +255,7 @@ async function setButtons(on) {
   try { await chrome.scripting.unregisterContentScripts({ ids: ["oneclick-button"] }); } catch { /* none registered */ }
   if (!on) return { ok: true };
   const origins = (chrome.runtime.getManifest().optional_host_permissions || []).filter((o) => !o.includes("anthropic.com"));
-  await chrome.scripting.registerContentScripts([{ id: "oneclick-button", matches: origins, js: ["content.js"], runAt: "document_idle", persistAcrossSessions: true }]);
+  await chrome.scripting.registerContentScripts([{ id: "oneclick-button", matches: origins, js: ["detect.js", "content.js"], runAt: "document_idle", persistAcrossSessions: true }]);
   return { ok: true };
 }
 

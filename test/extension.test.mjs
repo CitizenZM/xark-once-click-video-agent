@@ -175,7 +175,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.deepEqual(await ask({ type: "page-download", href: "https://www.tiktok.com/@a", hrefs: feed }), { ok: 2, skipped: 0, failed: 0 });
   assert.equal(posted.length, before2 + 2);
   await ask({ type: "buttons", on: true });
-  assert.deepEqual([L.registered[0].id, L.registered[0].js[0], L.registered[0].matches.includes("https://www.instagram.com/*")], ["oneclick-button", "content.js", true]);
+  assert.deepEqual([L.registered[0].id, L.registered[0].js.at(-1), L.registered[0].matches.includes("https://www.instagram.com/*")], ["oneclick-button", "content.js", true]);
 
   // latest-N-from-profile: expand then download each (one already saved is skipped)
   await L.click({ id: 1, url: "https://www.tiktok.com/@e/video/501" });
@@ -260,11 +260,20 @@ test("background: one-click and batch reach the host and fill the library", asyn
   assert.equal(posted.filter((m) => m.type === "hello").length, 1); // the chrome:// click never reached the host
 
   // restart: a job that was running when the worker stopped is queued again and finished by the new worker
-  store.jobs = [{ id: "r1", url: "https://www.tiktok.com/@z/video/77001", state: "running", pct: 40, at: 1 }];
+  store.jobs = [{ id: "r1", url: "https://www.tiktok.com/@z/video/77001", state: "running", pct: 40, at: 1 },
+    { id: 1, url: "https://www.tiktok.com/@z/video/77002", state: "error", error: "old", at: 0 },   // older builds stored numeric ids
+    { id: 2, url: "https://www.tiktok.com/@z/video/77003", state: "error", error: "old", at: 0 }];
   const p0 = posted.length;
   await import("../extension/background.js?restart"); await new Promise((r) => setTimeout(r, 400));
   assert.ok(posted.slice(p0).some((m) => m.url === "https://www.tiktok.com/@z/video/77001"));
   assert.equal(store.jobs.find((j) => j.id === "r1").state, "done");
+  // the popup sends ids as text: retry and remove must work on those legacy jobs
+  const p1 = posted.length;
+  assert.deepEqual(await ask({ type: "queue", action: "retry", id: "1" }), { ok: true });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.ok(posted.slice(p1).some((m) => m.url === "https://www.tiktok.com/@z/video/77002"));
+  await ask({ type: "queue", action: "remove", id: "2" }); await new Promise((r) => setTimeout(r, 300));
+  assert.equal(store.jobs.some((j) => j.url.endsWith("77003")), false);
 });
 
 test("filterLibrary by collection; AI prompt is capped and has no urls; assignments map back safely", async () => {
