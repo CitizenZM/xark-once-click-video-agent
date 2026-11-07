@@ -41,3 +41,9 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - Cost: whisper base.en 9s clip in 0.61s; avg file 2.05 MB (43 files); AI click est. $0.010–0.031 (Sonnet 5.5), token count estimated at 3.2 chars/token (no API key for count_tokens)
 - Doc: docs/MONETIZATION-AND-COST.md
 - Open: ai.js thinking + max_tokens 2000 truncation risk, not changed (needs API key to verify)
+
+## 2026-11-07 — 修复 AI 按钮截断风险
+- 根因：Sonnet 5.5 默认 effort high 的思考占用 max_tokens 2000。
+- 改动：`extension/ai.js` 请求体 `max_tokens: 8000`、`output_config.effort: "low"`；只取 text 块；`stop_reason: max_tokens` 明确报错。`test/extension.test.mjs` 断言实际请求体与截断报错。
+- 验证：旧 ai.js 下 extension.test 1 fail（2000 !== 8000）；新代码 `node --test test/*.test.mjs` 49 pass 0 fail；`python3 -m unittest` OK；`scripts/build-zip.sh` 成功。
+- 未验证：没有 API key，未对真实 API 发请求。

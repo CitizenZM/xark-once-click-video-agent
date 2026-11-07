@@ -57,6 +57,7 @@ All numbers were measured on this Mac on 2026-11-07. Token counts are estimates:
 - 现在（自带 key 模式）：**每次运行 $0**。固定成本：Vercel Hobby $0，Chrome 商店注册费 $5（一次性），GitHub 私库 $0。
 - 如果开 Cloud 层、改用托管 AI：每次 AI 点击最多 $0.031（Sonnet）。每月 300 次的上限 = **最多 $9.3/用户/月**，用 Haiku 则约 $0.5。按 $19/月定价，Sonnet 毛利 ≥ 51%，Haiku ≥ 97%。还要加 Stripe 手续费 2.9% + $0.30。
 
-**发现的问题（未修改，待决定）**
-`extension/ai.js` 调用 `claude-sonnet-5-5` 时没有设置 `thinking`。Sonnet 5.5 默认开启自适应思考，effort 为 high，而思考 token 计入 `max_tokens: 2000`。在 60 条的大样本下，思考可能用完额度，JSON 被截断，用户会看到 "The model did not return JSON"，而思考 token 照样计费。
-建议：加 `output_config: {effort: "low"}`，或 `thinking: {type: "between_tools"}`，并把 `max_tokens` 提到 8000。本机没有 API key，无法实测，所以这次没有改。
+**已修复（2026-11-07）：AI 按钮截断风险**
+根因：`extension/ai.js` 调用 `claude-sonnet-5-5` 时未设 effort，Sonnet 5.5 默认自适应思考（effort high），思考 token 计入 `max_tokens: 2000`，大样本时 JSON 可能被截断，用户看到 "The model did not return JSON"。
+修复：请求改为 `max_tokens: 8000` + `output_config: {effort: "low"}`（不发 `thinking: disabled`，那在 Sonnet 5.5 上会 400）；只解析 `text` 块；`stop_reason: "max_tokens"` 时给出明确提示。单元测试锁定实际发出的请求体，旧代码下该测试失败（2000 !== 8000）。
+成本影响：输出上限变高，但 low effort 思考更少；单次点击上限理论值升到约 $0.09（8K 输出），实际预计仍在 $0.01–0.03。**尚未用真实 API key 实测。**
