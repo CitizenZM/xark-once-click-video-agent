@@ -19,3 +19,10 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - Real checks: F1 sort/outliers on a real TikTok profile (16/16 views, 4 outliers, top 10 descending); F3 real TikTok download verified by ffprobe (h264+aac 26.3 s); skip-long on a real video (found and fixed: engine is silent under --print); F2 real 3m54s review transcribed in 5.1 s with correct hook; F5 live stats (views 454,900 → 456,600); F6 real Meta ad (720x1280, 53 s, cover 1080x1920) and Creative Center ad after playing; F7 MCP over stdio with fixture; dashboard merged UI in stub browser, no console errors.
 - Integration issues found and fixed: F7 Python analysis copy drifted after F2 (parity test caught it, ported); the auto-sync hook rebased an unpushed merge mid-session (finished the rebase, now push right after each merge).
 - Not verified: real-page harness (ego lite notification prompt blocks it); 3.5.0 inside the user's Chrome (needs one reload); logged-in Instagram Stories; MCP inside a real Claude client; TikTok photo posts unsupported by engine.
+
+## 2026-11-06 22:40 — real-Chrome check of 3.5.0
+- Helper log: `hello v3.5.0 dev=True` at 22:31:53, `sync-library ok`; `~/.oneclick/library.json` mode 600, 9 items; MCP `search_videos` returns them.
+- TikTok @khaby.lame in the user's Chrome (shipped detect.js + select.js pasted, stub messenger): 32 tiles, 32 with views; real mouse click ticks a tile without opening it; ranks and 8 outliers (2.8x–10.0x) shown; Select top 10 + Add to queue sends the 10 highest (126.3M … 20.1M).
+- Real helper download with cover: mp4 h264/aac 720×1280 9.5 s. Bug found: TikTok cover kept the numeric account id in its name (root cause: `normalize()` renamed only the video). Fixed, test added (fails before fix); re-download gives matching `khaby.lame - …` mp4 + jpg.
+- Not reachable from Claude in Chrome: toolbar popup, native context menu, Alt+Shift+D, chrome-extension:// dashboard.
+- Tests: 65 Python OK, 47 node pass.

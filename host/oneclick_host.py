@@ -201,6 +201,14 @@ def normalize(meta):
                 meta["file"] = new
             except OSError:
                 pass
+            # The cover (--write-thumbnail) shares the video's name, so it gets the same rename.
+            stem = os.path.splitext(f)[0]
+            for ext in (".jpg", ".webp", ".png"):
+                if os.path.exists(stem + ext):
+                    try:
+                        os.replace(stem + ext, os.path.splitext(new)[0] + ext)
+                    except OSError:
+                        pass
         meta["uploader_id"] = handle
     return meta
 

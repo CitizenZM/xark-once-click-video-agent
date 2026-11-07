@@ -130,6 +130,12 @@ class T(unittest.TestCase):
         self.assertTrue(r["meta"]["file"].endswith("/tiktok - 77.mp4") and os.path.exists(r["meta"]["file"]))
         self.assertFalse(os.path.exists(os.path.join(d, "107955 - 77.mp4")))
 
+    def test_tiktok_rename_also_renames_the_cover_beside_the_video(self):
+        path, d = stub('touch "$(dirname "$0")/107955 - 77.mp4" "$(dirname "$0")/107955 - 77.jpg"; echo \'{"extractor_key":"TikTok","uploader":"tiktok","uploader_id":"107955","filepath":"\'"$(dirname "$0")"\'/107955 - 77.mp4"}\'')
+        session([{"id": 1, "url": "https://www.tiktok.com/@tiktok/video/77", "cover": True}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})
+        self.assertTrue(os.path.exists(os.path.join(d, "tiktok - 77.jpg")))
+        self.assertFalse(os.path.exists(os.path.join(d, "107955 - 77.jpg")))
+
     def test_ping(self):
         path, d = stub('[ "$1" = "--version" ] && echo 9.9.9')
         r = session([{"id": 7, "type": "ping"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]
