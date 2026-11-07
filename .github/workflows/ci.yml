@@ -8,5 +8,5 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: python3 host/test_host.py
-      - run: node --test test/extension.test.mjs
+      - run: node --test test/*.test.mjs
       - run: bash scripts/build-zip.sh
