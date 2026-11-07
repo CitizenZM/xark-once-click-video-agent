@@ -4,6 +4,7 @@ import { videoUrls, dedupeKey, canonical, PATTERNS } from "../extension/urls.js"
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { analyze, recommend, filterLibrary, outliers, formatsOf, creatorStats, formatStats, keywordStats, creativeBrief } from "../extension/insights.js";
+import { newestBatch, batchCsv } from "../extension/batch.js";
 import { buildPrompt, parseJson, groupAssignments, ask as aiAsk } from "../extension/ai.js";
 
 const D = 86400000, NOW = Date.UTC(2026, 10, 6);
@@ -345,4 +346,140 @@ test("analysis: formats from captions, creator stats, keyword lift, evidence-bas
 
   const p = buildPrompt("brief", l, [], { formats: formatStats(l), keywords: keywordStats(l) });
   assert.match(p.text, /"concepts"/); assert.match(p.text, /Tutorial \/ how-to/); assert.ok(!p.text.includes("tiktok.com/@"));
+});
+
+// ---- F3 queue reliability: a fresh background.js instance per test, host replies scripted by L.onPost ----
+let inst = 0;
+async function queueEnv(timing = { sec: 50, rateLimitMs: 150 }) {
+  const store = {}, posted = [], times = [], L = {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  globalThis.__oneclickTiming = timing;
+  globalThis.chrome = {
+    alarms: { create() {}, onAlarm: { addListener() {} } },
+    runtime: { lastError: undefined, getURL: (p) => "chrome-extension://abc/" + p, getManifest: () => ({ version: "9.9.9", optional_host_permissions: [] }), reload() {},
+      onInstalled: { addListener() {} }, onStartup: { addListener() {} }, onMessage: { addListener: (f) => (L.msg = f) },
+      connectNative() {
+        const ls = [];
+        return { onMessage: { addListener: (f) => ls.push(f) }, onDisconnect: { addListener() {} }, disconnect() {},
+          postMessage(m) { posted.push(m); times.push(Date.now()); const reply = (o, ms = 0) => setTimeout(() => ls.forEach((f) => f({ id: m.id, ...o })), ms);
+            (L.onPost || ((m2, rep) => rep({ ok: true, meta: { webpage_url: m2.url, extractor_key: "TikTok", file: "/x/" + m2.id + ".mp4" } })))(m, reply); } };
+      } },
+    commands: { onCommand: { addListener() {} } },
+    action: { onClicked: { addListener() {} }, setBadgeText: ({ text }) => (L.badge = text), setBadgeBackgroundColor() {} },
+    contextMenus: { create() {}, onClicked: { addListener() {} } },
+    notifications: { create() {} },
+    storage: { local: { get: async (k) => ({ [k]: structuredClone(store[k]) }), set: async (o) => { Object.assign(store, o); } } },
+    scripting: {}, tabs: {},
+  };
+  await import("../extension/background.js?q" + ++inst);
+  const popup = { url: "chrome-extension://abc/popup.html" };
+  const ask = (m, sender = popup) => new Promise((res) => L.msg(m, sender, res));
+  const tt = (id) => `https://www.tiktok.com/@q/video/${id}`;
+  return { store, posted, times, L, sleep, ask, tt, done: () => { delete globalThis.__oneclickTiming; } };
+}
+
+test("queue: pause starts nothing, shows the paused badge, resume starts the waiting jobs", async () => {
+  const { store, posted, L, sleep, ask, tt, done } = await queueEnv();
+  try {
+    assert.deepEqual(await ask({ type: "queue", action: "pause" }), { ok: true, paused: true });
+    assert.equal(store.queuePaused, true);
+    await ask({ type: "enqueue", url: tt(1001) }); await ask({ type: "enqueue", url: tt(1002) });
+    await sleep(300); // jobs reach storage on a 250 ms debounce
+    assert.equal(posted.length, 0);
+    assert.deepEqual(store.jobs.map((j) => j.state), ["queued", "queued"]);
+    assert.equal(L.badge, "‖");
+    await ask({ type: "queue", action: "resume" }); await sleep(400);
+    assert.equal(store.queuePaused, false);
+    assert.deepEqual(posted.map((m) => m.url).sort(), [tt(1001), tt(1002)]);
+    assert.deepEqual(store.jobs.map((j) => j.state), ["done", "done"]);
+  } finally { done(); }
+});
+
+test("queue: the parallel setting caps simultaneous downloads (1 -> never above 1, 3 -> reaches 3)", async () => {
+  const { store, posted, L, sleep, ask, tt, done } = await queueEnv();
+  try {
+    let inflight = 0, peak = 0;
+    L.onPost = (m, reply) => { inflight++; peak = Math.max(peak, inflight); setTimeout(() => { inflight--; reply({ ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", file: "/x.mp4" } }); }, 30); };
+    store.settings = { parallel: 1 };
+    for (let i = 0; i < 4; i++) await ask({ type: "enqueue", url: tt(2000 + i) });
+    await sleep(350);
+    assert.equal(posted.length, 4); assert.equal(peak, 1);
+    store.settings = { parallel: 3 }; peak = 0;
+    for (let i = 0; i < 6; i++) await ask({ type: "enqueue", url: tt(2100 + i) });
+    await sleep(350);
+    assert.equal(posted.length, 10); assert.equal(peak, 3);
+  } finally { done(); }
+});
+
+test("queue: 'wait between downloads' spaces the host calls by at least the setting", async () => {
+  const { store, posted, times, sleep, ask, tt, done } = await queueEnv({ sec: 50, rateLimitMs: 150 }); // 2 s -> 100 ms
+  try {
+    store.settings = { waitSec: 2 };
+    for (let i = 0; i < 4; i++) await ask({ type: "enqueue", url: tt(3000 + i) });
+    await sleep(600);
+    assert.equal(posted.length, 4);
+    for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 95, `gap ${i}: ${times[i] - times[i - 1]}ms`);
+  } finally { done(); }
+});
+
+test("queue: a retryable 429 requeues the job, holds new jobs, then succeeds; the 4th is an error", async () => {
+  const { store, posted, times, L, sleep, ask, tt, done } = await queueEnv({ sec: 50, rateLimitMs: 150 });
+  try {
+    const seen = {};
+    L.onPost = (m, reply) => {
+      seen[m.url] = (seen[m.url] || 0) + 1;
+      if (m.url.endsWith("/4001") && seen[m.url] === 1 || m.url.endsWith("/4009")) return reply({ ok: false, retryable: true, error: "The site is rate-limiting downloads; retrying in a minute" });
+      reply({ ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", file: "/x.mp4" } });
+    };
+    await ask({ type: "enqueue", url: tt(4001) }); await sleep(25);
+    await ask({ type: "enqueue", url: tt(4002) }); // arrives while the site is rate-limiting: must wait out the hold
+    await sleep(700);
+    const first = posted.findIndex((m) => m.url === tt(4001)), second = posted.findIndex((m, i) => i > first && m.url === tt(4001)), other = posted.findIndex((m) => m.url === tt(4002));
+    assert.ok(second > first && other > first);
+    assert.ok(times[second] - times[first] >= 140, "retry waited for the hold");
+    assert.ok(times[other] - times[first] >= 140, "other job waited for the hold");
+    const j = store.jobs.find((x) => x.url === tt(4001));
+    assert.deepEqual([j.state, j.retries], ["done", 1]);
+    // always rate-limited: 1 try + 3 retries, then a readable error
+    await ask({ type: "enqueue", url: tt(4009) }); await sleep(1200);
+    assert.equal(posted.filter((m) => m.url === tt(4009)).length, 4);
+    const e = store.jobs.find((x) => x.url === tt(4009));
+    assert.deepEqual([e.state, e.error], ["error", "The site is rate-limiting downloads; retrying in a minute"]);
+  } finally { done(); }
+});
+
+test("queue: maxMinutes is passed to the host; a 'too long' skip is state skipped, not an error, not retried", async () => {
+  const { store, posted, L, sleep, ask, tt, done } = await queueEnv();
+  try {
+    L.onPost = (m, reply) => reply({ ok: false, skipped: "too long" });
+    store.settings = { maxMinutes: 3 };
+    await ask({ type: "enqueue", url: tt(5001) }); await sleep(350);
+    assert.equal(posted.length, 1); assert.equal(posted[0].maxSeconds, 180);
+    const j = store.jobs[0];
+    assert.deepEqual([j.state, j.reason, j.error], ["skipped", "Longer than 3 min", undefined]);
+    assert.equal(store.errors, undefined); assert.equal(store.library, undefined);
+    store.settings = { maxMinutes: 0 };
+    await ask({ type: "enqueue", url: tt(5002) }); await sleep(80);
+    assert.ok(!("maxSeconds" in posted.at(-1)));
+  } finally { done(); }
+});
+
+test("queue: one enqueue-many action shares a batchId, a single click gets its own, and the CSV covers the newest batch", async () => {
+  const { store, sleep, ask, tt, done } = await queueEnv();
+  try {
+    store.library = [{ url: tt(6003), file: "/old.mp4", title: "Old, \"quoted\"" }]; // already saved: still listed in the batch report
+    const r = await ask({ type: "enqueue-many", hrefs: [tt(6001), tt(6002), tt(6003)] }, { tab: { id: 1 } });
+    assert.equal(r.queued, 2);
+    await sleep(350);
+    const batchOf = (id) => store.jobs.find((j) => j.url === tt(id)).batchId;
+    assert.ok(batchOf(6001)); assert.equal(batchOf(6001), batchOf(6002)); assert.equal(batchOf(6001), batchOf(6003));
+    await ask({ type: "enqueue", url: tt(6010) }); await sleep(350);
+    assert.notEqual(batchOf(6010), batchOf(6001));
+    // popup export: newest batch only = the single click
+    assert.deepEqual(newestBatch(store.jobs).map((j) => j.url), [tt(6010)]);
+    const csv = batchCsv(store.jobs.filter((j) => j.batchId === batchOf(6001)));
+    const rows = csv.split("\n");
+    assert.equal(rows[0], "url,state,reason,file,title");
+    assert.equal(rows.length, 1 + 3);   // 2 downloaded + 1 already saved, one row per submitted link
+    assert.ok(rows.some((x) => x.includes(",done,Already saved,/old.mp4,\"Old, \"\"quoted\"\"\"")));
+  } finally { done(); }
 });

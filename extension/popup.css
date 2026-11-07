@@ -12,6 +12,7 @@ header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1
 button{font:600 13px inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer;text-align:left}
 button:hover{border-color:var(--blue)}button span{color:var(--blue);margin-right:4px}
 button.link{border:0;padding:0;background:none;color:var(--blue);font-weight:500;margin-left:auto}
+#clear{margin-left:10px}#pause{margin-left:auto}.qtools{margin-top:6px}.qtools .link{margin-left:0}li.skipped .s{color:var(--amber)}li.skipped .err,li.queued .err{color:var(--mute)}
 .queue{margin:14px 14px 0}.qhead{display:flex;align-items:center;gap:6px;margin-bottom:6px}.mute{color:var(--mute)}
 ul{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto}
 li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:7px 0;border-top:1px solid var(--line)}

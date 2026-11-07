@@ -117,6 +117,9 @@ async function load() {
   $("#skipdup").checked = settings.skipDuplicates !== false;
   $("#autoupd").checked = settings.autoUpdate !== false;
   $("#btns").checked = !!settings.showButton;
+  $("#parallel").value = String(settings.parallel ?? 3);
+  $("#waitsec").value = String(settings.waitSec ?? 0);
+  $("#maxmin").value = String(settings.maxMinutes ?? 0);
   $("#errors").innerHTML = errors.slice(-8).reverse().map((e) => `<li>${esc(new Date(e.at).toLocaleString())}: ${esc(e.error)} <small>(${esc(e.url)})</small></li>`).join("") || `<li class="empty" style="color:var(--mute)">None</li>`;
   $("#csv").onclick = () => save("library.csv", ["saved,collection,platform,creator,title,url,duration,views,likes", ...library.map((v) => [new Date(v.at).toISOString(), v.folder, v.platform, v.uploader, v.title, v.url, v.duration, v.view_count, v.like_count].map(csvCell).join(","))].join("\n"), "text/csv");
   $("#json").onclick = () => save("library.json", JSON.stringify(library, null, 2), "application/json");
@@ -125,12 +128,12 @@ async function load() {
 
 async function saveSettings() {
   const { settings: prev = {} } = await chrome.storage.local.get("settings");
-  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked };
+  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked, parallel: Number($("#parallel").value), waitSec: Number($("#waitsec").value), maxMinutes: Number($("#maxmin").value) };
   await chrome.storage.local.set({ settings });
   $("#setMsg").textContent = "Saved";
   setTimeout(() => ($("#setMsg").textContent = ""), 1500);
 }
-for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd"]) $(id).onchange = saveSettings;
+for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd", "#parallel", "#waitsec", "#maxmin"]) $(id).onchange = saveSettings;
 $("#btns").onchange = async (e) => {
   const origins = chrome.runtime.getManifest().optional_host_permissions.filter((o) => !o.includes("anthropic.com"));
   if (e.target.checked) {
