@@ -65,6 +65,9 @@ let all = [];
 let view = [], shown = 200, current = [], folders = [];
 const allFolders = (lib, stored) => [...new Set([...stored, ...lib.map((v) => v.folder).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
 const opts = (first, list, counts) => `<option value="${first[0]}">${esc(first[1])}</option>` + list.map((f) => `<option value="${esc(f)}">${esc(f)}${counts ? ` (${counts[f] || 0})` : ""}</option>`).join("");
+// "Hook" = what is said in the first 3 seconds (from the local transcript); a link to make one when the file is saved.
+const hookCell = (v) => v.hook ? esc(v.hook) : v.noSpeech ? "<small>No speech</small>" : v.transcript ? "<small>-</small>"
+  : v.file ? `<a href="#" class="tr-btn" data-url="${esc(v.url)}">Transcribe</a>` : "";
 function renderTable(lib) {
   current = lib;
   const plats = [...new Set(lib.map((v) => v.platform))].sort();
@@ -80,16 +83,17 @@ function renderTable(lib) {
   const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, sort: $("#fsort").value, folder: fc.value });
   view = rows;
   $("#count").textContent = rows.length === lib.length ? `(${lib.length})` : `(${rows.length} of ${lib.length})`;
-  $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Length</th><th>Views</th><th>Likes</th><th>Note</th><th></th></tr>` +
-    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a></td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a></td></tr>`).join("") +
-    (rows.length > shown ? `<tr><td colspan="11"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
+  $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Hook</th><th>Length</th><th>Views</th><th>Likes</th><th>Note</th><th></th></tr>` +
+    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a></td><td class="hook">${hookCell(v)}</td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a></td></tr>`).join("") +
+    (rows.length > shown ? `<tr><td colspan="12"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
 }
 $("#table").addEventListener("click", async (e) => {
   const t = e.target.closest("a"); if (!t) return;
   if (t.id === "more") { e.preventDefault(); shown += 200; return renderTable(current); }
   if (!t.dataset.url) return;
   e.preventDefault();
-  if (t.classList.contains("del-btn")) { if (confirm("Remove this video from the list? The file stays on disk.")) await send({ type: "lib-delete", url: t.dataset.url }); }
+  if (t.classList.contains("tr-btn")) { t.textContent = "Transcribing…"; const r = await send({ type: "transcribe-one", url: t.dataset.url }); if (r && !r.ok) { t.textContent = "Transcribe"; alert((r && r.error) || "Transcription failed"); } }
+  else if (t.classList.contains("del-btn")) { if (confirm("Remove this video from the list? The file stays on disk.")) await send({ type: "lib-delete", url: t.dataset.url }); }
   else { const v = current.find((x) => x.url === t.dataset.url); const note = prompt("Note (use #tags to group)", (v && v.note) || ""); if (note !== null) await send({ type: "lib-note", url: t.dataset.url, note }); }
 });
 $("#table").addEventListener("change", (e) => { if (e.target.id === "tickall") document.querySelectorAll(".tick").forEach((c) => (c.checked = e.target.checked)); });
@@ -117,6 +121,7 @@ async function load() {
   $("#folder").value = settings.folder || "";
   $("#skipdup").checked = settings.skipDuplicates !== false;
   $("#autoupd").checked = settings.autoUpdate !== false;
+  $("#autotr").checked = !!settings.autoTranscribe;
   $("#btns").checked = !!settings.showButton;
   $("#parallel").value = String(settings.parallel ?? 3);
   $("#waitsec").value = String(settings.waitSec ?? 0);
@@ -137,12 +142,12 @@ async function load() {
 
 async function saveSettings() {
   const { settings: prev = {} } = await chrome.storage.local.get("settings");
-  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, showButton: $("#btns").checked, parallel: Number($("#parallel").value), waitSec: Number($("#waitsec").value), maxMinutes: Number($("#maxmin").value) };
+  const settings = { ...prev, quality: $("#quality").value, naming: $("#naming").value, folder: $("#folder").value.trim(), skipDuplicates: $("#skipdup").checked, autoUpdate: $("#autoupd").checked, autoTranscribe: $("#autotr").checked, showButton: $("#btns").checked, parallel: Number($("#parallel").value), waitSec: Number($("#waitsec").value), maxMinutes: Number($("#maxmin").value) };
   await chrome.storage.local.set({ settings });
   $("#setMsg").textContent = "Saved";
   setTimeout(() => ($("#setMsg").textContent = ""), 1500);
 }
-for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd", "#parallel", "#waitsec", "#maxmin"]) $(id).onchange = saveSettings;
+for (const id of ["#quality", "#naming", "#folder", "#skipdup", "#autoupd", "#autotr", "#parallel", "#waitsec", "#maxmin"]) $(id).onchange = saveSettings;
 $("#btns").onchange = async (e) => {
   const origins = chrome.runtime.getManifest().optional_host_permissions.filter((o) => !o.includes("anthropic.com"));
   if (e.target.checked) {

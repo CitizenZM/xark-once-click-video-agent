@@ -250,7 +250,9 @@ def ping():
                            env={**os.environ, "PATH": PATH}).stdout.strip() or None
     except Exception:
         v = None
-    return {"type": "pong", "engine": v, "ffmpeg": bool(shutil.which("ffmpeg", path=PATH)), "outDir": OUT_DIR}
+    import transcribe
+    return {"type": "pong", "engine": v, "ffmpeg": bool(shutil.which("ffmpeg", path=PATH)), "outDir": OUT_DIR,
+            "whisper": bool(transcribe.find_whisper() and transcribe.find_model())}
 
 
 def expand(msg):
@@ -324,6 +326,9 @@ def handle(msg, on_pct=None):
         return update()
     if kind == "expand":
         return expand(msg)
+    if kind == "transcribe":
+        import transcribe
+        return transcribe.transcribe(msg.get("file"))
     return download(msg or {}, on_pct)
 
 

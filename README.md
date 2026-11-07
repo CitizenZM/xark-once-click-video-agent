@@ -28,6 +28,17 @@ Open the dashboard (right-click the toolbar icon → "Open library & insights").
 
 Files go to `~/Downloads/OneClick` by default. The helper log is `~/Library/Logs/oneclick-host.log` (macOS) or `~/.local/state/oneclick-host.log` (Linux). engine updates itself weekly, and once when a site starts refusing downloads.
 
+## Transcription (optional)
+
+Turn on "Transcribe videos after download" in Settings to get a transcript and the spoken opening hook (first 3 seconds) for each video. It runs on your computer with whisper.cpp; nothing is uploaded. One-time setup:
+
+```bash
+brew install whisper-cpp
+mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+```
+
+The model is about 150 MB and English only. Videos already in the library get a "Transcribe" link in the Hook column.
+
 ## Develop
 ```bash
 python3 host/test_host.py && node --test test/extension.test.mjs   # tests

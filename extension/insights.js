@@ -131,7 +131,7 @@ export function recommend(lib) {
 
 // ---------- deeper analysis: creators, formats, keywords, creative brief ----------
 const likeRate = eng;
-const textOf = (v) => `${v.title || ""} ${String(v.description || "").slice(0, 400)}`;
+const textOf = (v) => `${v.title || ""} ${String(v.description || "").slice(0, 400)} ${v.transcript || ""}`;
 const medOrNull = (xs) => median(xs);
 
 // Content format, from words in the title/caption/tags. A video can have several.
@@ -210,7 +210,7 @@ export function creativeBrief(lib) {
   const a = analyze(lib);
   const len = a.buckets.filter((b) => b.n >= 2 && b.avgEng != null).sort((x, y) => y.avgEng - x.avgEng)[0];
   const top2 = [...lib].sort((x, y) => (y.view_count || 0) - (x.view_count || 0));
-  const hooks = [...new Set(top2.map((v) => String(v.description || v.title || "").split("\n")[0].trim()).filter((h) => h.length > 8))].slice(0, 4);
+  const hooks = [...new Set(top2.map((v) => String(v.hook || v.description || v.title || "").split("\n")[0].trim()).filter((h) => h.length > 8))].slice(0, 4);
   const out = [];
   if (fm[0]) out.push({ title: `Lead with the "${fm[0].format}" format`, basis: `${fm[0].n} saved videos, median views ${fm[0].lift.toFixed(1)}x your library median` });
   if (fm[1]) out.push({ title: `Test "${fm[1].format}" as the second angle`, basis: `${fm[1].n} videos, ${fm[1].lift.toFixed(1)}x median views` });

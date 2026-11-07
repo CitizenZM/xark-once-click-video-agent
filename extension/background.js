@@ -1,4 +1,5 @@
 import { videoUrls, dedupeKey } from "./urls.js";
+import { createTranscriber } from "./transcribe.js";
 
 const HOST = "com.barron.oneclick_dl";
 let port = null;
@@ -92,7 +93,7 @@ const isLive = (j) => j.state === "queued" || j.state === "running";
 async function loadQueue() {
   // a job that was running when the worker stopped never got its answer: queue it again
   if (!queue) paused = !!(await get("queuePaused", false));
-  if (!queue) queue = (await get("jobs", [])).map((j) => ({ ...j, id: String(j.id), ...(j.state === "running" ? { state: "queued", pct: 0 } : {}) })); // ids are strings (older builds stored numbers)
+  if (!queue) queue = (await get("jobs", [])).map((j) => ({ ...j, id: String(j.id), ...(j.state === "running" ? { state: "queued", pct: 0 } : j.state === "transcribing" ? { state: "done" } : {}) })); // ids are strings (older builds stored numbers)
   return queue;
 }
 function flush() {
@@ -106,6 +107,7 @@ function flush() {
   }, 250);
 }
 const patchJob = (j, p) => { Object.assign(j, p); flush(); };
+const transcriber = createTranscriber({ call, get, locked, patchJob });
 const waitFor = (id) => new Promise((res) => { if (!waiters.has(id)) waiters.set(id, []); waiters.get(id).push(res); });
 function settle(j, r) { const ws = waiters.get(j.id) || []; waiters.delete(j.id); ws.forEach((f) => f(r)); }
 
@@ -160,7 +162,7 @@ async function pumpOnce() {
   flush();
 }
 async function run(j) {
-  const { quality = "best", folder = "", naming = "creator-title-id", maxMinutes = 0 } = await get("settings", {});
+  const { quality = "best", folder = "", naming = "creator-title-id", maxMinutes = 0, autoTranscribe = false } = await get("settings", {});
   const maxSeconds = Math.max(0, Number(maxMinutes) || 0) * 60;
   let r;
   try {
@@ -185,6 +187,7 @@ async function run(j) {
     patchJob(j, r.ok ? { state: "done", pct: 100, title: (r.meta && r.meta.title) || "", file: (r.meta && r.meta.file) || "", reason: undefined } : { state: "error", error: r.error, reason: undefined });
   }
   settle(j, r);
+  if (r.ok && autoTranscribe) transcriber.stage(j, r.meta); // second stage: not counted against the download slots
   pump();
 }
 async function queueAction({ action, id }) {
@@ -373,6 +376,7 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
     : m.type === "download" ? downloadMany(videoUrls(m.urls || [], 200), m.folder).then(({ ok, skipped, failed }) => ({ ok, skipped, failed }))
     : m.type === "download-one" ? oneClick({ url: m.url })
     : m.type === "enqueue" ? enqueueOne(m)
+    : m.type === "transcribe-one" ? transcriber.one(m)
     : m.type === "queue" ? queueAction(m)
     : m.type === "enqueue-many" ? enqueueMany(m)
     : m.type === "lib-folder" ? moveToFolder(videoUrls(m.urls || [], 500), m.folder)
