@@ -70,3 +70,8 @@
 - 完成: Fixed ai.js Sonnet 5.5 cutoff risk: max_tokens 8000, effort low, text-only parse, max_tokens stop error; pushed 994a8d6
 - 验证: node --test 49 pass 0 fail; new test fails on old ai.js (2000!==8000); python unittest OK; build-zip OK
 - 下一步: Test AI buttons once with a real Anthropic key
+
+### 2026-11-07 21:00 · claude-opus-5-5
+- 完成: v3.5.2: Instagram ranked by likes instead of 0 views (JS+Python port); competitor gap doc docs/COMPETITOR-GAP-20261107.md
+- 验证: node 50 pass, python 67 OK, new test fails on old code, CI success 6cd035f, real-data preview ok
+- 下一步: Barron picks P1 features (creator-relative outlier, velocity, AI tags, script from reference)
