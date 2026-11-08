@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.5.2
+- Instagram hides view counts and length. The dashboard no longer shows them as 0: missing numbers show as "–", Instagram videos are ranked by likes ("Top performers", Outliers, best video), and Lift falls back to likes (marked "likes") when a group has no view counts. The total shows likes when no video has views, and the creative brief now has ideas for Instagram-only libraries. The MCP server's Python port gives the same numbers (new `liftBy` field).
+- The AI button asks Sonnet 5.5 for low thinking effort and leaves room for the answer, so long answers are no longer cut off.
+
 ## 3.5.1
 Fixes found by testing 3.5.0 against real data in Chrome.
 - Instagram creators were labelled with Instagram's numeric account id; they now show the account name, and one account stays one creator. Profile links use a handle only when a saved link contains one.
