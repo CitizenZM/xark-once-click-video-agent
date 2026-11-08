@@ -8,7 +8,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const send = (m) => chrome.runtime.sendMessage(m);
 const pct = (x) => (x == null ? "n/a" : (x * 100).toFixed(1) + "%");
 const link = (u) => (/^https?:\/\//.test(u) ? u : "#");
-const short = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n || 0));
+const short = (n) => (n == null ? "–" : n >= 1e9 ? (n / 1e9).toFixed(1) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(n || 0));
 const INSTALL = "curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash";
 
 const bars = (items, empty = "No data yet") =>
@@ -37,19 +37,19 @@ function renderJobs(jobs) {
 
 function renderInsights(lib) {
   const a = analyze(lib);
-  $("#kpis").innerHTML = [[a.total, "videos saved"], [a.creatorsCount, "creators"], [short(a.totalViews), "total views"], [pct(a.avgEngagement), "avg like rate"]]
+  $("#kpis").innerHTML = [[a.total, "videos saved"], [a.creatorsCount, "creators"], a.viewsKnown ? [short(a.totalViews), "total views"] : [short(a.totalLikes), "total likes (no view counts)"], [pct(a.avgEngagement), "avg like rate"]]
     .map(([b, s]) => `<div class="kpi"><b>${esc(b)}</b><span>${s}</span></div>`).join("");
   $("#headlines").innerHTML = a.headlines.length ? a.headlines.map((h) => `<li>${esc(h)}</li>`).join("") : `<li class="empty">Download a few videos and insights appear here.</li>`;
   const days = a.perDay.slice(-14), maxd = Math.max(1, ...days.map((d) => d.n));
   $("#charts").innerHTML = `
     <div class="card"><h3>Platforms</h3>${bars(a.byPlatform)}</div>
-    <div class="card"><h3>Video length</h3>${bars(a.buckets.map((b) => ({ k: b.k, n: b.n })).filter((b) => b.n).sort((x, y) => y.n - x.n))}</div>
+    <div class="card"><h3>Video length</h3>${bars(a.buckets.map((b) => ({ k: b.k, n: b.n })).filter((b) => b.n).sort((x, y) => y.n - x.n), "Length not shared for these videos")}</div>
     <div class="card"><h3>Top creators</h3>${bars(a.creators.slice(0, 6).map((c) => ({ k: c.k, n: c.n })))}</div>
     <div class="card"><h3>Top hashtags</h3>${bars(a.hashtags.slice(0, 8))}</div>
     <div class="card"><h3>Saved per day (last 14)</h3>${days.length ? `<div class="cols">${days.map((d) => `<div title="${esc(d.k)}: ${d.n}" style="height:${(d.n / maxd) * 100}%"></div>`).join("")}</div><div class="colsx">${days.map((d) => `<span>${esc(d.k.slice(8))}</span>`).join("")}</div>` : `<p class="empty">No data yet</p>`}</div>
-    <div class="card"><h3>Outliers: beat their baseline</h3><ul class="list">${outliers(lib).map((o) => `<li><a href="${esc(link(o.video.url))}" target="_blank" rel="noopener">${esc(o.video.title || o.video.url)}</a><small>${esc(o.video.uploader)} · ${esc(o.basis)}</small></li>`).join("") || `<li class="empty">Needs a few saved videos per platform (or follower counts)</li>`}</ul></div>
+    <div class="card"><h3>Outliers: beat their baseline</h3><ul class="list">${outliers(lib).map((o) => `<li><a href="${esc(link(o.video.url))}" target="_blank" rel="noopener">${esc(o.video.title || o.video.url)}</a><small>${esc(o.video.uploader)} · ${esc(o.basis)}</small></li>`).join("") || `<li class="empty">Needs 3+ saved videos per platform with views or likes</li>`}</ul></div>
     <div class="card"><h3>Like rate by platform</h3>${a.likeRateByPlatform.filter((p) => p.rate != null).map((p) => `<div class="bar"><span class="lab">${esc(p.k)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(4, (p.rate / Math.max(...a.likeRateByPlatform.map((x) => x.rate || 0))) * 100)}%"></span></span><span class="val">${pct(p.rate)}</span></div>`).join("") || `<p class="empty">No data yet</p>`}</div>
-    <div class="card"><h3>Most viewed</h3><ul class="list">${a.topVideos.map((v) => `<li><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a><small>${esc(v.uploader)} · ${short(v.view_count)} views</small></li>`).join("") || `<li class="empty">No data yet</li>`}</ul></div>
+    <div class="card"><h3>Top performers</h3><ul class="list">${a.topVideos.map((v) => `<li><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a><small>${esc(v.uploader)} · ${v.view_count > 0 ? short(v.view_count) + " views" : short(v.like_count) + " likes"}</small></li>`).join("") || `<li class="empty">No data yet</li>`}</ul></div>
     <div class="card"><h3>Growing fastest (last check)</h3><ul class="list">${fastestGrowing(lib).map((g) => `<li><a href="${esc(link(g.video.url))}" target="_blank" rel="noopener">${esc(g.video.title || g.video.url)}</a><small>${esc(g.video.uploader)} · +${(g.rate * 100).toFixed(1)}% per day · ${g.checks} check${g.checks > 1 ? "s" : ""}</small></li>`).join("") || `<li class="empty">Videos are re-checked 1, 7 and 30 days after saving</li>`}</ul></div>`;
 }
 
@@ -275,7 +275,9 @@ function sortable(el, key, cols, rows, empty) {
     const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); }
   };
 }
-const liftHtml = (x) => (x == null ? "" : `<span class="lift ${x >= 1.5 ? "hi" : x < 0.75 ? "lo" : ""}">${x.toFixed(1)}x</span>`);
+const liftHtml = (x, by) => (x == null ? "–" : `<span class="lift ${x >= 1.5 ? "hi" : x < 0.75 ? "lo" : ""}" title="by ${by}">${x.toFixed(1)}x${by === "likes" ? " <small>likes</small>" : ""}</span>`);
+const LIFT_TIP = "Median views ÷ the median of this view. Where views are hidden (Instagram), median likes ÷ the median likes of those videos";
+const VIEWS_TIP = "– = the platform does not share view counts (Instagram)";
 const go = (q, text) => `<a href="#" data-go="${esc(q)}">${esc(text)}</a>`;
 const secs = (x) => (x ? Math.round(x) + "s" : "");
 
@@ -285,14 +287,14 @@ function renderCreators(lib) {
   sortable($("#ctable"), "creators", [
     { k: "creator", h: "Creator", v: (r) => r.creator.toLowerCase(), html: (r) => go(r.creator, r.creator) + `<small>${esc(r.platform)}${r.formats.length ? " · " + esc(r.formats.join(", ")) : ""}</small>` },
     { k: "n", h: "Saved", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
-    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
-    { k: "lift", h: "Lift", num: 1, tip: "Their median views ÷ the median of this view", v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "median", h: "Median views", num: 1, tip: VIEWS_TIP, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, tip: LIFT_TIP, v: (r) => r.lift, html: (r) => liftHtml(r.lift, r.liftBy) },
     { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
     { k: "followers", h: "Followers", num: 1, v: (r) => r.followers, html: (r) => (r.followers ? short(r.followers) : "") },
-    { k: "vpf", h: "Views / follower", num: 1, tip: "Median views ÷ followers: above 1 means they reach beyond their audience", v: (r) => r.viewsPerFollower, html: (r) => (r.viewsPerFollower != null ? r.viewsPerFollower.toFixed(2) : "") },
+    { k: "vpf", h: "Views / follower", num: 1, tip: "Median views ÷ followers: above 1 means they reach beyond their audience", v: (r) => r.viewsPerFollower, html: (r) => (r.viewsPerFollower != null ? r.viewsPerFollower.toFixed(2) : "–") },
     { k: "len", h: "Avg length", num: 1, v: (r) => r.avgSeconds, html: (r) => secs(r.avgSeconds) },
     { k: "tags", h: "Top hashtags", v: (r) => r.tags.join(" "), html: (r) => r.tags.map((t) => go("#" + t, "#" + t)).join(" ") },
-    { k: "best", h: "Best video", v: (r) => r.best.view_count || 0, html: (r) => `<a href="${esc(link(r.best.url))}" target="_blank" rel="noopener">${esc((r.best.title || r.best.url).slice(0, 60))}</a>` },
+    { k: "best", h: "Best video", v: (r) => r.best.view_count || r.best.like_count || 0, html: (r) => `<a href="${esc(link(r.best.url))}" target="_blank" rel="noopener">${esc((r.best.title || r.best.url).slice(0, 60))}</a>` },
   ], rows, "Save a few videos to see creators.");
 }
 $("#cq").addEventListener("input", () => renderCreators(scoped()));
@@ -300,13 +302,13 @@ $("#cq").addEventListener("input", () => renderCreators(scoped()));
 function renderFormats(lib) {
   const rows = formatStats(lib);
   const top = rows.filter((r) => r.format !== "Other" && r.lift != null).sort((a, b) => b.lift - a.lift).slice(0, 8), max = Math.max(1, ...top.map((r) => r.lift));
-  $("#fchart").innerHTML = `<h3>Which formats get the most views <span class="note">(median views vs your typical saved video)</span></h3>` +
-    (top.length ? top.map((r) => `<div class="bar"><span class="lab">${esc(r.format)}</span><span class="track"><span class="fill ${r.lift >= 1 ? "" : "low"}" style="display:block;width:${Math.max(4, (r.lift / max) * 100)}%"></span></span><span class="val">${r.lift.toFixed(1)}x</span></div>`).join("") : `<p class="empty">Needs saved videos with captions.</p>`);
+  $("#fchart").innerHTML = `<h3>Which formats perform best <span class="note">(median views vs your typical saved video; likes where views are hidden)</span></h3>` +
+    (top.length ? top.map((r) => `<div class="bar"><span class="lab">${esc(r.format)}</span><span class="track"><span class="fill ${r.lift >= 1 ? "" : "low"}" style="display:block;width:${Math.max(4, (r.lift / max) * 100)}%"></span></span><span class="val">${r.lift.toFixed(1)}x${r.liftBy === "likes" ? " likes" : ""}</span></div>`).join("") : `<p class="empty">Needs saved videos with captions.</p>`);
   sortable($("#ftable"), "formats", [
     { k: "format", h: "Format", v: (r) => r.format, html: (r) => esc(r.format) },
     { k: "n", h: "Videos", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
-    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
-    { k: "lift", h: "Lift", num: 1, v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "median", h: "Median views", num: 1, tip: VIEWS_TIP, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, tip: LIFT_TIP, v: (r) => r.lift, html: (r) => liftHtml(r.lift, r.liftBy) },
     { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
     { k: "len", h: "Avg length", num: 1, v: (r) => r.avgSeconds, html: (r) => secs(r.avgSeconds) },
     { k: "ex", h: "Best example", v: (r) => r.example.view_count || 0, html: (r) => `<a href="${esc(link(r.example.url))}" target="_blank" rel="noopener">${esc((r.example.title || r.example.url).slice(0, 60))}</a> <small>${esc(r.example.uploader || "")}</small>` },
@@ -317,13 +319,13 @@ function renderKeywords(lib) {
   const q = $("#kq").value.trim().toLowerCase(), tagsOnly = $("#konlytags").checked;
   const rows = keywordStats(lib).filter((k) => (!q || k.keyword.includes(q)) && (!tagsOnly || k.keyword.startsWith("#")));
   const cloud = [...rows].sort((a, b) => b.n - a.n).slice(0, 40), maxN = Math.max(1, ...cloud.map((k) => k.n));
-  $("#kcloud").innerHTML = cloud.map((k) => `<a href="#" data-go="${esc(k.keyword)}" class="${k.lift >= 1.5 ? "hi" : ""}" style="font-size:${12 + Math.round((k.n / maxN) * 12)}px" title="${k.n} videos · ${k.lift ? k.lift.toFixed(1) + "x views" : ""}">${esc(k.keyword)}</a>`).join("") || `<p class="empty">Needs 2+ videos sharing a word.</p>`;
+  $("#kcloud").innerHTML = cloud.map((k) => `<a href="#" data-go="${esc(k.keyword)}" class="${k.lift >= 1.5 ? "hi" : ""}" style="font-size:${12 + Math.round((k.n / maxN) * 12)}px" title="${k.n} videos · ${k.lift ? k.lift.toFixed(1) + "x " + k.liftBy : ""}">${esc(k.keyword)}</a>`).join("") || `<p class="empty">Needs 2+ videos sharing a word.</p>`;
   sortable($("#ktable"), "keywords", [
     { k: "keyword", h: "Keyword", v: (r) => r.keyword, html: (r) => go(r.keyword, r.keyword) },
     { k: "n", h: "Videos", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
     { k: "creators", h: "Creators", num: 1, v: (r) => r.creators, html: (r) => r.creators },
-    { k: "median", h: "Median views", num: 1, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
-    { k: "lift", h: "Lift", num: 1, v: (r) => r.lift, html: (r) => liftHtml(r.lift) },
+    { k: "median", h: "Median views", num: 1, tip: VIEWS_TIP, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, tip: LIFT_TIP, v: (r) => r.lift, html: (r) => liftHtml(r.lift, r.liftBy) },
     { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
   ], rows, "No keyword appears in 2 or more videos yet.");
 }
@@ -335,7 +337,7 @@ function renderBrief(lib) {
   const b = creativeBrief(lib);
   if (!b) return ($("#brief").innerHTML = `<div class="card"><p class="empty">Save at least 3 videos (with captions) to get a brief.</p></div>`);
   $("#brief").innerHTML = `<div class="card"><h3>What to make next</h3><ul class="list">${b.ideas.map((i) => `<li>${esc(i.title)}<small>${esc(i.basis)}</small></li>`).join("") || `<li class="empty">Not enough repeated formats or keywords yet.</li>`}</ul></div>
-    <div class="card"><h3>Opening lines that worked</h3><ul class="list">${b.hooks.map((h) => `<li>“${esc(h.slice(0, 140))}”</li>`).join("") || `<li class="empty">No captions yet.</li>`}</ul><p class="note">First caption lines of your most viewed saved videos: reuse the structure, not the words.</p></div>
+    <div class="card"><h3>Opening lines that worked</h3><ul class="list">${b.hooks.map((h) => `<li>“${esc(h.slice(0, 140))}”</li>`).join("") || `<li class="empty">No captions yet.</li>`}</ul><p class="note">First lines of your best-performing saved videos (views, or likes where views are hidden): reuse the structure, not the words.</p></div>
     <div class="card"><h3>Creators to model</h3><ul class="list">${b.topCreators.map((c) => `<li>${go(c, c)}</li>`).join("") || `<li class="empty">Save 2+ videos from a creator.</li>`}</ul></div>`;
   $("#brief").onclick = (e) => { const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); } };
 }

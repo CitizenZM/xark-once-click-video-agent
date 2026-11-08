@@ -8,6 +8,7 @@
    "avgLikeRate": 0.06328239954725524,
    "avgSeconds": 32.333333333333336,
    "lift": 1.263157894736842,
+   "liftBy": "views",
    "totalViews": 525000,
    "followers": 50000,
    "viewsPerFollower": 2.4,
@@ -50,6 +51,7 @@
    "avgLikeRate": 0.044444444444444446,
    "avgSeconds": 46,
    "lift": 0.9157894736842105,
+   "liftBy": "views",
    "totalViews": 658000,
    "followers": null,
    "viewsPerFollower": null,
@@ -93,6 +95,7 @@
    "avgLikeRate": 0.04495682888540031,
    "avgSeconds": 117.5,
    "lift": 6.526315789473684,
+   "liftBy": "views",
    "totalViews": 1240000,
    "followers": 1200000,
    "viewsPerFollower": 0.5166666666666667,
@@ -133,6 +136,7 @@
    "avgLikeRate": 0.06853535353535353,
    "avgSeconds": 37.5,
    "lift": 0.3526315789473684,
+   "liftBy": "views",
    "totalViews": 67000,
    "followers": null,
    "viewsPerFollower": null,
@@ -173,6 +177,7 @@
    "avgLikeRate": 0.05,
    "avgSeconds": 12,
    "lift": 0.18947368421052632,
+   "liftBy": "views",
    "totalViews": 18000,
    "followers": null,
    "viewsPerFollower": null,
@@ -213,6 +218,7 @@
    "avgLikeRate": null,
    "avgSeconds": null,
    "lift": null,
+   "liftBy": null,
    "totalViews": 0,
    "followers": null,
    "viewsPerFollower": null,
@@ -245,6 +251,7 @@
    "avgLikeRate": 0.04,
    "avgSeconds": 47.333333333333336,
    "lift": 0.9157894736842105,
+   "liftBy": "views",
    "example": {
     "url": "https://www.tiktok.com/@glow.ana/video/7001",
     "title": "3 step skincare routine",
@@ -274,6 +281,7 @@
    "avgLikeRate": 0.03898860398860399,
    "avgSeconds": 59,
    "lift": 0.9157894736842105,
+   "liftBy": "views",
    "example": {
     "url": "https://www.youtube.com/watch?v=yt0002",
     "title": "Top 5 mistakes new creators make",
@@ -300,6 +308,7 @@
    "avgLikeRate": 0.054789335088874264,
    "avgSeconds": 87,
    "lift": 6.7894736842105265,
+   "liftBy": "views",
    "example": {
     "url": "https://www.youtube.com/watch?v=yt0001",
     "title": "Phone A vs Phone B: which is better?",
@@ -326,6 +335,7 @@
    "avgLikeRate": 0.044444444444444446,
    "avgSeconds": 36.5,
    "lift": 3.3,
+   "liftBy": "views",
    "example": {
     "url": "https://www.tiktok.com/@kitchen.kai/video/7101",
     "title": "Protein pancakes recipe",
@@ -355,6 +365,7 @@
    "avgLikeRate": 0.05848290598290598,
    "avgSeconds": 61,
    "lift": 1.605263157894737,
+   "liftBy": "views",
    "example": {
     "url": "https://www.youtube.com/watch?v=yt0002",
     "title": "Top 5 mistakes new creators make",
@@ -381,6 +392,7 @@
    "avgLikeRate": 0.06774193548387097,
    "avgSeconds": 34,
    "lift": 3.263157894736842,
+   "liftBy": "views",
    "example": {
     "url": "https://www.tiktok.com/@glow.ana/video/7002",
     "title": "Honest review: the serum",
@@ -409,6 +421,7 @@
    "avgLikeRate": 0.042105263157894736,
    "avgSeconds": 41,
    "lift": 1,
+   "liftBy": "views",
    "example": {
     "url": "https://www.tiktok.com/@glow.ana/video/7003",
     "title": "Before and after 30 days",
@@ -435,6 +448,7 @@
    "avgLikeRate": 0.06818181818181818,
    "avgSeconds": 48,
    "lift": 0.23157894736842105,
+   "liftBy": "views",
    "example": {
     "url": "https://www.instagram.com/reel/Cdef456/",
     "title": "Unboxing the spring haul",
@@ -461,6 +475,7 @@
    "avgLikeRate": 0.04183673469387755,
    "avgSeconds": 140,
    "lift": 10.31578947368421,
+   "liftBy": "views",
    "example": {
     "url": "https://www.youtube.com/watch?v=yt0001",
     "title": "Phone A vs Phone B: which is better?",
@@ -487,6 +502,7 @@
    "avgLikeRate": 0.05,
    "avgSeconds": 12,
    "lift": 0.18947368421052632,
+   "liftBy": "views",
    "example": {
     "url": "https://x.com/pov_guy/status/9001",
     "title": "POV: you finally find the one",
@@ -513,6 +529,7 @@
    "avgLikeRate": 0.05,
    "avgSeconds": 12,
    "lift": 0.18947368421052632,
+   "liftBy": "views",
    "example": {
     "url": "https://x.com/pov_guy/status/9001",
     "title": "POV: you finally find the one",
@@ -539,6 +556,7 @@
    "avgLikeRate": null,
    "avgSeconds": null,
    "lift": null,
+   "liftBy": null,
    "example": {
     "url": "https://www.tiktok.com/@mystery/video/7201",
     "title": "untitled",
@@ -565,6 +583,7 @@
    "avgLikeRate": 0.06328239954725524,
    "avgSeconds": 32.333333333333336,
    "lift": 1.263157894736842,
+   "liftBy": "views",
    "creators": 1
   },
   {
@@ -574,6 +593,7 @@
    "avgLikeRate": 0.05328239954725524,
    "avgSeconds": 29,
    "lift": 1,
+   "liftBy": "views",
    "creators": 2
   },
   {
@@ -583,6 +603,7 @@
    "avgLikeRate": 0.04495682888540031,
    "avgSeconds": 117.5,
    "lift": 6.526315789473684,
+   "liftBy": "views",
    "creators": 1
   },
   {
@@ -592,6 +613,7 @@
    "avgLikeRate": 0.044444444444444446,
    "avgSeconds": 36.5,
    "lift": 3.3,
+   "liftBy": "views",
    "creators": 1
   },
   {
@@ -601,6 +623,7 @@
    "avgLikeRate": 0.04,
    "avgSeconds": 38.5,
    "lift": 1.0894736842105264,
+   "liftBy": "views",
    "creators": 2
   },
   {
@@ -610,6 +633,7 @@
    "avgLikeRate": 0.07444444444444445,
    "avgSeconds": 24.5,
    "lift": 0.868421052631579,
+   "liftBy": "views",
    "creators": 2
   },
   {
@@ -619,6 +643,7 @@
    "avgLikeRate": 0.034444444444444444,
    "avgSeconds": 41,
    "lift": 0.6947368421052632,
+   "liftBy": "views",
    "creators": 2
   },
   {
@@ -628,6 +653,7 @@
    "avgLikeRate": 0.06853535353535353,
    "avgSeconds": 37.5,
    "lift": 0.3526315789473684,
+   "liftBy": "views",
    "creators": 1
   }
  ],
@@ -639,6 +665,7 @@
    "avgLikeRate": 0.06328239954725524,
    "avgSeconds": 32.333333333333336,
    "lift": 1.263157894736842,
+   "liftBy": "views",
    "creators": 1
   },
   {
@@ -648,6 +675,7 @@
    "avgLikeRate": 0.05328239954725524,
    "avgSeconds": 29,
    "lift": 1,
+   "liftBy": "views",
    "creators": 2
   }
  ],
@@ -667,7 +695,7 @@
    },
    {
     "title": "Work these words into hooks and captions: creators, #mealprep, #skincare, #routine, serum",
-    "basis": "keywords whose videos get the most views (2+ videos each)"
+    "basis": "keywords whose videos get the most views (or likes where views are hidden), 2+ videos each"
    }
   ],
   "hooks": [

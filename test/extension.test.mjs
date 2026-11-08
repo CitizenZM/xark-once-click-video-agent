@@ -502,3 +502,33 @@ test("queue: one enqueue-many action shares a batchId, a single click gets its o
     assert.ok(rows.some((x) => x.includes(",done,Already saved,/old.mp4,\"Old, \"\"quoted\"\"\"")));
   } finally { done(); }
 });
+
+// Instagram gives likes but no view count or length: rank and lift by likes instead of showing 0 views.
+test("instagram without view counts: lift, outliers, top videos and brief use likes", () => {
+  const mk = (i, who, desc, likes) => ({ url: `https://www.instagram.com/reel/R${i}/`, platform: "Instagram", uploader: who, uploader_id: String(9000 + i),
+    title: desc, description: desc, view_count: null, duration: null, like_count: likes, tags: [], at: NOW - i });
+  const l = [
+    mk(1, "anna", "How to make protein pancakes #protein", 5548),
+    mk(2, "anna", "How to hit your protein goal #protein", 1476),
+    mk(3, "ben", "My honest whey review #protein", 391),
+    mk(4, "ben", "Whey review part 2", 50),
+    mk(5, "cy", "Morning routine #grwm", 3),
+  ];
+  const a = analyze(l);
+  assert.deepEqual([a.totalViews, a.viewsKnown, a.totalLikes], [0, 0, 7468]);
+  assert.equal(a.topVideos[0].url, l[0].url);                                     // ranked by likes, not all tied at 0
+  assert.ok(a.headlines.some((h) => /Instagram does not share view counts/.test(h)));
+  const anna = creatorStats(l).find((c) => c.creator === "anna");
+  assert.deepEqual([anna.medianViews, anna.liftBy, anna.best.url], [null, "likes", l[0].url]);
+  assert.equal(anna.lift.toFixed(2), (3512 / 391).toFixed(2));                    // median likes 3512 vs library median likes 391
+  const o = outliers(l);
+  assert.equal(o[0].video.url, l[0].url); assert.match(o[0].basis, /median likes of your saved Instagram videos/);
+  const how = formatStats(l).find((f) => f.format === "Tutorial / how-to");
+  assert.equal(how.liftBy, "likes");
+  const b = creativeBrief(l);
+  assert.ok(b.ideas.length >= 1, "brief has ideas without view counts");
+  assert.match(b.ideas[0].basis, /median likes/);
+  // a TikTok video with views keeps the views baseline
+  const mixed = [...l, { ...l[0], url: "https://www.tiktok.com/@t/video/1", platform: "TikTok", uploader: "t", uploader_id: "t", view_count: 1000, like_count: 10 }];
+  assert.equal(creatorStats(mixed).find((c) => c.creator === "t").liftBy, "views");
+});

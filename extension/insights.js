@@ -27,15 +27,28 @@ const median = (xs) => {
   const s = xs.filter((x) => x > 0).sort((a, b) => a - b);
   return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null;
 };
+// Best first: views, then likes (Instagram gives no view count, only likes).
+const byPerf = (a, b) => (b.view_count || 0) - (a.view_count || 0) || (b.like_count || 0) - (a.like_count || 0);
+// Baselines for lift: median views of the library, and median likes of the videos that have no view count.
+const baselines = (lib) => ({ views: median(lib.map((v) => v.view_count)), likes: median(lib.filter((v) => !(v.view_count > 0)).map((v) => v.like_count)) });
 
 // Videos that beat their baseline. Baseline is the creator's follower count when engine knows it
 // (views / followers >= 1), otherwise the median views of the saved videos on that platform (>= 3x).
 export function outliers(lib, limit = 6) {
-  const medByPlatform = {};
-  for (const p of new Set(lib.map((v) => v.platform))) medByPlatform[p] = median(lib.filter((v) => v.platform === p).map((v) => v.view_count));
+  const medByPlatform = {}, likeMedByPlatform = {};
+  for (const p of new Set(lib.map((v) => v.platform))) {
+    medByPlatform[p] = median(lib.filter((v) => v.platform === p).map((v) => v.view_count));
+    likeMedByPlatform[p] = median(lib.filter((v) => v.platform === p && !(v.view_count > 0)).map((v) => v.like_count));
+  }
   return lib
     .map((v) => {
-      if (!(v.view_count > 0)) return null;
+      if (!(v.view_count > 0)) {
+        // Instagram hides views: compare likes with the other no-view videos of that platform.
+        const n = lib.filter((x) => x.platform === v.platform && !(x.view_count > 0) && x.like_count > 0).length, med = likeMedByPlatform[v.platform];
+        if (!(v.like_count > 0) || !med || n < 3) return null;
+        const multiple = v.like_count / med;
+        return { video: v, multiple, score: multiple / 3, basis: `${multiple.toFixed(1)}x the median likes of your saved ${v.platform} videos` };
+      }
       if (v.channel_follower_count > 0) {
         const multiple = v.view_count / v.channel_follower_count;
         return { video: v, multiple, score: multiple / 1, basis: `${multiple.toFixed(1)}x the creator's follower count` };
@@ -65,7 +78,7 @@ export function analyze(lib) {
   const likeRateByPlatform = byPlatform.map((p) => ({ k: p.k, n: p.n,
     rate: avg(lib.filter((v) => (v.platform || "Other") === p.k).map(eng).filter((e) => e != null)) }));
   const perDay = count(lib.map((v) => day(v.at))).sort((a, b) => a.k.localeCompare(b.k));
-  const topVideos = [...lib].sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, 5);
+  const topVideos = [...lib].sort(byPerf).slice(0, 5);
   const engs = lib.map(eng).filter((e) => e != null);
   const headlines = [];
   if (total) {
@@ -77,9 +90,12 @@ export function analyze(lib) {
     if (best && buckets.filter((x) => x.avgEng != null).length > 1)
       headlines.push(`${best.k} videos have the highest like rate (${(best.avgEng * 100).toFixed(1)}%).`);
     if (creators[0] && creators[0].n > 1) headlines.push(`You saved ${creators[0].n} videos from ${creators[0].k}: worth studying their format.`);
+    const hidden = byPlatform.filter((p) => lib.filter((v) => (v.platform || "Other") === p.k).every((v) => !(v.view_count > 0))).map((p) => p.k);
+    if (hidden.length) headlines.push(`${hidden.join(", ")} does not share view counts, so those videos are ranked by likes.`);
   }
   return { total, creatorsCount: creators.length, byPlatform, likeRateByPlatform, creators, hashtags, buckets, perDay, topVideos,
-    avgEngagement: avg(engs), totalViews: lib.reduce((a, v) => a + (v.view_count || 0), 0), headlines };
+    avgEngagement: avg(engs), totalViews: lib.reduce((a, v) => a + (v.view_count || 0), 0),
+    totalLikes: lib.reduce((a, v) => a + (v.like_count || 0), 0), viewsKnown: lib.filter((v) => v.view_count > 0).length, headlines };
 }
 
 // Library table: text search over title/creator/tags/notes, platform filter, sort.
@@ -161,19 +177,23 @@ export function formatsOf(v) {
   return hit.length ? hit : ["Other"];
 }
 
+// Lift = the group's median views ÷ the library median. When the group has no view counts at all (Instagram),
+// it is the median likes of the group ÷ the median likes of the library's no-view videos, and liftBy says which.
 const groupStats = (vs, base) => {
   const med = medOrNull(vs.map((v) => v.view_count));
+  const medLikes = medOrNull(vs.filter((v) => !(v.view_count > 0)).map((v) => v.like_count));
   const rates = vs.map(likeRate).filter((e) => e != null);
+  const lift = med && base.views ? med / base.views : !med && medLikes && base.likes ? medLikes / base.likes : null;
   return { n: vs.length, medianViews: med, avgLikeRate: avg(rates), avgSeconds: avg(vs.map((v) => v.duration).filter((d) => d > 0)),
-    lift: med && base ? med / base : null };
+    lift, liftBy: lift == null ? null : med ? "views" : "likes" };
 };
 
 export function creatorStats(lib) {
-  const base = median(lib.map((v) => v.view_count));
+  const base = baselines(lib);
   const by = new Map();
   for (const v of lib) { const k = creatorKey(v); if (!by.has(k)) by.set(k, []); by.get(k).push(v); }
   return [...by].map(([k, vs]) => {
-    const best = [...vs].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0];
+    const best = [...vs].sort(byPerf)[0];
     const followers = Math.max(0, ...vs.map((v) => v.channel_follower_count || 0)) || null;
     const tags = count(vs.flatMap(hashtagsOf)).slice(0, 3).map((t) => t.k);
     const formats = count(vs.flatMap(formatsOf)).filter((f) => f.k !== "Other").slice(0, 2).map((f) => f.k);
@@ -184,11 +204,11 @@ export function creatorStats(lib) {
 }
 
 export function formatStats(lib) {
-  const base = median(lib.map((v) => v.view_count));
+  const base = baselines(lib);
   const by = new Map();
   for (const v of lib) for (const f of formatsOf(v)) { if (!by.has(f)) by.set(f, []); by.get(f).push(v); }
   return [...by].map(([format, vs]) => ({ format, ...groupStats(vs, base),
-    example: [...vs].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0] })).sort((a, b) => b.n - a.n);
+    example: [...vs].sort(byPerf)[0] })).sort((a, b) => b.n - a.n);
 }
 
 const STOP = new Set(("the a an and or but if then so to of in on at for with from by is are was were be been it its this that these those i me my we our you your he she they them " +
@@ -196,7 +216,7 @@ const STOP = new Set(("the a an and or but if then so to of in on at for with fr
   "into out up down over than too very also about as like one two new now here there day today video videos reel reels post follow link bio comment " +
   "comments share save tiktok instagram youtube shorts fyp foryou foryoupage viral explore trending dont don't im i'm it's thats that's make made makes use using used try need know want see look watch let lets going really much many every").split(" "));
 export function keywordStats(lib, { min = 2 } = {}) {
-  const base = median(lib.map((v) => v.view_count));
+  const base = baselines(lib);
   const by = new Map();
   for (const v of lib) {
     const words = new Set(textOf(v).toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/#[\p{L}\p{N}_]+/gu, " ").match(/[\p{L}][\p{L}\p{N}'-]{2,}/gu) || []);
@@ -214,12 +234,12 @@ export function creativeBrief(lib) {
   const kw = keywordStats(lib).filter((k) => k.n >= 2 && k.lift != null).sort((a, b) => b.lift - a.lift);
   const a = analyze(lib);
   const len = a.buckets.filter((b) => b.n >= 2 && b.avgEng != null).sort((x, y) => y.avgEng - x.avgEng)[0];
-  const top2 = [...lib].sort((x, y) => (y.view_count || 0) - (x.view_count || 0));
+  const top2 = [...lib].sort(byPerf);
   const hooks = [...new Set(top2.map((v) => String(v.hook || v.description || v.title || "").split("\n")[0].trim()).filter((h) => h.length > 8))].slice(0, 4);
   const out = [];
-  if (fm[0]) out.push({ title: `Lead with the "${fm[0].format}" format`, basis: `${fm[0].n} saved videos, median views ${fm[0].lift.toFixed(1)}x your library median` });
-  if (fm[1]) out.push({ title: `Test "${fm[1].format}" as the second angle`, basis: `${fm[1].n} videos, ${fm[1].lift.toFixed(1)}x median views` });
+  if (fm[0]) out.push({ title: `Lead with the "${fm[0].format}" format`, basis: `${fm[0].n} saved videos, median ${fm[0].liftBy} ${fm[0].lift.toFixed(1)}x your library median` });
+  if (fm[1]) out.push({ title: `Test "${fm[1].format}" as the second angle`, basis: `${fm[1].n} videos, ${fm[1].lift.toFixed(1)}x median ${fm[1].liftBy}` });
   if (len) out.push({ title: `Keep it ${len.k}`, basis: `highest like rate in your library (${(len.avgEng * 100).toFixed(1)}%, ${len.n} videos)` });
-  if (kw.length) out.push({ title: `Work these words into hooks and captions: ${kw.slice(0, 5).map((k) => k.keyword).join(", ")}`, basis: "keywords whose videos get the most views (2+ videos each)" });
+  if (kw.length) out.push({ title: `Work these words into hooks and captions: ${kw.slice(0, 5).map((k) => k.keyword).join(", ")}`, basis: "keywords whose videos get the most views (or likes where views are hidden), 2+ videos each" });
   return { ideas: out, hooks, topCreators: creatorStats(lib).filter((c) => c.n >= 2).slice(0, 3).map((c) => c.creator) };
 }

@@ -125,26 +125,41 @@ def formats_of(v):
     return hit or ["Other"]
 
 
-def _group_stats(vs, base):
-    med = median([v.get("view_count") for v in vs])
-    rates = [e for e in map(_eng, vs) if e is not None]
-    secs = [d for d in (_num(v.get("duration")) for v in vs) if d is not None and d > 0]
-    return {"n": len(vs), "medianViews": med, "avgLikeRate": _avg(rates), "avgSeconds": _avg(secs),
-            "lift": med / base if med and base else None}
-
-
 def _views(v):
     return _num(v.get("view_count")) or 0
 
 
+def _likes(v):
+    return _num(v.get("like_count")) or 0
+
+
+def _by_perf(v):  # best first: views, then likes (Instagram gives no view count), same as insights.js byPerf
+    return (-_views(v), -_likes(v))
+
+
+def _baselines(lib):
+    return {"views": median([v.get("view_count") for v in lib]),
+            "likes": median([v.get("like_count") for v in lib if not _views(v) > 0])}
+
+
+def _group_stats(vs, base):
+    med = median([v.get("view_count") for v in vs])
+    med_likes = median([v.get("like_count") for v in vs if not _views(v) > 0])
+    rates = [e for e in map(_eng, vs) if e is not None]
+    secs = [d for d in (_num(v.get("duration")) for v in vs) if d is not None and d > 0]
+    lift = med / base["views"] if med and base["views"] else med_likes / base["likes"] if not med and med_likes and base["likes"] else None
+    return {"n": len(vs), "medianViews": med, "avgLikeRate": _avg(rates), "avgSeconds": _avg(secs),
+            "lift": lift, "liftBy": None if lift is None else "views" if med else "likes"}
+
+
 def creator_stats(lib):
-    base = median([v.get("view_count") for v in lib])
+    base = _baselines(lib)
     by = {}
     for v in lib:
         by.setdefault(handle_of(v), []).append(v)
     rows = []
     for k, vs in by.items():
-        best = sorted(vs, key=lambda v: -_views(v))[0]
+        best = sorted(vs, key=_by_perf)[0]
         followers = max([0] + [_num(v.get("channel_follower_count")) or 0 for v in vs]) or None
         tags = [t["k"] for t in _count([t for v in vs for t in hashtags_of(v)])[:3]]
         formats = [f["k"] for f in [f for f in _count([f for v in vs for f in formats_of(v)]) if f["k"] != "Other"][:2]]
@@ -156,12 +171,12 @@ def creator_stats(lib):
 
 
 def format_stats(lib):
-    base = median([v.get("view_count") for v in lib])
+    base = _baselines(lib)
     by = {}
     for v in lib:
         for f in formats_of(v):
             by.setdefault(f, []).append(v)
-    rows = [{"format": f, **_group_stats(vs, base), "example": sorted(vs, key=lambda v: -_views(v))[0]} for f, vs in by.items()]
+    rows = [{"format": f, **_group_stats(vs, base), "example": sorted(vs, key=_by_perf)[0]} for f, vs in by.items()]
     return sorted(rows, key=lambda r: -r["n"])
 
 
@@ -181,7 +196,7 @@ _WORD = re.compile(r"[^\W\d_](?:[^\W_]|['-]){2,}")
 
 
 def keyword_stats(lib, min_n=2):
-    base = median([v.get("view_count") for v in lib])
+    base = _baselines(lib)
     by = {}
     for v in lib:
         text = _HASH.sub(" ", _URL.sub(" ", _text_of(v).lower()))
@@ -199,19 +214,19 @@ def creative_brief(lib):
     fm = sorted((f for f in format_stats(lib) if f["n"] >= 2 and f["format"] != "Other" and f["lift"] is not None), key=lambda f: -f["lift"])
     kw = sorted((k for k in keyword_stats(lib) if k["n"] >= 2 and k["lift"] is not None), key=lambda k: -k["lift"])
     lens = sorted((b for b in bucket_stats(lib) if b["n"] >= 2 and b["avgEng"] is not None), key=lambda b: -b["avgEng"])
-    top = sorted(lib, key=lambda v: -_views(v))
+    top = sorted(lib, key=_by_perf)
     firsts = [_str(v.get("hook") or v.get("description") or v.get("title")).split("\n")[0].strip() for v in top]  # spoken hook first
     hooks = list(dict.fromkeys(h for h in firsts if _utf16_len(h) > 8))[:4]
     ideas = []
     if fm:
         ideas.append({"title": 'Lead with the "%s" format' % fm[0]["format"],
-                      "basis": "%d saved videos, median views %sx your library median" % (fm[0]["n"], to_fixed(fm[0]["lift"], 1))})
+                      "basis": "%d saved videos, median %s %sx your library median" % (fm[0]["n"], fm[0]["liftBy"], to_fixed(fm[0]["lift"], 1))})
     if len(fm) > 1:
-        ideas.append({"title": 'Test "%s" as the second angle' % fm[1]["format"], "basis": "%d videos, %sx median views" % (fm[1]["n"], to_fixed(fm[1]["lift"], 1))})
+        ideas.append({"title": 'Test "%s" as the second angle' % fm[1]["format"], "basis": "%d videos, %sx median %s" % (fm[1]["n"], to_fixed(fm[1]["lift"], 1), fm[1]["liftBy"])})
     if lens:
         ideas.append({"title": "Keep it %s" % lens[0]["k"],
                       "basis": "highest like rate in your library (%s%%, %d videos)" % (to_fixed(lens[0]["avgEng"] * 100, 1), lens[0]["n"])})
     if kw:
         ideas.append({"title": "Work these words into hooks and captions: %s" % ", ".join(k["keyword"] for k in kw[:5]),
-                      "basis": "keywords whose videos get the most views (2+ videos each)"})
+                      "basis": "keywords whose videos get the most views (or likes where views are hidden), 2+ videos each"})
     return {"ideas": ideas, "hooks": hooks, "topCreators": [c["creator"] for c in creator_stats(lib) if c["n"] >= 2][:3]}

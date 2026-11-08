@@ -44,6 +44,17 @@ class Parity(unittest.TestCase):
         self.assertEqual([[n, rx.pattern, "i"] for n, rx in I.FORMATS], EXPECTED["formatPatterns"])
         self.assertEqual(sorted(I.STOP), EXPECTED["stopWords"])
 
+    def test_instagram_without_views_uses_likes(self):  # same case as the insights.js test
+        mk = lambda i, who, desc, likes: {"url": "https://www.instagram.com/reel/R%d/" % i, "platform": "Instagram", "uploader": who,
+                                          "uploader_id": str(9000 + i), "title": desc, "description": desc, "view_count": None,
+                                          "duration": None, "like_count": likes, "tags": [], "at": 100 - i}
+        lib = [mk(1, "anna", "How to make protein pancakes #protein", 5548), mk(2, "anna", "How to hit your protein goal #protein", 1476),
+               mk(3, "ben", "My honest whey review #protein", 391), mk(4, "ben", "Whey review part 2", 50), mk(5, "cy", "Morning routine #grwm", 3)]
+        anna = next(c for c in I.creator_stats(lib) if c["creator"] == "anna")
+        self.assertEqual([anna["medianViews"], anna["liftBy"], anna["best"]["url"]], [None, "likes", lib[0]["url"]])
+        self.assertAlmostEqual(anna["lift"], 3512 / 391)
+        self.assertRegex(I.creative_brief(lib)["ideas"][0]["basis"], "median likes")
+
     def test_brief_needs_three_videos(self):
         self.assertIsNone(I.creative_brief(LIB[:2]))
 
