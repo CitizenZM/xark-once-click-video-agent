@@ -1,7 +1,7 @@
 // View-growth tracking over the saved library. Pure functions; the daily alarm lives in growth-run.js.
 // A library entry gains history:[{at, views, likes, comments}]; the first point is the numbers saved with the video.
 const D = 86400000;
-export const CHECKPOINTS = [1, 7, 30]; // days after saving
+export const CHECKPOINTS = [0.25, 1, 7, 30]; // days after saving: 6 hours (for views per hour), then 1, 7 and 30 days
 export const MAX_PER_RUN = 50;
 export const MAX_FAILS = 3;            // a video the helper cannot read this many times is left alone (it must not starve the rest)
 

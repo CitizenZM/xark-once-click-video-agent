@@ -1,4 +1,4 @@
-import { videoUrls, dedupeKey } from "./urls.js";
+import { videoUrls, dedupeKey, cleanExtra } from "./urls.js";
 import { createTranscriber } from "./transcribe.js";
 import { setupGrowth, setupMirror } from "./growth-run.js";
 
@@ -63,7 +63,7 @@ async function get(key, fallback) {
   const r = await chrome.storage.local.get(key);
   return r[key] ?? fallback;
 }
-const addToLibrary = (meta) => locked(async () => {
+const addToLibrary = (meta, extra) => locked(async () => {
   const lib = await get("library", []);
   const url = meta.webpage_url;
   const caption = String(meta.description || "").split("\n")[0].trim();
@@ -71,7 +71,9 @@ const addToLibrary = (meta) => locked(async () => {
   const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : null);
   const entry = { ...meta, title, platform: meta.extractor_key || "Other", url, at: Date.now(),
     duration: num(meta.duration), view_count: num(meta.view_count), like_count: num(meta.like_count),
-    comment_count: num(meta.comment_count), channel_follower_count: num(meta.channel_follower_count) };
+    comment_count: num(meta.comment_count), channel_follower_count: num(meta.channel_follower_count), timestamp: num(meta.timestamp) ?? undefined,
+    ...cleanExtra(extra) };
+  if (entry.ad_start) entry.ad_seen = entry.at;
   const i = lib.findIndex((v) => v.url === url);
   if (i >= 0) lib[i] = entry; else lib.push(entry);
   await chrome.storage.local.set({ library: lib.slice(-5000) }); // bounded: no unlimitedStorage needed
@@ -122,7 +124,7 @@ function notify(title, message) {
 }
 
 // Add a video to the queue; resolves with the helper's result when that video is finished.
-async function download(url, force = false, batchId = newBatch(), direct) {
+async function download(url, force = false, batchId = newBatch(), direct, extra) {
   const { skipDuplicates = true } = await get("settings", {});
   const key = dedupeKey(url);
   await loadQueue();
@@ -136,7 +138,7 @@ async function download(url, force = false, batchId = newBatch(), direct) {
   }
   const live = queue.find((j) => isLive(j) && dedupeKey(j.url) === key); // clicked again while queued: same job
   if (live) return waitFor(live.id);
-  const j = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), url, state: "queued", pct: 0, at: Date.now(), batchId, ...(direct ? { direct } : {}) };
+  const j = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), url, state: "queued", pct: 0, at: Date.now(), batchId, ...(direct ? { direct } : {}), ...(extra ? { extra } : {}) };
   queue.push(j);
   const done = waitFor(j.id);
   pump();
@@ -184,7 +186,7 @@ async function run(j) {
     patchJob(j, { state: "queued", pct: 0, retries: (j.retries || 0) + 1, reason: "Rate-limited, retrying" });
     return pump();
   } else {
-    if (r.ok) await addToLibrary(r.meta); else await addError(j.url, r.error);
+    if (r.ok) await addToLibrary(r.meta, j.extra); else await addError(j.url, r.error);
     j.direct = undefined; // a signed, short-lived CDN link: no reason to keep it
     patchJob(j, r.ok ? { state: "done", pct: 100, title: (r.meta && r.meta.title) || "", file: (r.meta && r.meta.file) || "", reason: undefined } : { state: "error", error: r.error, reason: undefined });
   }
@@ -227,18 +229,22 @@ async function enqueueOne({ url, again }) {
 }
 
 // Select mode: queue the ticked videos and answer at once; a notification reports the end of the batch.
-async function enqueueMany({ hrefs, folder, directs }) {
+async function enqueueMany({ hrefs, folder, directs, extras }) {
   const urls = videoUrls(hrefs || [], 200);
   if (!urls.length) return { error: "No video links selected" };
   const { skipDuplicates = true } = await get("settings", {});
   const have = new Set((await get("library", [])).filter((v) => v.file).map((v) => dedupeKey(v.url)));
   const saved = skipDuplicates ? urls.filter((u) => have.has(dedupeKey(u))) : [];
   if (saved.length && cleanFolder(folder)) await moveToFolder(saved, folder); // already saved: still file them
+  const savedExtra = Object.entries(extras || {}).map(([h, x]) => [videoUrls([h])[0], cleanExtra(x)]).filter(([c, e]) => c && saved.includes(c) && Object.keys(e).length);
+  if (savedExtra.length) { const by = new Map(savedExtra.map(([c, e]) => [dedupeKey(c), e])); await libEdit((lib) => lib.map((v) => (by.has(dedupeKey(v.url)) ? { ...v, ...by.get(dedupeKey(v.url)), ...(by.get(dedupeKey(v.url)).ad_start ? { ad_seen: Date.now() } : {}) } : v))); }
   const todo = urls.filter((u) => !saved.includes(u)), batch = newBatch();
   await Promise.all(saved.map((u) => download(u, false, batch))); // already-saved links still appear in the batch report
   const direct = new Map(); // canonical url -> direct https link (only for links we would download anyway)
   for (const [h, d] of Object.entries(directs || {})) { const [c] = videoUrls([h]); if (c && dedupeKey(c).startsWith("ttcc:") && typeof d === "string" && d.startsWith("https://")) direct.set(c, d); }
-  downloadMany(todo, folder, batch, direct).then((r) => todo.length && notify("Queue finished", `${r.ok} saved${r.failed ? `, ${r.failed} failed` : ""}`));
+  const extra = new Map(); // canonical url -> page signals (cleaned again when the video is saved)
+  for (const [h, x] of Object.entries(extras || {})) { const [c] = videoUrls([h]); const e = c && cleanExtra(x); if (e && Object.keys(e).length) extra.set(c, x); }
+  downloadMany(todo, folder, batch, direct, extra).then((r) => todo.length && notify("Queue finished", `${r.ok} saved${r.failed ? `, ${r.failed} failed` : ""}`));
   return { queued: todo.length, saved: saved.length };
 }
 
@@ -342,8 +348,8 @@ async function moveToFolder(urls, folder) {
   return libEdit((lib) => lib.map((v) => (keys.has(dedupeKey(v.url)) ? { ...v, folder: f || undefined } : v)));
 }
 const summary = (rs) => ({ ok: rs.filter((r) => r.ok && !r.skipped).length, skipped: rs.filter((r) => r.skipped).length, failed: rs.filter((r) => !r.ok && !r.skipped).length });
-async function downloadMany(urls, folder, batchId = newBatch(), directs) {
-  const rs = await Promise.all(urls.map((u) => download(u, false, batchId, directs && directs.get(u))));
+async function downloadMany(urls, folder, batchId = newBatch(), directs, extras) {
+  const rs = await Promise.all(urls.map((u) => download(u, false, batchId, directs && directs.get(u), extras && extras.get(u))));
   if (cleanFolder(folder)) await moveToFolder(urls.filter((_, i) => rs[i].ok), folder);
   return { rs, ...summary(rs) };
 }
@@ -358,6 +364,7 @@ async function expandDownload({ url, limit }) {
   return { found: urls.length, ...summary(rs) };
 }
 
+const cleanTags = (t) => Object.fromEntries(["hook", "angle", "audience", "emotion", "usp", "cta"].map((k) => [k, String(t[k] ?? "").slice(0, 60)]));
 // library edits run here so they share the storage lock with new downloads
 const libEdit = (fn) => locked(async () => {
   const lib = await get("library", []);
@@ -375,6 +382,7 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
   const run = m.type === "page-download" ? pageDownload(m)
     : m.type === "expand-download" ? expandDownload(m)
     : m.type === "lib-delete" ? libEdit((lib) => lib.filter((v) => v.url !== m.url))
+    : m.type === "lib-tags" ? libEdit((lib) => lib.map((v) => (m.tags && m.tags[v.url] && typeof m.tags[v.url] === "object" ? { ...v, ai_tags: cleanTags(m.tags[v.url]), ai_tags_at: Date.now() } : v)))
     : m.type === "lib-note" ? libEdit((lib) => lib.map((v) => (v.url === m.url ? { ...v, note: String(m.note || "").slice(0, 500) } : v)))
     : m.type === "buttons" ? setButtons(!!m.on)
     : m.type === "ping" || m.type === "update" ? call({ type: m.type })

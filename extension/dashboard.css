@@ -77,3 +77,10 @@ td small { display: block; color: var(--mute); font-size: 11px; }
 .cloud a { color: var(--ink); } .cloud a.hi { color: var(--ok); font-weight: 600; }
 .concept h4 { margin: 0 0 6px; font-size: 15px; } .concept p { margin: 4px 0; font-size: 13px; } .concept ol { margin: 6px 0; padding-left: 18px; font-size: 13px; }
 @media (max-width: 640px) { .scope { position: static; } }
+
+.sig{display:inline-block;font-size:11px;padding:1px 6px;border-radius:999px;background:var(--line,#e2e8f0);margin:1px 2px 1px 0;white-space:nowrap}
+.sig.hi{background:#dcfce7;color:#166534}
+.tagline{display:block;color:var(--mute,#64748b);font-size:11px}
+dialog#scriptDlg{max-width:760px;width:calc(100vw - 32px);border:0;border-radius:14px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);background:var(--card);color:var(--ink)}
+dialog#scriptDlg::backdrop{background:rgba(15,23,42,.45)}
+#scriptOut table{width:100%;border-collapse:collapse;margin:8px 0}#scriptOut td,#scriptOut th{border-bottom:1px solid var(--line,#e2e8f0);padding:6px;text-align:left;vertical-align:top;font-size:13px}

@@ -29,6 +29,15 @@
       return { rank: has.indexOf(v) + 1, multiple, outlier: has.length >= 4 && multiple >= 2 };
     });
   };
+  const adRunOf = (text) => {
+    const t = String(text || ""), DT = "(\\d{1,2} [A-Z][a-z]{2,8},? \\d{4}|[A-Z][a-z]{2,8}\\.? \\d{1,2},? \\d{4})";
+    const when = (s) => { const n = Date.parse(s.replace(/\./g, "").replace(/,/g, "") + " 12:00 UTC"); return Number.isFinite(n) ? n : null; };
+    const range = new RegExp(DT + "\\s*[-–—]\\s*" + DT).exec(t), started = new RegExp("Started running on " + DT).exec(t);
+    const start = range ? when(range[1]) : started ? when(started[1]) : null;
+    if (!start) return null;
+    const inactive = /\bInactive\b/.test(t), active = !inactive && (/\bActive\b/.test(t) || !!started);
+    return { start, end: range && !active ? when(range[2]) : null, active };
+  };
   const isVideo = (h) => PATTERNS.some((p) => p.test(h));
   const big = (el) => { const r = el.getBoundingClientRect(); return r.width >= 100 && r.height >= 100; };
   // The element a checkbox should sit on: the link itself if it is a tile, else the nearest tile-sized ancestor.
@@ -59,12 +68,15 @@
     for (const l of labels) {
       let card = null;
       for (let e = l.parentElement, i = 0; e && i < 16 && count.get(e) === 1; e = e.parentElement, i++) if (big(e)) card = e;
-      if (card && card.querySelector("video")) out.push({ url: `https://www.facebook.com/ads/library/?id=${/\d+/.exec(l.textContent)[0]}`, el: card });
+      if (card && card.querySelector("video")) out.push({ url: `https://www.facebook.com/ads/library/?id=${/\d+/.exec(l.textContent)[0]}`, el: card, ad: adRunOf(card.innerText || card.textContent) });
     }
     return out;
   }
   // TikTok Creative Center has no extractor: a played card carries a <video> whose src is the mp4 the helper can download directly.
   const directOf = (el) => { const v = el.querySelector && el.querySelector("video"), s = v && (v.currentSrc || v.src); return /^https:\/\//.test(s || "") ? s : undefined; };
+  // A creator's own grid (TikTok /@handle, Instagram /handle/ or /handle/reels/): its median views is that creator's typical video.
+  const profilePage = () => (/tiktok\.com$/.test(location.hostname) && /^\/@[\w.-]+\/?$/.test(location.pathname))
+    || (/instagram\.com$/.test(location.hostname) && /^\/(?!explore\/|reels?\/|p\/|stories\/)[\w.]+\/(reels\/)?$/.test(location.pathname));
   function items() {
     const out = new Map();
     for (const a of document.links) {
@@ -94,5 +106,5 @@
     }
     return null;
   }
-  window.__oneclickDetect = { PATTERNS, items, current, parseCount, outlierFlags, metricsOf };
+  window.__oneclickDetect = { PATTERNS, items, current, parseCount, outlierFlags, metricsOf, adRunOf, profilePage };
 })();

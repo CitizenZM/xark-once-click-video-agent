@@ -105,6 +105,16 @@ class MetaAds(unittest.TestCase):
         self.assertEqual((r["meta"]["source"], args[-1]), ("meta-ads", FB))
         self.assertNotIn("--use-extractors", args); self.assertNotIn("--cookies-from-browser", args)  # public ads: anonymous
 
+    def test_meta_ad_page_likes_are_not_the_ads_likes(self):
+        out = tempfile.mkdtemp()
+        line = JSON_LINE.replace('"uploader":"TJ Maxx",', '"uploader":"TJ Maxx","like_count":2400000,') % (out + "/ad.mp4")
+        path, d = stub(STUB.replace("$OUTFILE", out + "/ad").replace("__JSON__", line))
+        r = session({"id": 1, "url": FB}, {"ONECLICK_ENGINE": path, "ONECLICK_OUT": out})
+        self.assertTrue(r["ok"], r)
+        self.assertNotIn("like_count", r["meta"]); self.assertEqual(r["meta"]["page_like_count"], 2400000)
+        printed = next(a for a in calls(d)[0] if a.startswith("after_move:"))
+        self.assertIn("timestamp", printed)  # the post time is asked for (views per hour)
+
     def test_organic_video_has_no_source(self):
         path, d, out = ok_stub()
         r = session({"id": 1, "url": "https://www.tiktok.com/@a/video/1"}, {"ONECLICK_ENGINE": path, "ONECLICK_OUT": out})

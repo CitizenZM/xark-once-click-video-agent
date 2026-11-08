@@ -20,17 +20,17 @@ const BUCKETS = ["<15s", "15-30s", "30-60s", "60s+"];
 const urlHandle = (v) => (v.platform === "TikTok" ? /tiktok\.com\/@([\w.]+)/ : v.platform === "Instagram" ? /instagram\.com\/(?!p\/|reels?\/|tv\/|stories\/)([\w.]+)\/(?:reels?|p|tv)\// : null)?.exec(v.url || "")?.[1];
 const handleOf = (v) => (v.platform === "TikTok" && urlHandle(v))
   || (/^\d+$/.test(v.uploader_id || "") && v.uploader) || v.uploader_id || v.uploader || "unknown";
-const creatorKey = handleOf;
+export const creatorKey = handleOf;
 const day = (t) => new Date(t).toISOString().slice(0, 10);
 
-const median = (xs) => {
+export const median = (xs) => {
   const s = xs.filter((x) => x > 0).sort((a, b) => a - b);
   return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null;
 };
 // Best first: views, then likes (Instagram gives no view count, only likes).
 const byPerf = (a, b) => (b.view_count || 0) - (a.view_count || 0) || (b.like_count || 0) - (a.like_count || 0);
 // Baselines for lift: median views of the library, and median likes of the videos that have no view count.
-const baselines = (lib) => ({ views: median(lib.map((v) => v.view_count)), likes: median(lib.filter((v) => !(v.view_count > 0)).map((v) => v.like_count)) });
+export const baselines = (lib) => ({ views: median(lib.map((v) => v.view_count)), likes: median(lib.filter((v) => !(v.view_count > 0)).map((v) => v.like_count)) });
 
 // Videos that beat their baseline. Baseline is the creator's follower count when engine knows it
 // (views / followers >= 1), otherwise the median views of the saved videos on that platform (>= 3x).
@@ -179,7 +179,7 @@ export function formatsOf(v) {
 
 // Lift = the group's median views ÷ the library median. When the group has no view counts at all (Instagram),
 // it is the median likes of the group ÷ the median likes of the library's no-view videos, and liftBy says which.
-const groupStats = (vs, base) => {
+export const groupStats = (vs, base) => {
   const med = medOrNull(vs.map((v) => v.view_count));
   const medLikes = medOrNull(vs.filter((v) => !(v.view_count > 0)).map((v) => v.like_count));
   const rates = vs.map(likeRate).filter((e) => e != null);

@@ -56,3 +56,40 @@ export function groupAssignments(result, urls) {
   }
   return out;
 }
+
+// ---------- AI tags: hook type, angle, audience, emotion (+ selling point, CTA) per video ----------
+export const HOOK_TYPES = ["question", "bold claim", "problem / pain", "result first", "curiosity gap", "pov / skit", "demo", "list / number", "story", "trend / sound", "other"];
+export const EMOTIONS = ["curiosity", "humor", "aspiration", "fear / urgency", "relief", "surprise", "trust", "excitement", "other"];
+export const TAG_BATCH = 40;
+const clip = (s, n) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+
+// Only text the user already has in the library: title, first caption lines, hashtags, the spoken hook and the start of the transcript.
+export function buildTagPrompt(videos) {
+  const vs = videos.slice(0, TAG_BATCH);
+  const data = JSON.stringify(vs.map((v, i) => ({ i, platform: v.platform, title: clip(v.title, 100), caption: clip(v.description, 240),
+    tags: (v.tags || []).slice(0, 8), spoken_hook: clip(v.hook, 160) || undefined, transcript: clip(v.transcript, 400) || undefined, seconds: v.duration || undefined })));
+  return { urls: vs.map((v) => v.url), text: `You label short-form videos for a performance marketer, so they can see which creative choices win.\nVideos (JSON): ${data}\n\nFor every video give:\n- hook: how the first 3 seconds grab attention, exactly one of ${JSON.stringify(HOOK_TYPES)}\n- angle: the persuasion angle in 1-3 words (e.g. "price value", "social proof", "transformation", "convenience", "expert tip")\n- audience: who it speaks to in 1-3 words (e.g. "busy moms", "gym beginners", "skincare fans")\n- emotion: the main emotion, exactly one of ${JSON.stringify(EMOTIONS)}\n- usp: the product benefit or claim in at most 6 words, or "" if none\n- cta: the call to action in at most 6 words, or "" if none\nJudge from the text only; when unsure use "other". Reply with JSON only: {"tags":[{"i":0,"hook":"","angle":"","audience":"","emotion":"","usp":"","cta":""}]}` };
+}
+
+// The model's answer -> {url: tags}. Unknown indexes are dropped; hook and emotion outside the fixed lists become "other".
+export function applyTags(result, urls) {
+  const out = {};
+  for (const t of (result && result.tags) || []) {
+    const url = urls[t && t.i];
+    if (!url) continue;
+    const pick = (x, list) => (list.includes(String(x || "").toLowerCase().trim()) ? String(x).toLowerCase().trim() : "other");
+    out[url] = { hook: pick(t.hook, HOOK_TYPES), angle: clip(t.angle, 40).toLowerCase() || "other", audience: clip(t.audience, 40).toLowerCase() || "other",
+      emotion: pick(t.emotion, EMOTIONS), usp: clip(t.usp, 60), cta: clip(t.cta, 60) };
+  }
+  return out;
+}
+
+// ---------- "Make a script like this": one reference video -> a new script for the user's product ----------
+export function buildScriptPrompt(v, product = "", signals = []) {
+  const ref = JSON.stringify({ platform: v.platform, creator: v.uploader || v.uploader_id, title: clip(v.title, 150), caption: clip(v.description, 500),
+    hashtags: (v.tags || []).slice(0, 10), seconds: v.duration || undefined, views: v.view_count || undefined, likes: v.like_count || undefined,
+    spoken_hook: clip(v.hook, 200) || undefined, transcript: clip(v.transcript, 2500) || undefined, labels: v.ai_tags || undefined,
+    why_saved: signals.length ? signals : undefined, note: clip(v.note, 200) || undefined });
+  const prod = clip(product, 300);
+  return `You are a performance creative strategist. A marketer picked this reference video because it performs:\n${ref}\n\n${prod ? `Write a new short-form video ad script for: ${prod}.` : "Write a new short-form video ad script for the same product category."} Keep what makes the reference work (hook mechanism, pacing, structure, proof, CTA style) but do not copy its words, people or brand. If there is no transcript, infer the structure from the title and caption and say so in "summary".\nReply with JSON only:\n{"summary":"one sentence on what the reference does","why_it_works":["short point"],"script":{"length":"e.g. 25s","hook":"line for the first 2 seconds","beats":[{"t":"0-3s","visual":"what we see","line":"what is said or shown as text"}],"cta":"call to action"},"keep":["element kept from the reference"],"change":["what is new for this product"],"variants":["alternative hook 1","alternative hook 2"]}\nAt most 8 beats and 4 items per list.`;
+}

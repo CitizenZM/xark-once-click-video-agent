@@ -53,3 +53,11 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - 修复：缺失值显示 "–"；无播放量的组按点赞算 Lift（`liftBy: "likes"`）；Top performers / Outliers / best video 按 播放→点赞 排序；总数改为总点赞。Python MCP 端口同步。
 - 验证：`node --test test/*.test.mjs` 50 pass；`python3 -m unittest discover -s host -p "test_*.py"` 67 OK；新测试在旧 insights.js 上失败（[0, undefined, undefined] ≠ [0, 0, 7468]）；真实 9 条 IG 数据预览：总点赞 7.9K、Outliers 3 条、Lift 显示 "7.9x likes"、简报有建议；CI success 6cd035f。
 - 竞品对比：docs/COMPETITOR-GAP-20261107.md（研究由子代理完成，评分取自 Chrome 商店 2026-11-07）。
+
+## 2026-11-08 — v3.6.0：爆款信号 + AI 标签 + 参考视频写脚本 + 广告投放时长
+- 新增 `extension/winners.js`：views/hour（posted→save，及两次复查之间）、对比 creator 自己中位数（库内 ≥3 条或选择模式在主页读取的网格中位数，IG 用点赞）、Meta 广告投放天数（≥30 天标记）、AI 标签 lift。
+- 数据接线：select.js 读取 Meta 卡片 "Started running on"/Active/Inactive 与主页网格中位数 → background `cleanExtra` 校验 → 库条目 `ad_start/ad_end/ad_active/creator_median_views`；host 打印 engine `timestamp`；复查 6h/1/7/30 天，alarm 改为每小时。
+- 修 bug：engine 把 Meta 广告主页面点赞数填进 `like_count`，会污染点赞排名 → 改存 `page_like_count`。
+- AI（用户自己的 key）：`buildTagPrompt`/`applyTags`（hook 类型、角度、人群、情绪、卖点、CTA，每次 40 条，固定词表外归 other）；`buildScriptPrompt`（一条参考视频 → 新脚本、分镜、CTA、备选 hook）。
+- 验证：`node --test test/*.test.mjs` 59 pass 0 fail；`python3 -m unittest discover` 68 OK；新的 background 接线测试在旧 background.js 上失败（ad_start undefined）；预览（真实 9 条 IG + 11 条演示数据）三张新卡片、AI 标签表、Library Signals 列、脚本对话框均渲染，无 console error；AI 两个流程用 mock 的 API 返回走通真实 dashboard 代码。
+- 未验证：未用真实 API key 调用 Anthropic；未在真实 Meta Ad Library 页面跑选择模式（卡片文字格式按英文界面写，其他语言界面读不到日期）；TikTok Top Ads 无投放日期，不覆盖。MCP 服务器未加新信号。

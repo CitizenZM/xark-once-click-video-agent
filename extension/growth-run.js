@@ -20,7 +20,7 @@ export function setupGrowth({ get, locked, call }) {
     return { checked: r.results.length };
   }
   chrome.alarms.onAlarm.addListener((a) => a.name === "growth" && runGrowth().catch(() => {}));
-  return { runGrowth, schedule: () => chrome.alarms.create("growth", { periodInMinutes: 1440 }) };
+  return { runGrowth, schedule: () => chrome.alarms.create("growth", { periodInMinutes: 60 }) }; // hourly, so the 6-hour check is not a day late
 }
 
 // Only what the statistics and search need (plus note/folder/hook/transcript): the helper writes this to ~/.oneclick/library.json.

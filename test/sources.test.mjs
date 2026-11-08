@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { PATTERNS, canonical, dedupeKey, videoUrls } from "../extension/urls.js";
+import { PATTERNS, canonical, dedupeKey, videoUrls, adRunOf } from "../extension/urls.js";
 import { filterLibrary } from "../extension/insights.js";
 
 const FB = "https://www.facebook.com/ads/library/?id=1624078592578665";
@@ -55,6 +55,7 @@ class El {
   constructor(tag, { text = "", w = 0, h = 0, attrs = {} } = {}) { Object.assign(this, { tag, text, w, h, attrs, children: [], parentElement: null }); }
   add(...c) { for (const x of c) { x.parentElement = this; this.children.push(x); } return this; }
   get textContent() { return this.text + this.children.map((c) => c.textContent).join(""); }
+  get innerText() { return [this.text, ...this.children.map((c) => c.innerText)].filter(Boolean).join("\n"); }
   get src() { return this.attrs.src || ""; } get currentSrc() { return this.attrs.src || ""; } get href() { return this.attrs.href || ""; }
   getBoundingClientRect() { return { width: this.w, height: this.h, top: 0, left: 0, bottom: this.h, right: this.w }; }
   all() { return this.children.flatMap((c) => [c, ...c.all()]); }
@@ -67,9 +68,9 @@ function load(hostname, pathname, body, links = []) {
   vm.runInNewContext(readFileSync(new URL("../extension/detect.js", import.meta.url), "utf8"), { window: win, document, location: { hostname, pathname, href: `https://${hostname}${pathname}` }, innerWidth: 1000, innerHeight: 800 });
   return win.__oneclickDetect;
 }
-const metaCard = (id, withVideo = true) => {
+const metaCard = (id, withVideo = true, dates = []) => {
   const label = new El("span", { text: `Library ID: ${id}`, w: 164, h: 14 });
-  const inner = new El("div", { w: 370, h: 140 }).add(new El("div", { w: 336, h: 130 }).add(new El("div", { w: 193, h: 16 }).add(label)));
+  const inner = new El("div", { w: 370, h: 140 }).add(new El("div", { w: 336, h: 130 }).add(new El("div", { w: 193, h: 16 }).add(label)), ...dates.map((t) => new El("span", { text: t, w: 200, h: 14 })));
   const card = new El("div", { w: 370, h: 600 }).add(inner);
   if (withVideo) card.add(new El("video", { w: 360, h: 400, attrs: { src: "https://video.xx.fbcdn.net/a.mp4" } }));
   return new El("div", { w: 370, h: 642 }).add(card);
@@ -156,4 +157,16 @@ test("background: select-mode directs and the cover setting reach the helper; th
   await ask({ type: "enqueue-many", hrefs: ["https://www.tiktok.com/@a/video/6"] });
   await new Promise((r) => setTimeout(r, 100));
   assert.equal(posted[0].cover, undefined);                      // cover only when the setting is on
+});
+
+test("detect.js: Meta ad cards carry their run dates and active status (same parser as urls.js)", () => {
+  const body = new El("div", { w: 2500, h: 4000 }).add(new El("div", { w: 1980, h: 3694 }).add(
+    metaCard("111", true, ["Active", "Started running on 3 Nov 2025"]), metaCard("222", true, ["Inactive", "Oct 1, 2025 - Nov 5, 2025"]), metaCard("333", true)));
+  const D = load("www.facebook.com", "/ads/library/", body);
+  const ad = JSON.parse(JSON.stringify(Object.fromEntries(D.items().map((i) => [i.url.slice(-3), i.ad])))); // vm objects: compare as plain data
+  assert.deepEqual(ad["111"], { start: Date.UTC(2025, 10, 3, 12), end: null, active: true });
+  assert.deepEqual(ad["222"], { start: Date.UTC(2025, 9, 1, 12), end: Date.UTC(2025, 10, 5, 12), active: false });
+  assert.equal(ad["333"], null);
+  for (const t of ["Active\nStarted running on Sep. 14, 2025", "Inactive\n1 Oct 2025 – 5 Nov 2025", "Library ID: 1", "", "Started running on 31 Foo 2025"])
+    assert.equal(JSON.stringify(D.adRunOf(t)), JSON.stringify(adRunOf(t)), JSON.stringify(t));
 });

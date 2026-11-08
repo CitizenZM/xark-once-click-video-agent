@@ -6,20 +6,21 @@ const D = 86400000, NOW = Date.UTC(2026, 10, 6);
 const saved = (daysAgo, extra = {}) => ({ url: `https://www.tiktok.com/@a/video/${daysAgo}-${Math.random().toString(36).slice(2, 6)}`, at: NOW - daysAgo * D, view_count: 1000, like_count: 100, comment_count: 10, ...extra });
 const pt = (daysAgo, views) => ({ at: NOW - daysAgo * D, views, likes: 1, comments: 1 });
 
-test("dueForCheck: a video is due once it is 1, 7 or 30 days old and no later history point covers that checkpoint", () => {
-  const young = saved(0.5), day1 = saved(1), day3 = saved(3);
+test("dueForCheck: a video is due once it is 6 hours, 1, 7 or 30 days old and no later history point covers that checkpoint", () => {
+  const fresh = saved(0.2), young = saved(0.5), day1 = saved(1), day3 = saved(3);
   const day3done = saved(3, { history: [pt(3, 1000), pt(1.5, 1200)] });            // checked at day 1.5: day 1 is covered
   const day8 = saved(8, { history: [pt(8, 1000), pt(7, 2000)] });                  // checked at day 1 (7 days ago): day 7 is due now
   const day8late = saved(8, { history: [pt(8, 1000), pt(0.1, 2000)] });            // one late check covers day 1 and day 7
   const day31 = saved(31, { history: [pt(31, 1000), pt(23, 2000), pt(1, 3000)] }); // the day-1 point covers 1 and 7, not 30... 30 is covered by the point 1 day ago
   const day31due = saved(31, { history: [pt(31, 1000), pt(23, 2000)] });            // day 30 not covered yet
-  const lib = [young, day1, day3, day3done, day8, day8late, day31, day31due];
-  assert.deepEqual(dueForCheck(lib, NOW), [day31due, day8, day3, day1].map((v) => v.url)); // oldest first
+  const lib = [fresh, young, day1, day3, day3done, day8, day8late, day31, day31due];
+  assert.deepEqual(dueForCheck(lib, NOW), [day31due, day8, day3, day1, young].map((v) => v.url)); // oldest first; 5 hours old is not due yet
 });
 
 test("dueForCheck: the checkpoint is inclusive, the first history point (saved numbers) is not a check", () => {
   assert.equal(dueForCheck([saved(1)], NOW).length, 1);
-  assert.equal(dueForCheck([{ ...saved(1), at: NOW - D + 1 }], NOW).length, 0);                // 1 ms short of a day
+  assert.equal(dueForCheck([{ ...saved(1), at: NOW - D / 4 + 1 }], NOW).length, 0);            // 1 ms short of 6 hours
+  assert.equal(dueForCheck([saved(1, { history: [pt(1, 1000), pt(0.5, 1100)] })], NOW).length, 1); // the 6-hour check does not cover day 1
   assert.equal(dueForCheck([saved(2, { history: [pt(2, 1000)] })], NOW).length, 1);            // only the saved numbers so far
 });
 
@@ -79,7 +80,7 @@ test("background: the daily 'growth' alarm asks the helper only for due videos a
   const store = {}, posted = [], L = { alarms: [], created: [], changed: [], startup: [], installed: [] };
   const lib = [
     { url: "https://www.tiktok.com/@a/video/1", at: NOW - 2 * D, view_count: 1000, like_count: 100, comment_count: 10, file: "/x/1.mp4", title: "due: day 2" },
-    { url: "https://www.tiktok.com/@a/video/2", at: NOW - 0.5 * D, view_count: 50, like_count: 5, comment_count: 1, title: "too young" },
+    { url: "https://www.tiktok.com/@a/video/2", at: NOW - 0.2 * D, view_count: 50, like_count: 5, comment_count: 1, title: "too young (under 6 hours)" },
     { url: "https://www.tiktok.com/@a/video/3", at: NOW - 40 * D, view_count: 900, like_count: 90, comment_count: 9, history: [{ at: NOW - 40 * D, views: 900, likes: 90, comments: 9 }, { at: NOW - 35 * D, views: 4000, likes: 300, comments: 20 }], title: "due: day 7+30" },
     { url: "https://www.tiktok.com/@a/video/4", at: NOW - 3 * D, view_count: 700, like_count: 70, comment_count: 7, history: [{ at: NOW - 3 * D, views: 700, likes: 70, comments: 7 }, { at: NOW - 1.5 * D, views: 800, likes: 80, comments: 8 }], title: "checked at day 1.5" },
     { url: "https://www.tiktok.com/@a/video/5", at: NOW - 100 * D, view_count: 10, like_count: 1, comment_count: 0, statsFails: 3, title: "given up" },
@@ -127,7 +128,7 @@ test("background: the daily 'growth' alarm asks the helper only for due videos a
 
     // the alarm exists once the extension is installed / started
     L.installed.forEach((f) => f()); await new Promise((r) => setTimeout(r, 60));
-    assert.ok(L.created.some(([n, i]) => n === "growth" && i.periodInMinutes === 1440));
+    assert.ok(L.created.some(([n, i]) => n === "growth" && i.periodInMinutes === 60));
 
     // another alarm name does nothing
     await alarm("update-other");

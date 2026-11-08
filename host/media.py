@@ -55,6 +55,9 @@ def finish(meta, url, direct):
     src = source_of(url)
     if src:
         meta["source"] = src
+    if src == "meta-ads" and "like_count" in meta:
+        # engine fills like_count from the advertiser page's likes, not the ad's: keep it out of the like-based rankings.
+        meta["page_like_count"] = meta.pop("like_count")
     if src == "tiktok-cc":
         meta["webpage_url"] = url
         meta["extractor_key"] = "TikTokAds"

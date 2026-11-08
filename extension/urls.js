@@ -72,3 +72,27 @@ export const outlierFlags = (views) => {
     return { rank: has.indexOf(v) + 1, multiple, outlier: has.length >= 4 && multiple >= 2 };
   });
 };
+
+// Meta Ad Library card text -> { start, end, active } (ms). Cards say "Started running on 3 Nov 2025" (or "Nov 3, 2025"),
+// and inactive ads show a range "3 Nov 2025 - 5 Dec 2025". detect.js carries a copy (a test checks both agree).
+export const adRunOf = (text) => {
+  const t = String(text || ""), DT = "(\\d{1,2} [A-Z][a-z]{2,8},? \\d{4}|[A-Z][a-z]{2,8}\\.? \\d{1,2},? \\d{4})";
+  const when = (s) => { const n = Date.parse(s.replace(/\./g, "").replace(/,/g, "") + " 12:00 UTC"); return Number.isFinite(n) ? n : null; };
+  const range = new RegExp(DT + "\\s*[-–—]\\s*" + DT).exec(t), started = new RegExp("Started running on " + DT).exec(t);
+  const start = range ? when(range[1]) : started ? when(started[1]) : null;
+  if (!start) return null;
+  const inactive = /\bInactive\b/.test(t), active = !inactive && (/\bActive\b/.test(t) || !!started);
+  return { start, end: range && !active ? when(range[2]) : null, active };
+};
+
+// Signals read off the page in select mode, checked here (the content script is not trusted): numbers only, in range.
+export function cleanExtra(x) {
+  const out = {}, ok = (n) => Number.isFinite(n) && n > 0;
+  const ad = x && x.ad, page = x && x.page;
+  if (ad && ok(ad.start) && ad.start < Date.now() + 86400000) {
+    out.ad_start = ad.start; out.ad_active = ad.active !== false;
+    if (!out.ad_active && ok(ad.end) && ad.end >= ad.start) out.ad_end = ad.end;
+  }
+  if (page && ok(page.median) && Number.isInteger(page.n) && page.n >= 4 && page.n <= 1000) { out.creator_median_views = page.median; out.creator_median_n = page.n; }
+  return out;
+}

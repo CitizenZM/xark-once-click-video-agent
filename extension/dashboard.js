@@ -1,5 +1,6 @@
 import { analyze, recommend, filterLibrary, outliers, creatorStats, formatStats, keywordStats, creativeBrief } from "./insights.js";
-import { buildPrompt, ask, groupAssignments } from "./ai.js";
+import { buildPrompt, ask, groupAssignments, buildTagPrompt, applyTags, buildScriptPrompt, TAG_BATCH } from "./ai.js";
+import { velocity, fastestNow, creatorBaselines, vsCreator, creatorOutliers, adRun, longRunningAds, tagStats, taggedCount, LONG_RUN_DAYS } from "./winners.js";
 import { fastestGrowing } from "./growth.js";
 import { toTSV, toXLSX, toShareHTML } from "./export.js";
 
@@ -50,9 +51,26 @@ function renderInsights(lib) {
     <div class="card"><h3>Outliers: beat their baseline</h3><ul class="list">${outliers(lib).map((o) => `<li><a href="${esc(link(o.video.url))}" target="_blank" rel="noopener">${esc(o.video.title || o.video.url)}</a><small>${esc(o.video.uploader)} · ${esc(o.basis)}</small></li>`).join("") || `<li class="empty">Needs 3+ saved videos per platform with views or likes</li>`}</ul></div>
     <div class="card"><h3>Like rate by platform</h3>${a.likeRateByPlatform.filter((p) => p.rate != null).map((p) => `<div class="bar"><span class="lab">${esc(p.k)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(4, (p.rate / Math.max(...a.likeRateByPlatform.map((x) => x.rate || 0))) * 100)}%"></span></span><span class="val">${pct(p.rate)}</span></div>`).join("") || `<p class="empty">No data yet</p>`}</div>
     <div class="card"><h3>Top performers</h3><ul class="list">${a.topVideos.map((v) => `<li><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a><small>${esc(v.uploader)} · ${v.view_count > 0 ? short(v.view_count) + " views" : short(v.like_count) + " likes"}</small></li>`).join("") || `<li class="empty">No data yet</li>`}</ul></div>
-    <div class="card"><h3>Growing fastest (last check)</h3><ul class="list">${fastestGrowing(lib).map((g) => `<li><a href="${esc(link(g.video.url))}" target="_blank" rel="noopener">${esc(g.video.title || g.video.url)}</a><small>${esc(g.video.uploader)} · +${(g.rate * 100).toFixed(1)}% per day · ${g.checks} check${g.checks > 1 ? "s" : ""}</small></li>`).join("") || `<li class="empty">Videos are re-checked 1, 7 and 30 days after saving</li>`}</ul></div>`;
+    <div class="card"><h3>Growing fastest (last check)</h3><ul class="list">${fastestGrowing(lib).map((g) => `<li><a href="${esc(link(g.video.url))}" target="_blank" rel="noopener">${esc(g.video.title || g.video.url)}</a><small>${esc(g.video.uploader)} · +${(g.rate * 100).toFixed(1)}% per day · ${g.checks} check${g.checks > 1 ? "s" : ""}</small></li>`).join("") || `<li class="empty">Videos are re-checked 6 hours, 1, 7 and 30 days after saving</li>`}</ul></div>
+    <div class="card"><h3>Fastest right now <span class="note">(views per hour)</span></h3><ul class="list">${fastestNow(lib).map((r) => `<li><a href="${esc(link(r.video.url))}" target="_blank" rel="noopener">${esc(r.video.title || r.video.url)}</a><small>${esc(r.video.uploader)} · ${perHour(r.now)}${r.recent != null ? " since the last check" : " since posting"}</small></li>`).join("") || `<li class="empty">Needs view counts and a post date (TikTok, YouTube): views ÷ hours since posting, then views gained between re-checks</li>`}</ul></div>
+    <div class="card"><h3>Beat their creator's typical video</h3><ul class="list">${creatorOutliers(lib).map((r) => `<li><a href="${esc(link(r.video.url))}" target="_blank" rel="noopener">${esc(r.video.title || r.video.url)}</a><small>${esc(r.video.uploader)} · ${esc(r.basis)}</small></li>`).join("") || `<li class="empty">Save 3+ videos from a creator, or pick videos on their profile page in select mode (the page's median is kept as their baseline)</li>`}</ul></div>
+    ${adsCard(lib)}`;
 }
 
+const perHour = (x) => (x == null ? "–" : (x >= 100 ? short(Math.round(x)) : x.toFixed(x >= 10 ? 0 : 1)) + "/h");
+function adsCard(lib) {
+  const a = longRunningAds(lib);
+  if (!a.adsTotal) return `<div class="card"><h3>Long-running ads</h3><p class="empty">Save ads from the Meta Ad Library in select mode: the run dates on each card are kept. Ads that run ${LONG_RUN_DAYS}+ days are usually the ones that make money.</p></div>`;
+  return `<div class="card"><h3>Long-running ads <span class="note">(${a.long} of ${a.withDates} ran ${LONG_RUN_DAYS}+ days)</span></h3><ul class="list">${a.ads.map((r) => `<li><a href="${esc(link(r.video.url))}" target="_blank" rel="noopener">${esc(r.video.title || r.video.url)}</a><small>${esc(r.video.uploader)} · ${r.days} days${r.active ? " and still running when saved" : ", stopped " + esc(new Date(r.end).toLocaleDateString())}</small></li>`).join("") || `<li class="empty">${a.adsTotal} saved ads, none with run dates. Dates are read when you pick ads on a Meta Ad Library results page in select mode; TikTok Top Ads does not show them.</li>`}</ul></div>`;
+}
+// Winner signals of one video, as small chips (Library table and the script prompt).
+function signalsOf(v, bases) {
+  const out = [], vel = velocity(v), vc = vsCreator(v, bases), run = adRun(v);
+  if (vc) out.push({ text: `${vc.multiple.toFixed(1)}x creator${vc.by === "likes" ? " likes" : ""}`, hi: vc.multiple >= 2, why: vc.basis });
+  if (vel.now != null) out.push({ text: perHour(vel.now), hi: false, why: vel.recent != null ? "views per hour between the last two checks" : "views per hour since posting, at save time" });
+  if (run) out.push({ text: `${run.days}d running`, hi: run.long, why: run.active ? "ad still running when saved" : "ad stopped" });
+  return out;
+}
 function renderRecs(lib) {
   const r = recommend(lib);
   const link = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : esc(t));
@@ -82,12 +100,15 @@ function renderTable(lib) {
   fc.value = fkeep === "__none" || folders.includes(fkeep) ? fkeep : "";
   $("#delcol").hidden = !folders.includes(fc.value);
   for (const id of ["#mvcol", "#dcol"]) { const el = $(id), k = el.value; el.innerHTML = opts(["", id === "#mvcol" ? "(unfiled)" : "(none)"], folders); el.value = folders.includes(k) ? k : ""; }
-  const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, source: $("#fsrc").value, sort: $("#fsort").value, folder: fc.value });
+  const sortBy = $("#fsort").value, bases = creatorBaselines(lib);
+  const rows = filterLibrary(lib, { q: $("#q").value, platform: sel.value, source: $("#fsrc").value, sort: sortBy, folder: fc.value });
+  const key = { vph: (v) => velocity(v).now, vscreator: (v) => vsCreator(v, bases)?.multiple, run: (v) => adRun(v)?.days }[sortBy];
+  if (key) rows.sort((a, b) => (key(b) ?? -1) - (key(a) ?? -1));
   view = rows;
   $("#count").textContent = rows.length === lib.length ? `(${lib.length})` : `(${rows.length} of ${lib.length})`;
-  $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Hook</th><th>Length</th><th>Views</th><th>Likes</th><th>Note</th><th></th></tr>` +
-    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a></td><td class="hook">${hookCell(v)}</td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a></td></tr>`).join("") +
-    (rows.length > shown ? `<tr><td colspan="12"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
+  $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Hook</th><th>Length</th><th>Views</th><th>Likes</th><th title="Winner signals: vs the creator's typical video, views per hour, days an ad has run">Signals</th><th>Note</th><th></th></tr>` +
+    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a>${v.ai_tags ? `<span class="tagline">${esc([v.ai_tags.hook, v.ai_tags.angle, v.ai_tags.audience, v.ai_tags.emotion].filter((x) => x && x !== "other").join(" · "))}</span>` : ""}</td><td class="hook">${hookCell(v)}</td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td>${signalsOf(v, bases).map((g) => `<span class="sig ${g.hi ? "hi" : ""}" title="${esc(g.why)}">${esc(g.text)}</span>`).join("")}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a> <a href="#" class="script-btn" data-url="${esc(v.url)}" title="AI: write a new script modelled on this video">Script</a></td></tr>`).join("") +
+    (rows.length > shown ? `<tr><td colspan="13"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
 }
 $("#table").addEventListener("click", async (e) => {
   const t = e.target.closest("a"); if (!t) return;
@@ -95,6 +116,7 @@ $("#table").addEventListener("click", async (e) => {
   if (!t.dataset.url) return;
   e.preventDefault();
   if (t.classList.contains("tr-btn")) { t.textContent = "Transcribing…"; const r = await send({ type: "transcribe-one", url: t.dataset.url }); if (r && !r.ok) { t.textContent = "Transcribe"; alert((r && r.error) || "Transcription failed"); } }
+  else if (t.classList.contains("script-btn")) openScript(t.dataset.url);
   else if (t.classList.contains("del-btn")) { if (confirm("Remove this video from the list? The file stays on disk.")) await send({ type: "lib-delete", url: t.dataset.url }); }
   else { const v = current.find((x) => x.url === t.dataset.url); const note = prompt("Note (use #tags to group)", (v && v.note) || ""); if (note !== null) await send({ type: "lib-note", url: t.dataset.url, note }); }
 });
@@ -257,7 +279,7 @@ function scoped() {
 function renderAnalysis() {
   const lib = scoped();
   $("#scount").textContent = lib.length === all.length ? `${lib.length} videos` : `${lib.length} of ${all.length} videos`;
-  renderInsights(lib); renderRecs(lib); renderCreators(lib); renderFormats(lib); renderKeywords(lib); renderBrief(lib);
+  renderInsights(lib); renderRecs(lib); renderCreators(lib); renderFormats(lib); renderKeywords(lib); renderBrief(lib); renderTags(lib);
 }
 for (const id of ["#scol", "#splat", "#sdays"]) $(id).addEventListener("change", renderAnalysis);
 
@@ -341,3 +363,58 @@ function renderBrief(lib) {
     <div class="card"><h3>Creators to model</h3><ul class="list">${b.topCreators.map((c) => `<li>${go(c, c)}</li>`).join("") || `<li class="empty">Save 2+ videos from a creator.</li>`}</ul></div>`;
   $("#brief").onclick = (e) => { const a = e.target.closest("a[data-go]"); if (a) { e.preventDefault(); goLibrary(a.dataset.go); } };
 }
+
+// ---------- AI tags (Formats tab) ----------
+function renderTags(lib) {
+  const dim = $("#tagdim").value, rows = tagStats(lib, dim), n = taggedCount(lib);
+  const top = rows.filter((r) => r.lift != null && r.n >= 2 && r.value !== "other").sort((a, b) => b.lift - a.lift).slice(0, 8), max = Math.max(1, ...top.map((r) => r.lift));
+  $("#tagStatus").textContent = `${n} of ${lib.length} videos in this view tagged`;
+  $("#tagchart").innerHTML = `<h3>Which ${esc($("#tagdim").selectedOptions[0].text.toLowerCase())} wins <span class="note">(2+ videos each; median views vs this view, likes where views are hidden)</span></h3>` +
+    (top.length ? top.map((r) => `<div class="bar"><span class="lab">${esc(r.value)}</span><span class="track"><span class="fill ${r.lift >= 1 ? "" : "low"}" style="display:block;width:${Math.max(4, (r.lift / max) * 100)}%"></span></span><span class="val">${r.lift.toFixed(1)}x${r.liftBy === "likes" ? " likes" : ""}</span></div>`).join("")
+      : `<p class="empty">${n ? "Needs 2+ tagged videos sharing a label." : "No tagged videos yet: press “Tag untagged videos”."}</p>`);
+  sortable($("#tagtable"), "tags-" + dim, [
+    { k: "value", h: "Label", v: (r) => r.value, html: (r) => esc(r.value) },
+    { k: "n", h: "Videos", num: 1, def: 1, v: (r) => r.n, html: (r) => r.n },
+    { k: "median", h: "Median views", num: 1, tip: VIEWS_TIP, v: (r) => r.medianViews, html: (r) => short(r.medianViews) },
+    { k: "lift", h: "Lift", num: 1, tip: LIFT_TIP, v: (r) => r.lift, html: (r) => liftHtml(r.lift, r.liftBy) },
+    { k: "like", h: "Like rate", num: 1, v: (r) => r.avgLikeRate, html: (r) => pct(r.avgLikeRate) },
+    { k: "len", h: "Avg length", num: 1, v: (r) => r.avgSeconds, html: (r) => secs(r.avgSeconds) },
+  ], rows, "No tagged videos in this view.");
+}
+$("#tagdim").addEventListener("change", () => renderTags(scoped()));
+$("#tagrun").onclick = async () => {
+  const key = await aiKey(); if (!key) return ($("#tagStatus").textContent = "Save your API key first (Ideas tab)");
+  const todo = scoped().filter((v) => !v.ai_tags);
+  if (!todo.length) return ($("#tagStatus").textContent = "Every video in this view is tagged");
+  const p = buildTagPrompt(todo);
+  $("#tagStatus").textContent = `Tagging ${p.urls.length} videos…`;
+  let res; try { res = await ask(key, p.text); } catch (e) { return ($("#tagStatus").textContent = "✗ " + e.message); }
+  const tags = applyTags(res, p.urls), n = Object.keys(tags).length;
+  if (!n) return ($("#tagStatus").textContent = "The model returned no usable tags");
+  await send({ type: "lib-tags", tags }); // storage change re-renders everything
+  $("#tagStatus").textContent = `Tagged ${n} video${n === 1 ? "" : "s"}${todo.length > TAG_BATCH ? ` · ${todo.length - TAG_BATCH} left: press again` : ""}`;
+};
+
+// ---------- "Script like this" (Library row) ----------
+let scriptUrl = null;
+function openScript(url) {
+  const v = all.find((x) => x.url === url); if (!v) return;
+  scriptUrl = url;
+  $("#scriptRef").textContent = `Reference: ${v.title || v.url} (${v.uploader || v.platform})${v.transcript ? "" : " · no transcript yet: transcribe it first for a closer script"}`;
+  $("#scriptOut").innerHTML = "";
+  $("#scriptDlg").showModal();
+}
+$("#scriptGo").onclick = async () => {
+  const key = await aiKey(); if (!key) return ($("#scriptOut").innerHTML = `<p class="bad">Save your API key first (Ideas tab).</p>`);
+  const v = all.find((x) => x.url === scriptUrl); if (!v) return;
+  const sigs = signalsOf(v, creatorBaselines(all)).map((g) => g.why + ": " + g.text);
+  $("#scriptOut").innerHTML = `<p class="note">Writing…</p>`;
+  let r; try { r = await ask(key, buildScriptPrompt(v, $("#scriptProduct").value, sigs)); } catch (e) { return ($("#scriptOut").innerHTML = `<p class="bad">✗ ${esc(e.message)}</p>`); }
+  const q = (x) => esc(x == null ? "" : x), li = (a) => (a || []).slice(0, 4).map((x) => `<li>${q(x)}</li>`).join(""), sc = r.script || {};
+  $("#scriptOut").innerHTML = `<p class="sum">${q(r.summary)}</p>${r.why_it_works && r.why_it_works.length ? `<h4>Why it works</h4><ul>${li(r.why_it_works)}</ul>` : ""}
+    <h4>Script ${sc.length ? `<span class="note">(${q(sc.length)})</span>` : ""}</h4><p><b>Hook:</b> “${q(sc.hook)}”</p>
+    <table><tr><th>Time</th><th>Visual</th><th>Line / text</th></tr>${(sc.beats || []).slice(0, 8).map((b) => `<tr><td>${q(b.t)}</td><td>${q(b.visual)}</td><td>${q(b.line)}</td></tr>`).join("")}</table>
+    <p><b>CTA:</b> ${q(sc.cta)}</p>${r.keep && r.keep.length ? `<h4>Kept from the reference</h4><ul>${li(r.keep)}</ul>` : ""}${r.change && r.change.length ? `<h4>New for your product</h4><ul>${li(r.change)}</ul>` : ""}
+    ${r.variants && r.variants.length ? `<h4>Other hooks to test</h4><ul>${li(r.variants)}</ul>` : ""}<button id="scriptCopy" class="ghost">Copy script</button>`;
+  $("#scriptCopy").onclick = () => navigator.clipboard.writeText([`Hook: ${sc.hook || ""}`, ...(sc.beats || []).map((b) => `${b.t} | ${b.visual} | ${b.line}`), `CTA: ${sc.cta || ""}`].join("\n"));
+};

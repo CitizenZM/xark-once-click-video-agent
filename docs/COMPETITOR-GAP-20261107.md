@@ -40,6 +40,10 @@ Priority = value for marketers × feasible locally (no server, no platform API).
 
 **已有的卖点（营销用）**：本地保存，原帖删了也在（Sort Feed、Foreplay 都把这个当卖点宣传）；数据不出电脑；自带 MCP；本地转写免费。
 
+## 2b. 已完成（v3.6.0, 2026-11-08）
+
+Creator-relative outlier、Velocity（含 6h 复查）、AI 标签、一条参考视频 → 脚本、Meta 广告投放时长（P2 中的“广告时长信号”，仅 Meta；TikTok Top Ads 页面无投放日期）。
+
 ## 3. 建议顺序
 
 1. P1 四项一起做（约 1 个版本）：creator-relative outlier + velocity + AI 标签 + 参考视频生成脚本。这能让 Xark 从"下载 + 统计"升级为"找爆款 + 拆解 + 产出"，对标 Sort Feed 的 $10–15/月 和 Foreplay 的 $49/月。

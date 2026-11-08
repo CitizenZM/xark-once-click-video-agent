@@ -41,7 +41,11 @@
   const send = (hrefs) => {
     const directs = {}; // Creative Center cards that have been played carry the mp4 itself (no extractor exists for that site)
     for (const f of found) if (f.direct && hrefs.includes(f.url)) directs[f.url] = f.direct;
-    return chrome.runtime.sendMessage({ type: "enqueue-many", hrefs, folder: $("col").value.trim(), directs });
+    // Winner signals read off the page: an ad's run dates, and on a creator's own grid the median views of that grid.
+    const extras = {}, vs = found.map((f) => f.views).filter((v) => v > 0).sort((a, b) => a - b);
+    const page = D.profilePage() && vs.length >= 4 ? { median: vs.length % 2 ? vs[vs.length >> 1] : (vs[vs.length / 2 - 1] + vs[vs.length / 2]) / 2, n: vs.length } : null;
+    for (const f of found) if (hrefs.includes(f.url) && (f.ad || page)) extras[f.url] = { ...(f.ad ? { ad: f.ad } : {}), ...(page ? { page } : {}) };
+    return chrome.runtime.sendMessage({ type: "enqueue-many", hrefs, folder: $("col").value.trim(), directs, extras });
   };
   const paint = () => { $("n").textContent = `${picked.size} selected`; $("go").disabled = !picked.size; };
   const toggle = (url, on = !picked.has(url)) => { on ? picked.add(url) : picked.delete(url); const t = tiles.get(url); if (t) t.classList.toggle("on", on); paint(); };

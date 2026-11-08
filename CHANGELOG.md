@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.6.0
+Winner signals and AI creative tools (from the competitor review in docs/COMPETITOR-GAP-20261107.md).
+- **Beat their creator's typical video**: each video vs the median of the same creator (3+ saved videos, or the median of their profile grid when you pick videos there in select mode; likes where views are hidden). Overview card, Library "Signals" column and sort.
+- **Views per hour**: views ÷ hours since posting (the helper now keeps engine's `timestamp`), then views gained between re-checks. Re-checks now also run 6 hours after saving (the check alarm is hourly). Overview card "Fastest right now", Library sort.
+- **Long-running ads**: select mode reads "Started running on …" and Active/Inactive from Meta Ad Library cards; the dashboard shows days running and flags 30+ days. TikTok Top Ads shows no run dates, so it is not covered. Meta ads no longer store the advertiser page's likes as the ad's likes (`page_like_count`).
+- **AI tags** (own key): hook type, angle, audience, emotion, selling point and CTA per video, 40 per click; Formats tab shows lift per label.
+- **Script like this** (own key): a Library row button writes a new script (hook, timed beats, CTA, alternative hooks) modelled on one reference video, for the product you type.
+
 ## 3.5.2
 - Instagram hides view counts and length. The dashboard no longer shows them as 0: missing numbers show as "–", Instagram videos are ranked by likes ("Top performers", Outliers, best video), and Lift falls back to likes (marked "likes") when a group has no view counts. The total shows likes when no video has views, and the creative brief now has ideas for Instagram-only libraries. The MCP server's Python port gives the same numbers (new `liftBy` field).
 - The AI button asks Sonnet 5.5 for low thinking effort and leaves room for the answer, so long answers are no longer cut off.

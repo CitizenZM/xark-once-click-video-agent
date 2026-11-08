@@ -58,6 +58,13 @@
     <div id="fchart" class="card"></div>
     <div class="tablewrap" style="margin-top:14px"><table id="ftable" class="sortable"></table></div>
   </section>
+  <section>
+    <h2>AI tags <span class="note">(optional, uses your own key)</span></h2>
+    <p class="note">The model labels each video's hook type, angle, audience and emotion from its title, caption and transcript (transcribe videos first for better labels). Lift then shows which choices win in this view. Sends at most 40 untagged videos per click to api.anthropic.com.</p>
+    <div class="row"><button id="tagrun">Tag untagged videos</button><select id="tagdim"><option value="hook">Hook type</option><option value="angle">Angle</option><option value="audience">Audience</option><option value="emotion">Emotion</option></select><span id="tagStatus" class="note"></span></div>
+    <div id="tagchart" class="card"></div>
+    <div class="tablewrap" style="margin-top:14px"><table id="tagtable" class="sortable"></table></div>
+  </section>
 </div>
 
 <div class="panel" data-tab="keywords" hidden>
@@ -95,7 +102,7 @@
       <select id="fcol"><option value="">All collections</option></select>
       <select id="fplat"><option value="">All platforms</option></select>
       <select id="fsrc"><option value="">All sources</option><option value="ads">Ads only</option><option value="organic">Organic only</option></select>
-      <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option></select>
+      <select id="fsort"><option value="new">Newest</option><option value="views">Most views</option><option value="like">Best like rate</option><option value="length">Longest</option><option value="vph">Views per hour</option><option value="vscreator">Vs creator's typical</option><option value="run">Longest-running ad</option></select>
     </div>
     <div class="row">
       <button id="newcol" class="ghost">+ New collection</button>
@@ -113,6 +120,11 @@
       <button id="clear" class="ghost danger">Clear library</button>
     </div>
     <div class="tablewrap"><table id="table"></table></div>
+    <dialog id="scriptDlg"><form method="dialog" class="row"><b style="flex:1">Script like this</b><button class="ghost">Close</button></form>
+      <p class="note" id="scriptRef"></p>
+      <div class="row"><input id="scriptProduct" class="grow" placeholder="Your product, offer and audience (optional), e.g. 'Cosori air fryer, $20 off, busy parents'"><button id="scriptGo">Write script</button></div>
+      <p class="note">Sends this one video's title, caption, transcript, numbers and labels, plus your product line, to api.anthropic.com with your key.</p>
+      <div id="scriptOut"></div></dialog>
     <h3>Recent errors</h3>
     <ul id="errors" class="errors"></ul>
   </section>
