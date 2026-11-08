@@ -47,3 +47,9 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - 改动：`extension/ai.js` 请求体 `max_tokens: 8000`、`output_config.effort: "low"`；只取 text 块；`stop_reason: max_tokens` 明确报错。`test/extension.test.mjs` 断言实际请求体与截断报错。
 - 验证：旧 ai.js 下 extension.test 1 fail（2000 !== 8000）；新代码 `node --test test/*.test.mjs` 49 pass 0 fail；`python3 -m unittest` OK；`scripts/build-zip.sh` 成功。
 - 未验证：没有 API key，未对真实 API 发请求。
+
+## 2026-11-07 — v3.5.2：Instagram 无播放量时按点赞排名 + 竞品对比
+- 根因：Instagram 不提供 view_count / duration，dashboard 把 null 当 0 显示，Lift、Outliers、创意简报全部为空。
+- 修复：缺失值显示 "–"；无播放量的组按点赞算 Lift（`liftBy: "likes"`）；Top performers / Outliers / best video 按 播放→点赞 排序；总数改为总点赞。Python MCP 端口同步。
+- 验证：`node --test test/*.test.mjs` 50 pass；`python3 -m unittest discover -s host -p "test_*.py"` 67 OK；新测试在旧 insights.js 上失败（[0, undefined, undefined] ≠ [0, 0, 7468]）；真实 9 条 IG 数据预览：总点赞 7.9K、Outliers 3 条、Lift 显示 "7.9x likes"、简报有建议；CI success 6cd035f。
+- 竞品对比：docs/COMPETITOR-GAP-20261107.md（研究由子代理完成，评分取自 Chrome 商店 2026-11-07）。
