@@ -2,6 +2,8 @@ import { videoUrls, dedupeKey, cleanExtra } from "./urls.js";
 import { createTranscriber } from "./transcribe.js";
 import { cleanProject, cleanScan, newId, MAX_PROJECTS, SCAN_ITEMS } from "./projects.js";
 import { setupGrowth, setupMirror } from "./growth-run.js";
+import { setupResearch } from "./research-run.js";
+import { loadFeatures } from "./features.js";
 
 const HOST = "com.barron.oneclick_dl";
 let port = null;
@@ -286,7 +288,9 @@ async function maybeUpdate() {
   await chrome.storage.local.set({ lastUpdate: Date.now(), updateResult: r.output || "" });
 }
 const growth = setupGrowth({ get, locked, call }), mirror = setupMirror({ get, call });
-const schedule = () => { growth.schedule(); chrome.alarms.create("update", { periodInMinutes: 1440 }); };
+// projEdit is defined further down; the arrow defers the lookup. Registered before the "update" alarm listener.
+const research = setupResearch({ get, locked, call, projEdit: (...a) => projEdit(...a), notify });
+const schedule = () => { growth.schedule(); research.schedule(); chrome.alarms.create("update", { periodInMinutes: 1440 }); };
 chrome.alarms.onAlarm.addListener((a) => a.name === "update" && maybeUpdate().catch(() => {}));
 
 chrome.runtime.onStartup.addListener(() => { hello(); schedule(); });
@@ -404,13 +408,25 @@ const libEdit = (fn) => locked(async () => {
 });
 
 // dashboard / content script -> background
-const CONTENT_TYPES = ["page-state", "page-download", "enqueue-many"];
+const CONTENT_TYPES = ["page-state", "page-download", "enqueue-many", "project-page-scan", "comments-save", "project-list"];
+// project actions need the Research switch; the AI switch is enforced where the AI is called (ai-budget.js)
+const RESEARCH_TYPES = ["project-new", "project-edit", "project-delete", "project-add", "project-remove", "project-scan", "project-plan", "transcribe-one", "lib-tags", "project-list"];
 chrome.runtime.onMessage.addListener((m, sender, send) => {
   // privileged actions only from our own pages; the content script may only ask about / download its own page
   const fromExtensionPage = typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
   if (CONTENT_TYPES.includes(m.type) ? !(sender.tab || fromExtensionPage) : !fromExtensionPage) { send({ error: "not allowed" }); return false; }
   if (m.type === "page-state") { send(pageState(m)); return false; }
-  const run = m.type === "page-download" ? pageDownload(m)
+  if (RESEARCH_TYPES.includes(m.type)) {
+    loadFeatures().then((f) => (f.research ? route(m) : Promise.resolve({ error: "Research is off (Settings)" })), (e) => ({ error: e.message })).then((r) => send(r || { error: "unknown" }), (e) => send({ error: e.message }));
+    return true;
+  }
+  const run = route(m);
+  if (!run) return false;
+  run.then(send, (e) => send({ error: e.message }));
+  return true;
+});
+function route(m) {
+  return m.type === "page-download" ? pageDownload(m)
     : m.type === "expand-download" ? expandDownload(m)
     : m.type === "lib-delete" ? libEdit((lib) => lib.filter((v) => v.url !== m.url))
     : m.type === "lib-tags" ? libEdit((lib) => lib.map((v) => (m.tags && m.tags[v.url] && typeof m.tags[v.url] === "object" ? { ...v, ai_tags: cleanTags(m.tags[v.url]), ai_tags_at: Date.now() } : v)))
@@ -427,14 +443,19 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
     : m.type === "folder-add" ? addFolderName(m.name)
     : m.type === "folder-delete" ? deleteFolder(m.name)
     : m.type === "project-new" ? projectNew(m)
-    : m.type === "project-edit" ? projEdit(m.id, (p) => ({ ...p, name: m.name ?? p.name, product: m.product ?? p.product }))
+    : m.type === "project-edit" ? projEdit(m.id, (p) => ({ ...p, name: m.name ?? p.name, product: m.product ?? p.product, productUrl: m.productUrl ?? p.productUrl }))
     : m.type === "project-delete" ? projectDelete(m.id)
     : m.type === "project-add" ? projectAdd(m.id, m.urls || [])
     : m.type === "project-remove" ? projectRemove(m.id, m.urls)
     : m.type === "project-scan" ? projectScan(m)
     : m.type === "project-plan" ? projEdit(m.id, (p) => ({ ...p, plan: m.plan && typeof m.plan === "object" ? { ...m.plan, at: Date.now() } : undefined }))
+    : m.type === "project-list" ? get("projects", []).then((list) => ({ ok: true, projects: list.map((p) => ({ id: p.id, name: p.name })) }))
+    : m.type === "project-find" ? research.find(m)
+    : m.type === "project-page-scan" ? research.pageScan(m)
+    : m.type === "project-ads" ? research.ads(m)
+    : m.type === "comments-fetch" ? research.fetchComments(m)
+    : m.type === "comments-save" ? research.saveComments(m)
+    : m.type === "autoscan-now" ? research.autoScan({ force: true })
+    : m.type === "adstudio" ? research.adStudio(m)
     : null;
-  if (!run) return false;
-  run.then(send, (e) => send({ error: e.message }));
-  return true;
-});
+}

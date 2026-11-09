@@ -1,3 +1,4 @@
+import { loadFeatures } from "./features.js";
 import { videoUrls } from "./urls.js";
 import { newestBatch, batchCsv } from "./batch.js";
 const $ = (id) => document.getElementById(id);
@@ -70,6 +71,15 @@ $("export").onclick = () => {
 $("sel").onclick = async () => {
   try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["detect.js", "select.js"] }); window.close(); }
   catch (e) { now("bad", "Can't select on this page", e.message || String(e)); }
+};
+// "Viewer comments" switch: read the comments on the open TikTok / Instagram video page
+loadFeatures().then((f) => { $("comwrap").hidden = !(f.comments && /tiktok\.com|instagram\.com/.test((tab && tab.url) || "")); });
+$("com").onclick = async () => {
+  try {
+    const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["comments-page.js"] });
+    const res = await send({ type: "comments-save", url: r.result.url, comments: r.result.comments });
+    now(res && res.ok ? "ok" : "bad", res && res.ok ? `Saved ${res.n} comments` : "Comments not saved", res && res.ok ? "They show in the project's “What viewers ask” card" : (res && res.error) || "");
+  } catch (e) { now("bad", "Can't read comments here", e.message || String(e)); }
 };
 $("dash").onclick = () => { chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") }); window.close(); };
 

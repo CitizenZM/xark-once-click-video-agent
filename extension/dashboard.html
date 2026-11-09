@@ -10,7 +10,7 @@
 <header>
   <div class="brand"><h1>Xark Once Click Video Agent</h1></div>
   <nav id="tabs">
-    <a href="#overview">Overview</a><a href="#projects">Projects</a><a href="#creators">Creators</a><a href="#formats">Formats</a><a href="#keywords">Keywords</a><a href="#ideas">Ideas</a>
+    <a href="#overview" class="research-only">Overview</a><a href="#projects" class="research-only">Projects</a><a href="#creators" class="research-only">Creators</a><a href="#formats" class="research-only">Formats</a><a href="#keywords" class="research-only">Keywords</a><a href="#ideas" class="research-only">Ideas</a>
     <a href="#library">Library</a><a href="#download">Download</a><a href="#settings">Settings</a>
   </nav>
 </header>
@@ -18,7 +18,7 @@
   <section id="setup" class="card"></section>
   <section id="queue" class="card" hidden><h3>Downloading</h3><div id="jobs"></div></section>
 
-  <div id="scope" class="scope row">
+  <div id="scope" class="scope row research-only">
     <b>Analyze</b>
     <select id="scol"><option value="">All collections</option></select>
     <select id="splat"><option value="">All platforms</option></select>
@@ -68,7 +68,7 @@
     <div id="fchart" class="card"></div>
     <div class="tablewrap" style="margin-top:14px"><table id="ftable" class="sortable"></table></div>
   </section>
-  <section>
+  <section class="ai-only">
     <h2>AI tags <span class="note">(optional, uses your own key)</span></h2>
     <p class="note">The model labels each video's hook type, angle, audience and emotion from its title, caption and transcript (transcribe videos first for better labels). Lift then shows which choices win in this view. Sends at most 40 untagged videos per click to api.anthropic.com.</p>
     <div class="row"><button id="tagrun">Tag untagged videos</button><select id="tagdim"><option value="hook">Hook type</option><option value="angle">Angle</option><option value="audience">Audience</option><option value="emotion">Emotion</option></select><span id="tagStatus" class="note"></span></div>
@@ -93,11 +93,10 @@
     <p class="note">Built from the videos in the current Analyze view. Each line says what it is based on.</p>
     <div id="brief" class="grid"></div>
   </section>
-  <section>
+  <section class="ai-only">
     <h2>AI assistant <span class="note">(optional, uses your own key)</span></h2>
     <div class="card">
-      <p class="note">Optional. Uses your own Anthropic API key, stored only in this browser. When you press a button, a capped summary of your library (titles, creators, hashtags, first caption line, view and like counts) is sent to api.anthropic.com. Nothing is sent otherwise.</p>
-      <div class="row"><input id="aikey" class="grow" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button id="aisave" class="ghost">Save key</button><button id="aiclear" class="ghost">Remove key</button></div>
+      <p class="note">Uses your own AI API key (set it in <a href="#settings">Settings</a>). When you press a button, a capped summary of your library (titles, creators, hashtags, first caption line, view and like counts) is sent to api.anthropic.com. Nothing is sent otherwise.</p>
       <div class="row"><button id="aibrief">Write 5 ad concepts</button><button id="airec" class="ghost">Recommend from my library</button><button id="aisort" class="ghost">Auto-sort unfiled videos into collections</button><span id="aiStatus" class="note"></span></div>
       <div id="aiOut"></div>
     </div>
@@ -119,7 +118,7 @@
       <button id="delcol" class="ghost danger" hidden>Delete this collection</button>
       <button id="copy" class="ghost">Copy links in this view</button>
       <span class="note">Move ticked to</span><select id="mvcol"><option value="">(unfiled)</option></select><button id="mv" class="ghost">Move</button>
-      <span class="note">Add ticked to project</span><select id="mvproj"></select><button id="mvp" class="ghost">Add</button><span id="mvpMsg" class="note"></span>
+      <span class="research-only"><span class="note">Add ticked to project</span><select id="mvproj"></select><button id="mvp" class="ghost">Add</button><span id="mvpMsg" class="note"></span></span>
     </div>
     <div class="row">
       <button id="csv" class="ghost">Export CSV</button>
@@ -171,6 +170,28 @@
 </div>
 
 <div class="panel" data-tab="settings" hidden>
+  <section>
+    <h2>Features</h2>
+    <p class="note">Downloading is always on. Everything else can be switched off; switched-off features disappear from the dashboard and run nothing in the background.</p>
+    <div class="card settings" id="featList"></div>
+  </section>
+  <section class="ai-key">
+    <h2>AI API key and cost</h2>
+    <div class="card">
+      <p class="note">Your Anthropic API key (console.anthropic.com → API keys), stored only in this browser. AI buttons send a capped summary of the chosen videos to api.anthropic.com; each call is billed to your key (model claude-sonnet-5-5, $2 / $10 per million input / output tokens).</p>
+      <div class="row"><input id="aikey" class="grow" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button id="aisave">Save key</button><button id="aitest" class="ghost">Test key</button><button id="aiclear" class="ghost">Remove key</button></div>
+      <div class="row"><label class="inline">Monthly limit $ <input id="aicap" type="number" min="0" step="1" style="width:80px"></label><span class="note">0 = no limit. A call that could go over the limit is refused.</span></div>
+      <label><input type="checkbox" id="aiconfirm"> Show the estimated cost and ask before each AI call</label>
+      <p id="aiUsage" class="note"></p><span id="aiKeyMsg" class="note"></span>
+    </div>
+  </section>
+  <section class="adstudio-only">
+    <h2>Ad Studio</h2>
+    <div class="card">
+      <p class="note">Ad Studio (your separate app on this Mac) makes the ads: the extension hands it the saved reference video, the product link and the plan, or cuts remix-bank clips into its library. Nothing is rebuilt here.</p>
+      <div class="row"><input id="asurl" class="grow" placeholder="http://localhost:5310"><button id="asping" class="ghost">Check connection</button><span id="asMsg" class="note"></span></div>
+    </div>
+  </section>
   <section>
     <h2>Settings</h2>
     <div class="card settings">

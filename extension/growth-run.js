@@ -1,9 +1,11 @@
 // Background jobs for the library: the daily growth check (F5) and the library mirror for the MCP server (F7).
 // background.js passes in its own storage helpers so everything shares one storage lock.
 import { dueForCheck, appendHistory, markStatsFailed } from "./growth.js";
+import { loadFeatures } from "./features.js";
 
 export function setupGrowth({ get, locked, call }) {
   async function runGrowth() {
+    if (!(await loadFeatures()).research) return { checked: 0, off: true }; // view rechecks belong to Research
     const urls = dueForCheck(await get("library", []), Date.now());
     if (!urls.length) return { checked: 0 };
     const r = await call({ type: "stats", urls });

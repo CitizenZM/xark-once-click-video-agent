@@ -1,10 +1,12 @@
 import { analyze, recommend, filterLibrary, outliers, creatorStats, formatStats, keywordStats, creativeBrief } from "./insights.js";
-import { buildPrompt, ask, groupAssignments, buildTagPrompt, applyTags, buildScriptPrompt, TAG_BATCH } from "./ai.js";
+import { buildPrompt, groupAssignments, buildTagPrompt, applyTags, buildScriptPrompt, TAG_BATCH } from "./ai.js";
 import { velocity, fastestNow, creatorBaselines, vsCreator, creatorOutliers, adRun, longRunningAds, tagStats, taggedCount, LONG_RUN_DAYS } from "./winners.js";
 import { fastestGrowing } from "./growth.js";
 import { toTSV, toXLSX, toShareHTML } from "./export.js";
 import { initProjects } from "./project-view.js";
 import { needsTags, projectVideos } from "./projects.js";
+import { callAI, usageNow, usd, DEFAULT_CAP } from "./ai-budget.js";
+import { FEATURES, featuresOf, offClasses } from "./features.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -89,7 +91,7 @@ const allFolders = (lib, stored) => [...new Set([...stored, ...lib.map((v) => v.
 const opts = (first, list, counts) => `<option value="${first[0]}">${esc(first[1])}</option>` + list.map((f) => `<option value="${esc(f)}">${esc(f)}${counts ? ` (${counts[f] || 0})` : ""}</option>`).join("");
 // "Hook" = what is said in the first 3 seconds (from the local transcript); a link to make one when the file is saved.
 const hookCell = (v) => v.hook ? esc(v.hook) : v.noSpeech ? "<small>No speech</small>" : v.transcript ? "<small>-</small>"
-  : v.file ? `<a href="#" class="tr-btn" data-url="${esc(v.url)}">Transcribe</a>` : "";
+  : v.file ? `<a href="#" class="tr-btn research-only" data-url="${esc(v.url)}">Transcribe</a>` : "";
 function renderTable(lib) {
   current = lib;
   const plats = [...new Set(lib.map((v) => v.platform))].sort();
@@ -109,7 +111,7 @@ function renderTable(lib) {
   view = rows;
   $("#count").textContent = rows.length === lib.length ? `(${lib.length})` : `(${rows.length} of ${lib.length})`;
   $("#table").innerHTML = `<tr><th><input type="checkbox" id="tickall" title="Tick all shown"></th><th>Saved</th><th>Collection</th><th>Platform</th><th>Creator</th><th>Title</th><th>Hook</th><th>Length</th><th>Views</th><th>Likes</th><th title="Winner signals: vs the creator's typical video, views per hour, days an ad has run">Signals</th><th>Note</th><th></th></tr>` +
-    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a>${v.ai_tags ? `<span class="tagline">${esc([v.ai_tags.hook, v.ai_tags.angle, v.ai_tags.audience, v.ai_tags.emotion].filter((x) => x && x !== "other").join(" · "))}</span>` : ""}</td><td class="hook">${hookCell(v)}</td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td>${signalsOf(v, bases).map((g) => `<span class="sig ${g.hi ? "hi" : ""}" title="${esc(g.why)}">${esc(g.text)}</span>`).join("")}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a> <a href="#" class="script-btn" data-url="${esc(v.url)}" title="AI: write a new script modelled on this video">Script</a></td></tr>`).join("") +
+    rows.slice(0, shown).map((v) => `<tr><td><input type="checkbox" class="tick" data-url="${esc(v.url)}"></td><td>${esc(new Date(v.at).toLocaleDateString())}</td><td>${v.folder ? esc(v.folder) : ""}</td><td>${esc(v.platform)}</td><td>${esc(v.uploader)}</td><td><a href="${esc(link(v.url))}" target="_blank" rel="noopener">${esc(v.title || v.url)}</a>${v.ai_tags ? `<span class="tagline">${esc([v.ai_tags.hook, v.ai_tags.angle, v.ai_tags.audience, v.ai_tags.emotion].filter((x) => x && x !== "other").join(" · "))}</span>` : ""}</td><td class="hook">${hookCell(v)}</td><td>${v.duration ? esc(Number(v.duration)) + "s" : ""}</td><td>${short(v.view_count)}</td><td>${short(v.like_count)}</td><td>${signalsOf(v, bases).map((g) => `<span class="sig ${g.hi ? "hi" : ""}" title="${esc(g.why)}">${esc(g.text)}</span>`).join("")}</td><td><a href="#" class="note-btn" data-url="${esc(v.url)}">${v.note ? esc(v.note) : "+ add"}</a></td><td><a href="#" class="del-btn" data-url="${esc(v.url)}" title="Remove from list (file stays on disk)">✕</a> <a href="#" class="script-btn ai-only" data-url="${esc(v.url)}" title="AI: write a new script modelled on this video">Script</a></td></tr>`).join("") +
     (rows.length > shown ? `<tr><td colspan="13"><a href="#" id="more">Show more (${rows.length - shown} hidden)</a></td></tr>` : "");
 }
 $("#table").addEventListener("click", async (e) => {
@@ -203,24 +205,56 @@ $("#pgo").onclick = async () => {
   load();
 };
 
-// ---- AI assistant (own key, on click only) ----
-const aiKey = async () => (await chrome.storage.local.get("aiKey")).aiKey || "";
-async function aiInit() { $("#aikey").placeholder = (await aiKey()) ? "Key saved (hidden). Paste a new one to replace." : "Anthropic API key (sk-ant-…)"; }
+// ---- feature switches, AI key and cost (Settings) ----
+let feats = featuresOf({});
+const RESEARCH_TABS = ["overview", "projects", "creators", "formats", "keywords", "ideas"];
+async function applyFeatures() {
+  const { features = {}, aiKey = "", aiUsage, settings = {} } = await chrome.storage.local.get(["features", "aiKey", "aiUsage", "settings"]);
+  feats = featuresOf(features, { hasKey: !!aiKey });
+  document.body.className = offClasses(feats).join(" ");
+  $("#featList").innerHTML = FEATURES.map((f) => `<label class="feat ${f.key === "research" || f.key === "ai" ? "" : "sub"}"><input type="checkbox" data-feat="${f.key}" ${feats[f.key] ? "checked" : ""} ${f.key !== "research" && !feats.research ? "disabled" : ""}>
+    <span><b>${esc(f.name)}</b><small>${esc(f.desc)}</small></span></label>`).join("");
+  $("#aikey").placeholder = aiKey ? "Key saved (hidden). Paste a new one to replace." : "Anthropic API key (sk-ant-…)";
+  $("#aicap").value = String(Number.isFinite(settings.aiCapUsd) ? settings.aiCapUsd : DEFAULT_CAP);
+  $("#aiconfirm").checked = settings.aiConfirm !== false;
+  const u = usageNow(aiUsage);
+  $("#aiUsage").textContent = `This month (${u.month}): ${usd(u.usd)} in ${u.calls} AI call${u.calls === 1 ? "" : "s"}${feats.ai ? "" : " · AI features are off"}`;
+  $("#asurl").value = settings.adStudioUrl || "http://localhost:5310";
+  if (!feats.research && RESEARCH_TABS.includes(location.hash.slice(1) || "overview")) location.hash = "#library";
+  showTab();
+}
+$("#featList").addEventListener("change", async (e) => {
+  const k = e.target.dataset.feat; if (!k) return;
+  const { features = {}, aiKey = "" } = await chrome.storage.local.get(["features", "aiKey"]);
+  if (k === "ai" && e.target.checked && !aiKey) { $("#aiKeyMsg").textContent = "Save your API key below; AI turns on with it."; }
+  await chrome.storage.local.set({ features: { ...features, [k]: e.target.checked } });
+});
+const setSetting = async (patch) => { const { settings = {} } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, ...patch } }); };
+$("#aicap").onchange = () => setSetting({ aiCapUsd: Math.max(0, Number($("#aicap").value) || 0) });
+$("#aiconfirm").onchange = () => setSetting({ aiConfirm: $("#aiconfirm").checked });
 $("#aisave").onclick = async () => {
   const k = $("#aikey").value.trim(); if (!k) return;
-  if (!(await chrome.permissions.request({ origins: ["https://api.anthropic.com/*"] }))) return ($("#aiStatus").textContent = "Permission to reach api.anthropic.com was declined");
-  await chrome.storage.local.set({ aiKey: k }); $("#aikey").value = ""; $("#aiStatus").textContent = "Key saved"; aiInit();
+  if (!(await chrome.permissions.request({ origins: ["https://api.anthropic.com/*"] }))) return ($("#aiKeyMsg").textContent = "Permission to reach api.anthropic.com was declined");
+  const { features = {} } = await chrome.storage.local.get("features");
+  await chrome.storage.local.set({ aiKey: k, features: { ...features, ai: true } }); $("#aikey").value = ""; $("#aiKeyMsg").textContent = "Key saved · AI features on";
 };
-$("#aiclear").onclick = async () => { await chrome.storage.local.remove("aiKey"); await chrome.permissions.remove({ origins: ["https://api.anthropic.com/*"] }).catch(() => {}); $("#aiStatus").textContent = "Key removed"; aiInit(); };
+$("#aiclear").onclick = async () => { await chrome.storage.local.remove("aiKey"); await chrome.permissions.remove({ origins: ["https://api.anthropic.com/*"] }).catch(() => {}); $("#aiKeyMsg").textContent = "Key removed"; };
+// one tiny real call: proves the key, the permission and the model id work (costs a fraction of a cent)
+$("#aitest").onclick = async () => {
+  $("#aiKeyMsg").textContent = "Testing…";
+  try { const r = await callAI('Reply with JSON only: {"ok": true}', { label: "Test key", confirmFn: () => true }); $("#aiKeyMsg").textContent = r && r.ok === true ? "✓ Key works" : "Answered, but not as expected"; }
+  catch (e) { $("#aiKeyMsg").textContent = "✗ " + e.message; }
+};
+$("#asurl").onchange = () => setSetting({ adStudioUrl: $("#asurl").value.trim() || "http://localhost:5310" });
+$("#asping").onclick = async () => { $("#asMsg").textContent = "Checking…"; const r = await send({ type: "adstudio", action: "ping" }); $("#asMsg").textContent = r && r.ok ? `✓ Connected · ${r.clips} clips in its library` : "✗ " + ((r && r.error) || "No answer"); };
 const list = (title, arr, fmt) => (arr && arr.length ? `<h4>${title}</h4><ul>${arr.slice(0, 5).map((x) => `<li>${fmt(x)}</li>`).join("")}</ul>` : "");
 async function runAi(mode) {
-  const key = await aiKey(); if (!key) return ($("#aiStatus").textContent = "Save your API key first");
   const library = mode === "sort" ? all : scoped(); // recommendations and concepts follow the Analyze filter
   if (!library.length) return ($("#aiStatus").textContent = "Save a few videos first");
   const p = buildPrompt(mode, library, folders, { formats: formatStats(library).slice(0, 8), keywords: keywordStats(library).slice(0, 15) });
   if (mode === "sort" && !p.urls.length) return ($("#aiStatus").textContent = "Nothing unfiled");
   $("#aiStatus").textContent = "Asking the model…"; $("#aiOut").innerHTML = "";
-  let res; try { res = await ask(key, p.text); } catch (e) { return ($("#aiStatus").textContent = "✗ " + e.message); }
+  let res; try { res = await callAI(p.text, { label: mode === "brief" ? "Write 5 ad concepts" : mode === "sort" ? "Sort into collections" : "Recommendations" }); } catch (e) { return ($("#aiStatus").textContent = "✗ " + e.message); }
   $("#aiStatus").textContent = "";
   if (mode === "sort") {
     const groups = groupAssignments(res, p.urls), n = Object.values(groups).reduce((a, g) => a + g.length, 0);
@@ -243,13 +277,14 @@ async function runAi(mode) {
 $("#airec").onclick = () => runAi("recommend");
 $("#aibrief").onclick = () => runAi("brief");
 $("#aisort").onclick = () => runAi("sort");
-aiInit();
+applyFeatures();
 
 renderSetup();
 load();
 chrome.storage.onChanged.addListener((c) => {
   if (c.jobs) renderJobs(c.jobs.newValue || []);
   if (c.library || c.errors || c.folders || c.projects) load();
+  if (c.features || c.aiKey || c.aiUsage || c.settings) applyFeatures();
 });
 
 
@@ -260,6 +295,7 @@ function showTab() {
   document.querySelectorAll(".panel").forEach((p) => (p.hidden = p.dataset.tab !== t));
   document.querySelectorAll("#tabs a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + t));
   $("#scope").hidden = !["overview", "creators", "formats", "keywords", "ideas"].includes(t);
+  if (typeof feats !== "undefined" && !feats.research && RESEARCH_TABS.includes(t)) location.hash = "#library";
 }
 addEventListener("hashchange", showTab);
 showTab();
@@ -388,11 +424,10 @@ function renderTags(lib) {
 $("#tagdim").addEventListener("change", () => renderTags(scoped()));
 // Videos tagged before products were added (no "category") are tagged again so they get product, category and brand.
 async function tagVideos(todo, status) {
-  const key = await aiKey(); if (!key) return status("Save your API key first (Ideas tab)");
   if (!todo.length) return status("Every video in this view is tagged");
   const p = buildTagPrompt(todo);
   status(`Tagging ${p.urls.length} videos…`);
-  let res; try { res = await ask(key, p.text); } catch (e) { return status("✗ " + e.message); }
+  let res; try { res = await callAI(p.text, { label: `Tag ${p.urls.length} videos` }); } catch (e) { return status("✗ " + e.message); }
   const tags = applyTags(res, p.urls), n = Object.keys(tags).length;
   if (!n) return status("The model returned no usable tags");
   await send({ type: "lib-tags", tags }); // storage change re-renders everything
@@ -411,11 +446,10 @@ function openScript(url, product) {
   $("#scriptDlg").showModal();
 }
 $("#scriptGo").onclick = async () => {
-  const key = await aiKey(); if (!key) return ($("#scriptOut").innerHTML = `<p class="bad">Save your API key first (Ideas tab).</p>`);
   const v = all.find((x) => x.url === scriptUrl); if (!v) return;
   const sigs = signalsOf(v, creatorBaselines(all)).map((g) => g.why + ": " + g.text);
   $("#scriptOut").innerHTML = `<p class="note">Writing…</p>`;
-  let r; try { r = await ask(key, buildScriptPrompt(v, $("#scriptProduct").value, sigs)); } catch (e) { return ($("#scriptOut").innerHTML = `<p class="bad">✗ ${esc(e.message)}</p>`); }
+  let r; try { r = await callAI(buildScriptPrompt(v, $("#scriptProduct").value, sigs), { label: "Write a script" }); } catch (e) { return ($("#scriptOut").innerHTML = `<p class="bad">✗ ${esc(e.message)}</p>`); }
   const q = (x) => esc(x == null ? "" : x), li = (a) => (a || []).slice(0, 4).map((x) => `<li>${q(x)}</li>`).join(""), sc = r.script || {};
   $("#scriptOut").innerHTML = `<p class="sum">${q(r.summary)}</p>${r.why_it_works && r.why_it_works.length ? `<h4>Why it works</h4><ul>${li(r.why_it_works)}</ul>` : ""}
     <h4>Script ${sc.length ? `<span class="note">(${q(sc.length)})</span>` : ""}</h4><p><b>Hook:</b> “${q(sc.hook)}”</p>
@@ -426,4 +460,4 @@ $("#scriptGo").onclick = async () => {
 };
 
 // ---------- Projects tab ----------
-const pv = initProjects({ $, esc, send, short, link, ask, aiKey, getAll: () => all, getProjects: () => projects, openScript, tagVideos });
+const pv = initProjects({ $, esc, send, short, link, callAI, getFeatures: () => feats, getAll: () => all, getProjects: () => projects, openScript, tagVideos, save });

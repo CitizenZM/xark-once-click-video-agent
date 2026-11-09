@@ -105,7 +105,9 @@ export function buildPlanPrompt(project, videos, ctx = {}) {
     labels: v.ai_tags ? { hook: v.ai_tags.hook, angle: v.ai_tags.angle, audience: v.ai_tags.audience, product: v.ai_tags.product || undefined } : undefined,
     lines: Array.isArray(v.segments) && v.segments.length ? v.segments.slice(0, 14).map((s) => [s.start, s.end, clip(s.text, 90)]) : undefined,
     transcript: !(v.segments && v.segments.length) ? clip(v.transcript, 300) || undefined : undefined })));
-  const facts = JSON.stringify({ opportunities: (ctx.opportunities || []).slice(0, 10).map((o) => `${o.title} (${o.basis})`), products: (ctx.products || []).slice(0, 8).map((p) => ({ product: p.product, videos: p.n, lift: p.lift && +p.lift.toFixed(2) })), keywords: (ctx.keywords || []).slice(0, 15) });
+  const facts = JSON.stringify({ opportunities: (ctx.opportunities || []).slice(0, 10).map((o) => `${o.title} (${o.basis})`), products: (ctx.products || []).slice(0, 8).map((p) => ({ product: p.product, videos: p.n, lift: p.lift && +p.lift.toFixed(2) })), keywords: (ctx.keywords || []).slice(0, 15),
+    viewer_questions: (ctx.questions || []).slice(0, 8).map((c) => clip(c.text, 140)), viewer_objections: (ctx.objections || []).slice(0, 8).map((c) => clip(c.text, 140)),
+    our_ads: ctx.ads && ctx.ads.total && ctx.ads.total.spend ? { roas: ctx.ads.total.roas && +ctx.ads.total.roas.toFixed(2), by_hook: (ctx.ads.byHook || []).slice(0, 5).map((g) => ({ hook: g.key, spend: Math.round(g.spend), roas: g.roas && +g.roas.toFixed(2) })) } : undefined });
   return `You are a performance creative strategist for affiliate and DTC brands. Research project: "${clip(project.name, 60)}"${project.product ? `, for: ${clip(project.product, 300)}` : ""}.
 Saved reference videos, strongest first (JSON; "lines" are [start_second, end_second, spoken text]): ${data}
 Measured facts for this set: ${facts}
@@ -116,5 +118,5 @@ Plan new ad creative from this research. Reply with JSON only:
 "new_ads":[{"name":"","format":"","hook":"line for the first 2 seconds","angle":"","audience":"","beats":["shot or line"],"why":""}],
 "tests":[{"variable":"hook|angle|audience|length|cta","a":"","b":"","why":""}],
 "searches":[{"platform":"TikTok|Instagram|YouTube|Meta Ad Library","query":"","why":""}]}
-Rules: 3 remixes (each uses clips from at least 2 different videos, with times taken from "lines"; when a video has no lines use 0:00-0:03 for its opening only), 3 new_ads, 3 tests, at most 5 searches. Remixes are edit plans for footage the marketer owns or has licensed (or re-shoots in the same structure); never tell them to repost a creator's video. Do not invent statistics.`;
+Rules: 3 remixes (each uses clips from at least 2 different videos, with times taken from "lines"; when a video has no lines use 0:00-0:03 for its opening only), 3 new_ads, 3 tests, at most 5 searches. Remixes are edit plans for footage the marketer owns or has licensed (or re-shoots in the same structure); never tell them to repost a creator's video. Do not invent statistics. When viewer questions or objections are given, answer the most common ones inside the new ads; when our_ads results are given, lean toward the hooks that returned the most.`;
 }

@@ -22,7 +22,7 @@
     .n{font-weight:700;padding:0 6px;min-width:90px}
     .bar button,.bar input{all:unset;font:inherit;cursor:pointer;padding:7px 11px;border-radius:9px;background:#1e293b}
     .bar button:hover{background:#334155}.go{background:#2563eb!important;font-weight:700}.go:hover{background:#1d4ed8!important}.bar button[disabled]{opacity:.45;cursor:default}
-    .bar input{cursor:text;width:130px;border:1px solid #334155}.msg{color:#94a3b8;padding:0 4px;font-size:12px}</style>
+    .bar input{cursor:text;width:130px;border:1px solid #334155}.bar select{font:inherit;background:#1e293b;color:#f1f5f9;border:1px solid #334155;border-radius:9px;padding:6px;max-width:150px}.msg{color:#94a3b8;padding:0 4px;font-size:12px}</style>
     <div id="tiles"></div>
     <div class="bar"><span class="n" id="n"></span>
       <button id="all" title="Tick every video visible now">Select visible</button>
@@ -33,6 +33,7 @@
       <button id="none">Clear</button>
       <input id="col" list="cols" placeholder="Collection (optional)" maxlength="60"><datalist id="cols"></datalist>
       <button class="go" id="go">Add to queue</button>
+      <span id="pjwrap" hidden><select id="pj" title="Research project"></select><button id="pjsend" title="Keep every video on this page with its view count in the project: a creator's page becomes an account scan, a search page lists the accounts it shows. Nothing is downloaded.">Send to project</button></span>
       <button id="x" title="Close (Esc)">✕</button><span class="msg" id="msg">Click a video to select it · + adds it to the queue now</span></div>`;
   const $ = (id) => root.querySelector("#" + id);
   const picked = new Set(), added = new Set(), tiles = new Map(); // url -> tile element
@@ -126,6 +127,19 @@
   window.__oneclickSelect = { stop, click: (id) => $(id).click() }; // click(): lets the real-page test press the bar's buttons (the shadow root is closed)
   $("x").onclick = stop;
   document.documentElement.appendChild(host);
+  // research projects (the background answers only when Research is on)
+  chrome.runtime.sendMessage({ type: "project-list" }).then((r) => {
+    if (!r || !r.ok || !r.projects.length) return;
+    $("pj").innerHTML = r.projects.map((p) => `<option value="${p.id}"></option>`).join("");
+    [...$("pj").options].forEach((o, i) => (o.textContent = r.projects[i].name));
+    $("pjwrap").hidden = false;
+  }).catch(() => {});
+  $("pjsend").onclick = async () => {
+    const items = found.map((f) => ({ url: f.url, views: f.views > 0 ? f.views : undefined })).filter((f) => !/facebook\.com\/ads/.test(f.url));
+    $("msg").textContent = `Sending ${items.length} videos…`;
+    let r; try { r = await chrome.runtime.sendMessage({ type: "project-page-scan", id: $("pj").value, page: { url: location.href, title: document.title.slice(0, 80), profile: !!D.profilePage() }, items }); } catch (e) { r = { error: String(e) }; }
+    $("msg").textContent = r && r.ok ? `✓ ${items.length} videos kept in “${$("pj").selectedOptions[0].textContent}” (${D.profilePage() ? "account scan" : "search results"}). Scroll for more, then send again.` : "✗ " + ((r && r.error) || "failed");
+  };
   chrome.storage.local.get(["folders", "library"]).then(({ folders = [], library = [] }) => {
     for (const n of new Set([...folders, ...library.map((v) => v.folder).filter(Boolean)])) { const o = document.createElement("option"); o.value = n; $("cols").appendChild(o); }
   }).catch(() => {});

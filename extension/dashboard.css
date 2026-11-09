@@ -88,3 +88,8 @@ dialog#scriptDlg::backdrop{background:rgba(15,23,42,.45)}
 #pjbody details{margin:8px 0}#pjbody td{max-width:360px}#pjbody .card ol{padding-left:18px;font-size:13px}
 #pjbody .concept ul{padding-left:18px;font-size:13px;margin:4px 0}
 [hidden]{display:none!important}
+
+/* feature switches: body.no-<feature> hides what belongs to it */
+.no-research .research-only,.no-ai .ai-only,.no-comments .comments-only,.no-ad-studio .adstudio-only,.no-own-ads .ownads-only,.no-auto-scan .autoscan-only{display:none!important}
+.feat{display:flex;gap:10px;align-items:flex-start}.feat input{margin-top:3px}.feat small{display:block;color:var(--muted,#64748b)}
+.feat.sub{margin-left:26px}
