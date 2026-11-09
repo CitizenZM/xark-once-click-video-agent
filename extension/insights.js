@@ -117,6 +117,9 @@ const TAG = {
   TikTok: (t) => `https://www.tiktok.com/tag/${encodeURIComponent(t)}`,
   Instagram: (t) => `https://www.instagram.com/explore/tags/${encodeURIComponent(t)}/`,
 };
+export const profileLink = (platform, handle) => (PROFILE[platform] && handle ? PROFILE[platform](handle) : null);
+// A creator's profile page, when the handle is known (from the URL, or an id that looks like a handle).
+export const profileOf = (v) => profileLink(v.platform, urlHandle(v) || (/^[\w.]+$/.test(creatorKey(v)) && creatorKey(v) !== "unknown" ? creatorKey(v) : null));
 // Static, stable public ad-research libraries (not derived from the user's data).
 export const AD_CHANNELS = [
   { name: "TikTok Creative Center: Top Ads", url: "https://ads.tiktok.com/business/creativecenter/", why: "Best-performing TikTok ads by industry, region and objective." },
@@ -215,14 +218,15 @@ const STOP = new Set(("the a an and or but if then so to of in on at for with fr
   "his her their what which who how why when where all any some more most no not only just can will would should could do does did have has had get got " +
   "into out up down over than too very also about as like one two new now here there day today video videos reel reels post follow link bio comment " +
   "comments share save tiktok instagram youtube shorts fyp foryou foryoupage viral explore trending dont don't im i'm it's thats that's make made makes use using used try need know want see look watch let lets going really much many every").split(" "));
+// The keywords of one video: words of title, caption and transcript (no stop words) plus its #hashtags.
+export function keywordsOf(v) {
+  const words = new Set(textOf(v).toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/#[\p{L}\p{N}_]+/gu, " ").match(/[\p{L}][\p{L}\p{N}'-]{2,}/gu) || []);
+  return new Set([...[...words].filter((w) => !STOP.has(w)), ...hashtagsOf(v).filter((t) => !STOP.has(t)).map((t) => "#" + t)]);
+}
 export function keywordStats(lib, { min = 2 } = {}) {
   const base = baselines(lib);
   const by = new Map();
-  for (const v of lib) {
-    const words = new Set(textOf(v).toLowerCase().replace(/https?:\/\/\S+/g, " ").replace(/#[\p{L}\p{N}_]+/gu, " ").match(/[\p{L}][\p{L}\p{N}'-]{2,}/gu) || []);
-    const keys = new Set([...[...words].filter((w) => !STOP.has(w)), ...hashtagsOf(v).filter((t) => !STOP.has(t)).map((t) => "#" + t)]);
-    for (const k of keys) { if (!by.has(k)) by.set(k, []); by.get(k).push(v); }
-  }
+  for (const v of lib) for (const k of keywordsOf(v)) { if (!by.has(k)) by.set(k, []); by.get(k).push(v); }
   return [...by].filter(([, vs]) => vs.length >= min).map(([keyword, vs]) => ({ keyword, ...groupStats(vs, base),
     creators: new Set(vs.map(creatorKey)).size })).sort((a, b) => b.n - a.n || (b.lift || 0) - (a.lift || 0));
 }
