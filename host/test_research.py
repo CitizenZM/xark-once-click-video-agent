@@ -77,6 +77,7 @@ class R(unittest.TestCase):
                       "productUrl": "https://shop.example.com/p/liner", "notes": "Remix: hook from @a", "engine": "remix"}], {})[1]
         self.assertTrue(r["ok"], r)
         self.assertEqual(r["url"], self.base + "/jobs/20261108-abcde")
+        self.assertEqual(r["jobId"], "20261108-abcde")  # "id" is the message id the host adds
         path, ctype, body = FakeStudio.seen[-1]
         self.assertEqual(path, "/api/jobs")
         self.assertIn("multipart/form-data", ctype)

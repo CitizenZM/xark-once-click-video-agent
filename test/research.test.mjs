@@ -115,13 +115,13 @@ test("background: switches gate project actions; search, page scans, comments, a
     { url: "https://www.tiktok.com/@a/video/1", platform: "tiktok", file: "/Users/x/Downloads/OneClick/a.mp4", uploader: "a" }];
   const store = { library: lib, features: { research: false } }, L = {}, posted = [];
   const answers = { search: { ok: true, query: "fryer", items: [{ url: "https://www.youtube.com/watch?v=9", view_count: 50, account: "https://www.youtube.com/@cook", name: "Cook" }, { url: "http://10.0.0.1/x" }] },
-    comments: { ok: true, comments: [{ text: "price?", likes: 3 }] }, adstudio: { ok: true, id: "j1", url: "http://localhost:5310/jobs/j1", clips: [{ id: "im_1", dur: 2, role: "hook" }] } };
+    comments: { ok: true, comments: [{ text: "price?", likes: 3 }] }, adstudio: { ok: true, jobId: "j1", url: "http://localhost:5310/jobs/j1", clips: [{ id: "im_1", dur: 2, role: "hook" }] } };
   globalThis.chrome = {
     alarms: { create() {}, onAlarm: { addListener() {} } },
     runtime: { lastError: undefined, getURL: (p) => "chrome-extension://abc/" + p, getManifest: () => ({ version: "9.9.9", optional_host_permissions: [] }), reload() {},
       onInstalled: { addListener() {} }, onStartup: { addListener() {} }, onMessage: { addListener: (f) => (L.msg = f) },
       connectNative: () => { const ls = []; return { onMessage: { addListener: (f) => ls.push(f) }, onDisconnect: { addListener() {} }, disconnect() {},
-        postMessage(m) { posted.push(m); setTimeout(() => ls.forEach((f) => f({ id: m.id, ...(answers[m.type] || { ok: true }) })), 0); } }; } },
+        postMessage(m) { posted.push(m); setTimeout(() => ls.forEach((f) => f({ ...(answers[m.type] || { ok: true }), id: m.id })), 0); } }; } },
     commands: { onCommand: { addListener() {} } }, action: { onClicked: { addListener() {} }, setBadgeText() {}, setBadgeBackgroundColor() {} },
     contextMenus: { create() {}, onClicked: { addListener() {} } }, notifications: { create() {} },
     storage: { local: { get: async (k) => Object.fromEntries((Array.isArray(k) ? k : [k]).map((x) => [x, structuredClone(store[x])])), set: async (o) => { Object.assign(store, structuredClone(o)); } } },

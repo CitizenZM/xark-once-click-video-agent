@@ -167,7 +167,7 @@ def adstudio(msg, h):
             code, r = _http("POST", base + "/api/jobs", body, ctype)
             if code != 200 or not r.get("id"):
                 return {"type": "adstudio", "ok": False, "error": r.get("error") or "Ad Studio answered %d" % code}
-            return {"type": "adstudio", "ok": True, "id": r["id"], "url": "%s/jobs/%s" % (base, r["id"])}
+            return {"type": "adstudio", "ok": True, "jobId": r["id"], "url": "%s/jobs/%s" % (base, r["id"])}
         if action == "clips":
             if msg.get("rights") not in ("own", "licensed"):
                 return {"type": "adstudio", "ok": False, "error": "Confirm you own or have licensed this footage"}
