@@ -97,6 +97,19 @@ class T(unittest.TestCase):
         bad = session([{"id": 5, "type": "expand", "url": "javascript:alert(1)"}], {})[5]
         self.assertFalse(bad["ok"])
 
+    def test_expand_with_stats_returns_numbers_and_drops_junk(self):
+        lines = ['{"url": "https://www.tiktok.com/@a/video/1", "title": "t", "view_count": 900, "like_count": 9, "duration": 12, "timestamp": 1790000000}',
+                 '{"url": "http://127.0.0.1/x", "view_count": 1}', 'not json', '{"url": "https://www.tiktok.com/@a/video/2", "view_count": -5, "like_count": true, "title": null}']
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; cat <<\'EOF\'\n' + "\n".join(lines) + '\nEOF')
+        r = session([{"id": 7, "type": "expand", "url": "https://www.tiktok.com/@a", "limit": 30, "stats": True}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[7]
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["items"], [{"url": "https://www.tiktok.com/@a/video/1", "title": "t", "view_count": 900, "like_count": 9, "duration": 12, "timestamp": 1790000000},
+                                      {"url": "https://www.tiktok.com/@a/video/2", "title": "", "view_count": None, "like_count": None, "duration": None, "timestamp": None}])
+        with open(os.path.join(d, "args")) as f:
+            self.assertIn("%(.{url,title,view_count,like_count,duration,timestamp})j", f.read())
+        plain = session([{"id": 8, "type": "expand", "url": "https://www.tiktok.com/@a", "stats": "yes"}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[8]
+        self.assertNotIn("items", plain)  # only a real true turns stats on
+
     def test_private_targets_and_lookalike_cookie_hosts_are_refused(self):
         path, d = stub('echo "$@" >> "$(dirname "$0")/args"; echo "ERROR: login required" >&2; exit 1')
         env = {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d}

@@ -68,7 +68,7 @@ export function buildTagPrompt(videos) {
   const vs = videos.slice(0, TAG_BATCH);
   const data = JSON.stringify(vs.map((v, i) => ({ i, platform: v.platform, title: clip(v.title, 100), caption: clip(v.description, 240),
     tags: (v.tags || []).slice(0, 8), spoken_hook: clip(v.hook, 160) || undefined, transcript: clip(v.transcript, 400) || undefined, seconds: v.duration || undefined })));
-  return { urls: vs.map((v) => v.url), text: `You label short-form videos for a performance marketer, so they can see which creative choices win.\nVideos (JSON): ${data}\n\nFor every video give:\n- hook: how the first 3 seconds grab attention, exactly one of ${JSON.stringify(HOOK_TYPES)}\n- angle: the persuasion angle in 1-3 words (e.g. "price value", "social proof", "transformation", "convenience", "expert tip")\n- audience: who it speaks to in 1-3 words (e.g. "busy moms", "gym beginners", "skincare fans")\n- emotion: the main emotion, exactly one of ${JSON.stringify(EMOTIONS)}\n- usp: the product benefit or claim in at most 6 words, or "" if none\n- cta: the call to action in at most 6 words, or "" if none\nJudge from the text only; when unsure use "other". Reply with JSON only: {"tags":[{"i":0,"hook":"","angle":"","audience":"","emotion":"","usp":"","cta":""}]}` };
+  return { urls: vs.map((v) => v.url), text: `You label short-form videos for a performance marketer, so they can see which creative choices win.\nVideos (JSON): ${data}\n\nFor every video give:\n- hook: how the first 3 seconds grab attention, exactly one of ${JSON.stringify(HOOK_TYPES)}\n- angle: the persuasion angle in 1-3 words (e.g. "price value", "social proof", "transformation", "convenience", "expert tip")\n- audience: who it speaks to in 1-3 words (e.g. "busy moms", "gym beginners", "skincare fans")\n- emotion: the main emotion, exactly one of ${JSON.stringify(EMOTIONS)}\n- usp: the product benefit or claim in at most 6 words, or "" if none\n- cta: the call to action in at most 6 words, or "" if none\n- product: the product shown or sold, in at most 5 words (generic name, e.g. "air fryer", "led face mask"), or "" if none\n- category: its product category in 1-3 words (e.g. "kitchen appliance", "skincare"), or "" if none\n- brand: the brand name if it is said or shown, else ""\nJudge from the text only; when unsure use "other". Reply with JSON only: {"tags":[{"i":0,"hook":"","angle":"","audience":"","emotion":"","usp":"","cta":"","product":"","category":"","brand":""}]}` };
 }
 
 // The model's answer -> {url: tags}. Unknown indexes are dropped; hook and emotion outside the fixed lists become "other".
@@ -79,7 +79,8 @@ export function applyTags(result, urls) {
     if (!url) continue;
     const pick = (x, list) => (list.includes(String(x || "").toLowerCase().trim()) ? String(x).toLowerCase().trim() : "other");
     out[url] = { hook: pick(t.hook, HOOK_TYPES), angle: clip(t.angle, 40).toLowerCase() || "other", audience: clip(t.audience, 40).toLowerCase() || "other",
-      emotion: pick(t.emotion, EMOTIONS), usp: clip(t.usp, 60), cta: clip(t.cta, 60) };
+      emotion: pick(t.emotion, EMOTIONS), usp: clip(t.usp, 60), cta: clip(t.cta, 60),
+      product: clip(t.product, 60).toLowerCase(), category: clip(t.category, 40).toLowerCase(), brand: clip(t.brand, 40) };
   }
   return out;
 }
@@ -92,4 +93,27 @@ export function buildScriptPrompt(v, product = "", signals = []) {
     why_saved: signals.length ? signals : undefined, note: clip(v.note, 200) || undefined });
   const prod = clip(product, 300);
   return `You are a performance creative strategist. A marketer picked this reference video because it performs:\n${ref}\n\n${prod ? `Write a new short-form video ad script for: ${prod}.` : "Write a new short-form video ad script for the same product category."} Keep what makes the reference work (hook mechanism, pacing, structure, proof, CTA style) but do not copy its words, people or brand. If there is no transcript, infer the structure from the title and caption and say so in "summary".\nReply with JSON only:\n{"summary":"one sentence on what the reference does","why_it_works":["short point"],"script":{"length":"e.g. 25s","hook":"line for the first 2 seconds","beats":[{"t":"0-3s","visual":"what we see","line":"what is said or shown as text"}],"cta":"call to action"},"keep":["element kept from the reference"],"change":["what is new for this product"],"variants":["alternative hook 1","alternative hook 2"]}\nAt most 8 beats and 4 items per list.`;
+}
+
+// ---------- Project plan: remix existing winners and find new ad opportunities ----------
+// Each video goes with its spoken lines and their seconds (from the local transcript) so the model can point at real clips.
+export function buildPlanPrompt(project, videos, ctx = {}) {
+  const vs = videos.slice(0, 30);
+  const data = JSON.stringify(vs.map((v, i) => ({ i, platform: v.platform, creator: v.uploader || v.uploader_id, title: clip(v.title, 100), caption: clip(v.description, 200),
+    views: v.view_count || undefined, likes: v.like_count || undefined, seconds: v.duration || undefined, why_strong: ctx.why && ctx.why[v.url] || undefined,
+    labels: v.ai_tags ? { hook: v.ai_tags.hook, angle: v.ai_tags.angle, audience: v.ai_tags.audience, product: v.ai_tags.product || undefined } : undefined,
+    lines: Array.isArray(v.segments) && v.segments.length ? v.segments.slice(0, 14).map((s) => [s.start, s.end, clip(s.text, 90)]) : undefined,
+    transcript: !(v.segments && v.segments.length) ? clip(v.transcript, 300) || undefined : undefined })));
+  const facts = JSON.stringify({ opportunities: (ctx.opportunities || []).slice(0, 10).map((o) => `${o.title} (${o.basis})`), products: (ctx.products || []).slice(0, 8).map((p) => ({ product: p.product, videos: p.n, lift: p.lift && +p.lift.toFixed(2) })), keywords: (ctx.keywords || []).slice(0, 15) });
+  return `You are a performance creative strategist for affiliate and DTC brands. Research project: "${clip(project.name, 60)}"${project.product ? `, for: ${clip(project.product, 300)}` : ""}.
+Saved reference videos, strongest first (JSON; "lines" are [start_second, end_second, spoken text]): ${data}
+Measured facts for this set: ${facts}
+
+Plan new ad creative from this research. Reply with JSON only:
+{"summary":"2-3 sentences: what wins in this set and why",
+"remixes":[{"name":"short name","length":"e.g. 20s","sources":[{"i":0,"from":"0:00","to":"0:03","use":"hook|demo|proof|cta"}],"new_shots":["what to film or add"],"voiceover":"new spoken script","why":"which measured pattern it uses"}],
+"new_ads":[{"name":"","format":"","hook":"line for the first 2 seconds","angle":"","audience":"","beats":["shot or line"],"why":""}],
+"tests":[{"variable":"hook|angle|audience|length|cta","a":"","b":"","why":""}],
+"searches":[{"platform":"TikTok|Instagram|YouTube|Meta Ad Library","query":"","why":""}]}
+Rules: 3 remixes (each uses clips from at least 2 different videos, with times taken from "lines"; when a video has no lines use 0:00-0:03 for its opening only), 3 new_ads, 3 tests, at most 5 searches. Remixes are edit plans for footage the marketer owns or has licensed (or re-shoots in the same structure); never tell them to repost a creator's video. Do not invent statistics.`;
 }

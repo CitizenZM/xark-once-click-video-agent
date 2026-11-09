@@ -54,9 +54,9 @@ test("AI tags prompt and answer: capped batch, only library text, labels forced 
   const p = buildTagPrompt(vs);
   assert.equal(p.urls.length, TAG_BATCH);
   assert.ok(!p.text.includes("SECRET") && !p.text.includes("x".repeat(401)));
-  const tags = applyTags({ tags: [{ i: 0, hook: "Question", angle: "Price Value", audience: "busy moms", emotion: "joy", usp: "x".repeat(99), cta: "Shop now" }, { i: 99, hook: "demo" }] }, p.urls);
+  const tags = applyTags({ tags: [{ i: 0, hook: "Question", angle: "Price Value", audience: "busy moms", emotion: "joy", usp: "x".repeat(99), cta: "Shop now", product: "Air Fryer", category: "Kitchen", brand: "Cosori" }, { i: 99, hook: "demo" }] }, p.urls);
   assert.deepEqual(Object.keys(tags), [p.urls[0]]);
-  assert.deepEqual(tags[p.urls[0]], { hook: "question", angle: "price value", audience: "busy moms", emotion: "other", usp: "x".repeat(60), cta: "Shop now" });
+  assert.deepEqual(tags[p.urls[0]], { hook: "question", angle: "price value", audience: "busy moms", emotion: "other", usp: "x".repeat(60), cta: "Shop now", product: "air fryer", category: "kitchen", brand: "Cosori" });
   assert.ok(HOOK_TYPES.includes("other"));
 });
 
@@ -111,7 +111,7 @@ test("background: select-mode page signals land on the saved entry; lib-tags sto
 
   await ask({ type: "lib-tags", tags: { [TT]: { hook: "question", angle: "x".repeat(200), extra: "dropped" } } });
   const tagged = store.library.find((v) => v.url === TT);
-  assert.deepEqual(Object.keys(tagged.ai_tags), ["hook", "angle", "audience", "emotion", "usp", "cta"]);
+  assert.deepEqual(Object.keys(tagged.ai_tags), ["hook", "angle", "audience", "emotion", "usp", "cta", "product", "category", "brand"]);
   assert.equal(tagged.ai_tags.angle.length, 60);
   assert.equal(store.library.find((v) => v.url === FB).ai_tags, undefined);
   assert.deepEqual(await ask({ type: "lib-tags", tags: {} }, { tab: { id: 3 } }), { error: "not allowed" }); // a web page cannot write labels

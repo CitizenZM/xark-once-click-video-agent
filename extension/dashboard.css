@@ -84,3 +84,6 @@ td small { display: block; color: var(--mute); font-size: 11px; }
 dialog#scriptDlg{max-width:760px;width:calc(100vw - 32px);border:0;border-radius:14px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.35);background:var(--card);color:var(--ink)}
 dialog#scriptDlg::backdrop{background:rgba(15,23,42,.45)}
 #scriptOut table{width:100%;border-collapse:collapse;margin:8px 0}#scriptOut td,#scriptOut th{border-bottom:1px solid var(--line,#e2e8f0);padding:6px;text-align:left;vertical-align:top;font-size:13px}
+.card.mode{border-color:var(--accent);margin-bottom:12px}
+#pjbody details{margin:8px 0}#pjbody td{max-width:360px}#pjbody .card ol{padding-left:18px;font-size:13px}
+#pjbody .concept ul{padding-left:18px;font-size:13px;margin:4px 0}

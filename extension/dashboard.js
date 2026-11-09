@@ -3,6 +3,8 @@ import { buildPrompt, ask, groupAssignments, buildTagPrompt, applyTags, buildScr
 import { velocity, fastestNow, creatorBaselines, vsCreator, creatorOutliers, adRun, longRunningAds, tagStats, taggedCount, LONG_RUN_DAYS } from "./winners.js";
 import { fastestGrowing } from "./growth.js";
 import { toTSV, toXLSX, toShareHTML } from "./export.js";
+import { initProjects } from "./project-view.js";
+import { needsTags, projectVideos } from "./projects.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -81,7 +83,7 @@ function renderRecs(lib) {
     <div class="card"><h3>Ad libraries</h3><ul class="list">${r.channels.map((c) => `<li>${link(c.url, c.name)}<small>${esc(c.why)}</small></li>`).join("")}</ul></div>`;
 }
 
-let all = [];
+let all = [], projects = [];
 let view = [], shown = 200, current = [], folders = [];
 const allFolders = (lib, stored) => [...new Set([...stored, ...lib.map((v) => v.folder).filter(Boolean)])].sort((a, b) => a.localeCompare(b));
 const opts = (first, list, counts) => `<option value="${first[0]}">${esc(first[1])}</option>` + list.map((f) => `<option value="${esc(f)}">${esc(f)}${counts ? ` (${counts[f] || 0})` : ""}</option>`).join("");
@@ -136,10 +138,10 @@ function save(name, text, type) {
 }
 
 async function load() {
-  const { library = [], errors = [], settings = {}, jobs = [], folders: stored = [] } = await chrome.storage.local.get(["library", "errors", "settings", "jobs", "folders"]);
-  folders = allFolders(library, stored);
+  const { library = [], errors = [], settings = {}, jobs = [], folders: stored = [], projects: storedProjects = [] } = await chrome.storage.local.get(["library", "errors", "settings", "jobs", "folders", "projects"]);
+  folders = allFolders(library, stored); projects = storedProjects;
   renderJobs(jobs);
-  all = library; renderScopeOptions(library); renderAnalysis(); renderTable(library);
+  all = library; renderScopeOptions(library); renderAnalysis(); renderTable(library); pv.collections(folders); pv.render();
   $("#quality").value = settings.quality || "best";
   $("#naming").value = settings.naming || "creator-title-id";
   $("#folder").value = settings.folder || "";
@@ -247,12 +249,12 @@ renderSetup();
 load();
 chrome.storage.onChanged.addListener((c) => {
   if (c.jobs) renderJobs(c.jobs.newValue || []);
-  if (c.library || c.errors || c.folders) load();
+  if (c.library || c.errors || c.folders || c.projects) load();
 });
 
 
 // ---------- tabs ----------
-const TABS = ["overview", "creators", "formats", "keywords", "ideas", "library", "download", "settings"];
+const TABS = ["overview", "projects", "creators", "formats", "keywords", "ideas", "library", "download", "settings"];
 function showTab() {
   const t = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview";
   document.querySelectorAll(".panel").forEach((p) => (p.hidden = p.dataset.tab !== t));
@@ -267,14 +269,16 @@ const goLibrary = (q) => { $("#q").value = q; $("#fcol").value = ""; $("#fplat")
 function renderScopeOptions(lib) {
   for (const [id, list, first] of [["#scol", folders, "All collections"], ["#splat", [...new Set(lib.map((v) => v.platform))].sort(), "All platforms"]]) {
     const el = $(id), keep = el.value;
-    el.innerHTML = `<option value="">${first}</option>` + (id === "#scol" ? `<option value="__none">Unfiled</option>` : "") + list.map((x) => `<option>${esc(x)}</option>`).join("");
+    el.innerHTML = `<option value="">${first}</option>` + (id === "#scol" ? `<option value="__none">Unfiled</option>` : "") + list.map((x) => `<option>${esc(x)}</option>`).join("")
+      + (id === "#scol" && projects.length ? `<optgroup label="Projects">${projects.map((p) => `<option value="p:${esc(p.id)}">${esc(p.name)}</option>`).join("")}</optgroup>` : "");
     el.value = [...el.options].some((o) => o.value === keep) ? keep : "";
   }
 }
 function scoped() {
   const col = $("#scol").value, plat = $("#splat").value, days = Number($("#sdays").value);
   const since = days ? Date.now() - days * 86400000 : 0;
-  return all.filter((v) => (!col || (col === "__none" ? !v.folder : v.folder === col)) && (!plat || v.platform === plat) && (v.at || 0) >= since);
+  const pool = col.startsWith("p:") ? projectVideos(all, projects.find((p) => "p:" + p.id === col)) : all;
+  return pool.filter((v) => (!col || col.startsWith("p:") || (col === "__none" ? !v.folder : v.folder === col)) && (!plat || v.platform === plat) && (v.at || 0) >= since);
 }
 function renderAnalysis() {
   const lib = scoped();
@@ -382,24 +386,26 @@ function renderTags(lib) {
   ], rows, "No tagged videos in this view.");
 }
 $("#tagdim").addEventListener("change", () => renderTags(scoped()));
-$("#tagrun").onclick = async () => {
-  const key = await aiKey(); if (!key) return ($("#tagStatus").textContent = "Save your API key first (Ideas tab)");
-  const todo = scoped().filter((v) => !v.ai_tags);
-  if (!todo.length) return ($("#tagStatus").textContent = "Every video in this view is tagged");
+// Videos tagged before products were added (no "category") are tagged again so they get product, category and brand.
+async function tagVideos(todo, status) {
+  const key = await aiKey(); if (!key) return status("Save your API key first (Ideas tab)");
+  if (!todo.length) return status("Every video in this view is tagged");
   const p = buildTagPrompt(todo);
-  $("#tagStatus").textContent = `Tagging ${p.urls.length} videos…`;
-  let res; try { res = await ask(key, p.text); } catch (e) { return ($("#tagStatus").textContent = "✗ " + e.message); }
+  status(`Tagging ${p.urls.length} videos…`);
+  let res; try { res = await ask(key, p.text); } catch (e) { return status("✗ " + e.message); }
   const tags = applyTags(res, p.urls), n = Object.keys(tags).length;
-  if (!n) return ($("#tagStatus").textContent = "The model returned no usable tags");
+  if (!n) return status("The model returned no usable tags");
   await send({ type: "lib-tags", tags }); // storage change re-renders everything
-  $("#tagStatus").textContent = `Tagged ${n} video${n === 1 ? "" : "s"}${todo.length > TAG_BATCH ? ` · ${todo.length - TAG_BATCH} left: press again` : ""}`;
-};
+  status(`Tagged ${n} video${n === 1 ? "" : "s"}${todo.length > TAG_BATCH ? ` · ${todo.length - TAG_BATCH} left: press again` : ""}`);
+}
+$("#tagrun").onclick = () => tagVideos(scoped().filter(needsTags), (t) => ($("#tagStatus").textContent = t));
 
 // ---------- "Script like this" (Library row) ----------
 let scriptUrl = null;
-function openScript(url) {
+function openScript(url, product) {
   const v = all.find((x) => x.url === url); if (!v) return;
   scriptUrl = url;
+  if (product) $("#scriptProduct").value = product;
   $("#scriptRef").textContent = `Reference: ${v.title || v.url} (${v.uploader || v.platform})${v.transcript ? "" : " · no transcript yet: transcribe it first for a closer script"}`;
   $("#scriptOut").innerHTML = "";
   $("#scriptDlg").showModal();
@@ -418,3 +424,6 @@ $("#scriptGo").onclick = async () => {
     ${r.variants && r.variants.length ? `<h4>Other hooks to test</h4><ul>${li(r.variants)}</ul>` : ""}<button id="scriptCopy" class="ghost">Copy script</button>`;
   $("#scriptCopy").onclick = () => navigator.clipboard.writeText([`Hook: ${sc.hook || ""}`, ...(sc.beats || []).map((b) => `${b.t} | ${b.visual} | ${b.line}`), `CTA: ${sc.cta || ""}`].join("\n"));
 };
+
+// ---------- Projects tab ----------
+const pv = initProjects({ $, esc, send, short, link, ask, aiKey, getAll: () => all, getProjects: () => projects, openScript, tagVideos });

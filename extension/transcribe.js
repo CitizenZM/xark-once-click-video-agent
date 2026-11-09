@@ -1,6 +1,10 @@
 // Second stage of a download: local speech-to-text through the helper. Never turns a saved video into an error.
 const MAX_CHARS = 5000;
 
+// Spoken lines with their seconds, for remix clip timings. Capped: storage.local is shared by the whole library.
+export const segmentsOf = (segs) => (Array.isArray(segs) ? segs : []).filter((s) => s && Number.isFinite(s.start) && Number.isFinite(s.end) && s.text)
+  .slice(0, 25).map((s) => ({ start: Math.max(0, +s.start), end: Math.max(0, +s.end), text: String(s.text).slice(0, 120) }));
+
 export function createTranscriber({ call, get, locked, patchJob }) {
   let tail = Promise.resolve(); // one transcription at a time (whisper is CPU heavy); separate from the download slots
 
@@ -16,7 +20,7 @@ export function createTranscriber({ call, get, locked, patchJob }) {
   async function transcribeFile(url, file) {
     let r;
     try { r = await call({ type: "transcribe", file }); } catch (e) { r = { ok: false, error: e.message }; }
-    if (r.ok) await save(url, { transcript: String(r.text || "").slice(0, MAX_CHARS), hook: r.hook || "", noSpeech: undefined });
+    if (r.ok) await save(url, { transcript: String(r.text || "").slice(0, MAX_CHARS), hook: r.hook || "", segments: segmentsOf(r.segments), noSpeech: undefined });
     else if (r.error === "No speech found") await save(url, { transcript: "", hook: "", noSpeech: true });
     return r;
   }
