@@ -75,3 +75,8 @@
 - 完成: v3.5.2: Instagram ranked by likes instead of 0 views (JS+Python port); competitor gap doc docs/COMPETITOR-GAP-20261107.md
 - 验证: node 50 pass, python 67 OK, new test fails on old code, CI success 6cd035f, real-data preview ok
 - 下一步: Barron picks P1 features (creator-relative outlier, velocity, AI tags, script from reference)
+
+### 2026-11-08 17:10 · claude-opus-5-5
+- 完成: v3.6.0: creator-relative outliers, views/hour + 6h recheck, Meta ad run length, AI tags with lift, script from a reference video; Meta page likes no longer stored as ad likes
+- 验证: node --test 59 pass; python unittest 68 OK; wiring test fails on old background.js; preview renders all new cards/dialog with no console errors; CI success 1c34793
+- 下一步: Reload extension in Chrome; try select mode on a Meta Ad Library results page and a creator profile; test AI tags/script with a real key
