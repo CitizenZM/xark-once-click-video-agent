@@ -144,7 +144,8 @@ export function productStats(videos) {
       hooks: [...hooks].sort((a, b) => b[1] - a[1]).slice(0, 2).map((h) => h[0]), best, urls: r.vs.map((v) => v.url) };
   }).sort((a, b) => b.n - a.n || (b.lift || 0) - (a.lift || 0));
 }
-export const productFilter = (videos, product) => (product ? videos.filter((v) => clip(v.ai_tags && v.ai_tags.product, 60).toLowerCase() === product) : videos);
+const productOf = (v) => clip(v.ai_tags && v.ai_tags.product, 60).toLowerCase();
+export const productFilter = (videos, product) => (product ? videos.filter((v) => productOf(v) === product) : videos);
 
 // ---------- winners and opportunities ----------
 // How strongly a video performs: the best of vs its creator, vs the project median, and an ad that ran 30+ days.
@@ -190,8 +191,8 @@ export function opportunities(videos, lib = videos) {
 export const ts = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 export function remixBank(videos, limit = 8) {
   const bases = creatorBaselines(videos), base = baselines(videos);
-  const winners = videos.map((v) => ({ v, ...winnerScore(v, videos, bases, base) })).filter((w) => w.score >= 1)
-    .sort((a, b) => b.score - a.score).slice(0, limit);
+  const ranked = videos.map((v) => ({ v, ...winnerScore(v, videos, bases, base) })).filter((w) => w.score > 0).sort((a, b) => b.score - a.score);
+  const strong = ranked.filter((w) => w.score >= 1.5), winners = (strong.length >= 2 ? strong : ranked.slice(0, 3)).slice(0, limit); // small projects: the top 3
   const clips = [];
   for (const w of winners) {
     const segs = Array.isArray(w.v.segments) ? w.v.segments : [];
@@ -204,9 +205,10 @@ export function remixBank(videos, limit = 8) {
   // recipes: the strongest opener on a different winner's body, closing with a third video's CTA when there is one
   const hooks = clips.filter((c) => c.role === "hook"), ctas = clips.filter((c) => c.role === "cta"), recipes = [];
   for (let i = 0; i < Math.min(3, hooks.length); i++) {
-    const body = winners.find((w) => w.v !== hooks[i].v && !recipes.some((r) => r.body === w.v));
+    const same = (v) => (productOf(v) === productOf(hooks[i].v) ? 0 : 1); // keep one recipe on one product when tags say which
+    const body = [...winners].sort((a, b) => same(a.v) - same(b.v)).find((w) => w.v !== hooks[i].v && !recipes.some((r) => r.body === w.v));
     if (!body) break;
-    const cta = ctas.find((c) => c.v !== hooks[i].v && c.v !== body.v);
+    const cta = [...ctas].sort((a, b) => same(a.v) - same(b.v)).find((c) => c.v !== hooks[i].v && c.v !== body.v);
     recipes.push({ hook: hooks[i], body: body.v, bodyBasis: body.basis, cta });
   }
   return { winners, clips, recipes };

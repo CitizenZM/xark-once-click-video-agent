@@ -1,5 +1,6 @@
 import { videoUrls, dedupeKey, cleanExtra } from "./urls.js";
 import { createTranscriber } from "./transcribe.js";
+import { cleanProject, cleanScan, newId, MAX_PROJECTS, SCAN_ITEMS } from "./projects.js";
 import { setupGrowth, setupMirror } from "./growth-run.js";
 
 const HOST = "com.barron.oneclick_dl";
@@ -364,7 +365,37 @@ async function expandDownload({ url, limit }) {
   return { found: urls.length, ...summary(rs) };
 }
 
-const cleanTags = (t) => Object.fromEntries(["hook", "angle", "audience", "emotion", "usp", "cta"].map((k) => [k, String(t[k] ?? "").slice(0, 60)]));
+const cleanTags = (t) => Object.fromEntries(["hook", "angle", "audience", "emotion", "usp", "cta", "product", "category", "brand"].map((k) => [k, String(t[k] ?? "").slice(0, 60)]));
+// research projects: every edit re-reads the stored list under the lock and cleans what it writes
+const projEdit = (id, fn) => locked(async () => {
+  const list = await get("projects", []), i = list.findIndex((p) => p.id === id);
+  if (i < 0) return { error: "No such project" };
+  const next = cleanProject(fn(list[i]));
+  if (!next) return { error: "Invalid project" };
+  list[i] = next;
+  await chrome.storage.local.set({ projects: list });
+  return { ok: true, project: next };
+});
+const projectNew = ({ name, product }) => locked(async () => {
+  const list = await get("projects", []);
+  if (list.length >= MAX_PROJECTS) return { error: `At most ${MAX_PROJECTS} projects` };
+  const p = cleanProject({ id: newId(), name, product, created: Date.now(), urls: [], scans: [] });
+  if (!p) return { error: "Enter a name" };
+  await chrome.storage.local.set({ projects: [...list, p] });
+  return { ok: true, project: p };
+});
+const projectDelete = (id) => locked(async () => { await chrome.storage.local.set({ projects: (await get("projects", [])).filter((p) => p.id !== id) }); return { ok: true }; });
+// Lists an account's recent videos with their numbers (the helper runs engine --flat-playlist: nothing is downloaded).
+async function projectScan({ id, url, limit }) {
+  const r = await call({ type: "expand", url, limit: Math.min(Number(limit) || 30, SCAN_ITEMS), stats: true });
+  if (!r.ok) return { error: r.error };
+  const scan = cleanScan({ account: url, at: Date.now(), items: (r.items || []).filter((x) => videoUrls([x && x.url], 1).length) });
+  if (!scan) return { error: "Invalid link" };
+  return projEdit(id, (p) => ({ ...p, scans: [...p.scans.filter((s) => s.account !== scan.account), scan] }));
+}
+const projectAdd = (id, urls) => projEdit(id, (p) => ({ ...p, urls: [...p.urls, ...videoUrls(urls, 500)] }));
+const projectRemove = (id, urls) => { const k = new Set((urls || []).map(dedupeKey)); return projEdit(id, (p) => ({ ...p, urls: p.urls.filter((u) => !k.has(dedupeKey(u))) })); };
+
 // library edits run here so they share the storage lock with new downloads
 const libEdit = (fn) => locked(async () => {
   const lib = await get("library", []);
@@ -395,6 +426,13 @@ chrome.runtime.onMessage.addListener((m, sender, send) => {
     : m.type === "lib-folder" ? moveToFolder(videoUrls(m.urls || [], 500), m.folder)
     : m.type === "folder-add" ? addFolderName(m.name)
     : m.type === "folder-delete" ? deleteFolder(m.name)
+    : m.type === "project-new" ? projectNew(m)
+    : m.type === "project-edit" ? projEdit(m.id, (p) => ({ ...p, name: m.name ?? p.name, product: m.product ?? p.product }))
+    : m.type === "project-delete" ? projectDelete(m.id)
+    : m.type === "project-add" ? projectAdd(m.id, m.urls || [])
+    : m.type === "project-remove" ? projectRemove(m.id, m.urls)
+    : m.type === "project-scan" ? projectScan(m)
+    : m.type === "project-plan" ? projEdit(m.id, (p) => ({ ...p, plan: m.plan && typeof m.plan === "object" ? { ...m.plan, at: Date.now() } : undefined }))
     : null;
   if (!run) return false;
   run.then(send, (e) => send({ error: e.message }));

@@ -61,3 +61,10 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - AI（用户自己的 key）：`buildTagPrompt`/`applyTags`（hook 类型、角度、人群、情绪、卖点、CTA，每次 40 条，固定词表外归 other）；`buildScriptPrompt`（一条参考视频 → 新脚本、分镜、CTA、备选 hook）。
 - 验证：`node --test test/*.test.mjs` 59 pass 0 fail；`python3 -m unittest discover` 68 OK；新的 background 接线测试在旧 background.js 上失败（ad_start undefined）；预览（真实 9 条 IG + 11 条演示数据）三张新卡片、AI 标签表、Library Signals 列、脚本对话框均渲染，无 console error；AI 两个流程用 mock 的 API 返回走通真实 dashboard 代码。
 - 未验证：未用真实 API key 调用 Anthropic；未在真实 Meta Ad Library 页面跑选择模式（卡片文字格式按英文界面写，其他语言界面读不到日期）；TikTok Top Ads 无投放日期，不覆盖。MCP 服务器未加新信号。
+
+## 2026-11-08 — v3.7.0：Research projects（研究项目）
+- 新增 `extension/projects.js`（纯函数）+ `extension/project-view.js`（Projects 标签页）：项目 = 名称 + 产品/优惠/人群 + 视频；推荐账号（新账号：项目视频里 @ 到的、库里其他共享 ≥2 个项目关键词的 creator；再列项目内 creator 按 lift 排序）；账号扫描（host `expand` 加 `stats:true`，engine `--flat-playlist` 打印 url/title/views/likes/duration/timestamp，不下载）；推荐视频（未保存、≥1.5x 该账号中位数，含每小时播放）；关键词 + 搜索链接；AI tags 新增 product/category/brand + Product mode；机会清单；Remix bank（带秒数的开头/结尾，转写现保留 25 条带时间的句子）+ 剪辑清单；AI 计划（3 个 remix、3 个新广告、3 个测试、搜索词，存到项目）。
+- 其它 tab 可在 Analyze 栏选项目只看该项目；Library 可“Add ticked to project”。
+- 修 bug（预览发现）：hook 片段把跨过 3 秒的整句截进来（0–6s 半句）→ 只取 4.5 秒内结束的句子；remix 把 1.1x 的视频当赢家、配方混用不同产品 → 赢家门槛 1.5x（不足 2 条时取前 3），配方优先同一产品；`.row{display:flex}` 覆盖 `hidden` 导致 Analyze 栏在不该出现的 tab 显示 → `[hidden]{display:none!important}`。
+- 验证：`node --test test/*.test.mjs` 66 pass 0 fail；host unittest 全部 OK（新增 stats 扫描测试，旧 host 上 KeyError 'items' 失败）；background 项目接线测试在旧 background.js 上超时失败；真实 engine 扫描 @tiktok 返回 5 条含 views/likes/timestamp；预览：Projects 页、推荐账号/视频、关键词、产品、Product mode、机会、Remix bank、mock AI 计划及保存后按 order 还原、Analyze 选项目（8 of 30）均正常，无 console error。
+- 未验证：未用真实 API key 调用（标签含产品、AI 计划）；未在 Chrome 里装载新版本实际点 Scan（host 函数已用真实 engine 验证）；Instagram 主页 flat-playlist 可能无播放量（按点赞或顺序）。

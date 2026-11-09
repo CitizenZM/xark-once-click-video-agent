@@ -44,6 +44,10 @@ Priority = value for marketers × feasible locally (no server, no platform API).
 
 Creator-relative outlier、Velocity（含 6h 复查）、AI 标签、一条参考视频 → 脚本、Meta 广告投放时长（P2 中的“广告时长信号”，仅 Meta；TikTok Top Ads 页面无投放日期）。
 
+## 2c. 已完成（v3.7.0, 2026-11-08）
+
+Research projects：推荐账号（mentions / 共享关键词 / 项目内 creator）、账号扫描（engine flat-playlist，含播放/点赞/发布时间，不下载）、推荐视频（≥1.5x 该账号中位数）、产品识别（AI tags: product/category/brand）+ Product mode、机会清单、Remix bank（带秒数的开头/结尾 + 剪辑清单）、AI remix / 新广告 / 测试计划。
+
 ## 3. 建议顺序
 
 1. P1 四项一起做（约 1 个版本）：creator-relative outlier + velocity + AI 标签 + 参考视频生成脚本。这能让 Xark 从"下载 + 统计"升级为"找爆款 + 拆解 + 产出"，对标 Sort Feed 的 $10–15/月 和 Foreplay 的 $49/月。

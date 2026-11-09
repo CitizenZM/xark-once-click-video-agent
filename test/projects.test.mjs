@@ -70,6 +70,8 @@ test("products, product mode, opportunities and the remix bank", () => {
   assert.deepEqual([hookA.start, hookA.end, hookA.text], [0, 2.5, "Stop scrolling A"]);
   assert.ok(b.clips.some((c) => c.role === "cta" && c.text === "link in bio B"));
   assert.ok(b.recipes.length >= 1 && b.recipes.every((r) => r.body !== r.hook.v));
+  assert.ok(b.recipes.every((r) => r.body.ai_tags.product === r.hook.v.ai_tags.product)); // one recipe, one product
+  assert.ok(b.winners.every((w) => w.score >= 1.5));
   assert.match(clipListTSV(b.clips).split("\n")[1], /^\/v\/1\.mp4\t0:00\t0:02\thook\tStop scrolling A\thttps:/);
 });
 

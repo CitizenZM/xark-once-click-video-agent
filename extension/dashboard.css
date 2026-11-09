@@ -87,3 +87,4 @@ dialog#scriptDlg::backdrop{background:rgba(15,23,42,.45)}
 .card.mode{border-color:var(--accent);margin-bottom:12px}
 #pjbody details{margin:8px 0}#pjbody td{max-width:360px}#pjbody .card ol{padding-left:18px;font-size:13px}
 #pjbody .concept ul{padding-left:18px;font-size:13px;margin:4px 0}
+[hidden]{display:none!important}

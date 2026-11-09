@@ -285,8 +285,10 @@ def expand(msg):
     except (TypeError, ValueError):
         limit = 25
 
+    stats = msg.get("stats") is True
+
     def listing(cookies):
-        cmd = [engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", "%(url)s"]
+        cmd = [engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", STATS_FMT if stats else "%(url)s"]
         if cookies:
             cmd += ["--cookies-from-browser", "chrome"]
         return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=180, env={**os.environ, "PATH": PATH})
@@ -299,8 +301,27 @@ def expand(msg):
         return {"type": "expanded", "ok": False, "error": str(e)}
     if p.returncode != 0:
         return {"type": "expanded", "ok": False, "error": friendly(p.stderr)}
+    if stats:
+        items = [x for x in (scan_item(l) for l in p.stdout.splitlines()) if x][:limit]
+        return {"type": "expanded", "ok": True, "urls": [x["url"] for x in items], "items": items}
     urls = [l.strip() for l in p.stdout.splitlines() if valid_url(l.strip())]
     return {"type": "expanded", "ok": True, "urls": urls[:limit]}
+
+
+# One JSON line per video of a profile listing: its link and the numbers the platform shows on the grid.
+STATS_FMT = "%(.{url,title,view_count,like_count,duration,timestamp})j"
+
+
+def scan_item(line):
+    try:
+        x = json.loads(line)
+    except ValueError:
+        return None
+    if not isinstance(x, dict) or not isinstance(x.get("url"), str) or not valid_url(x["url"]):
+        return None
+    n = lambda k: x[k] if isinstance(x.get(k), (int, float)) and not isinstance(x.get(k), bool) and x[k] >= 0 else None
+    return {"url": x["url"], "title": str(x.get("title") or "")[:150], "view_count": n("view_count"), "like_count": n("like_count"),
+            "duration": n("duration"), "timestamp": n("timestamp")}
 
 
 def update():

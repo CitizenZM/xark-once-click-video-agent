@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.0
+Research projects (new **Projects** tab).
+- **Projects**: a named set of saved videos for one product or question (name + product/offer/audience). Add a whole collection, or tick videos in Library → "Add ticked to project". Every other tab can analyze one project (Analyze bar → Projects).
+- **Accounts to study next**: new accounts first (@-mentioned in the project's videos, or saved elsewhere in the library with 2+ of the project's keywords), then the project's own creators ranked by lift. **Scan** lists an account's last 30 videos with views, likes and post time through engine `--flat-playlist` (nothing is downloaded).
+- **Videos to look at**: unsaved scan results at 1.5x+ of their own account's median, with views per hour; tick and download straight into the project.
+- **Keywords and products**: keywords with lift and search links (TikTok, Instagram tag, YouTube Shorts, Meta Ad Library). AI tags now also give product, category and brand (videos tagged before 3.7 are re-tagged once). **Product mode** narrows the whole page to one product, with Amazon/TikTok/Meta search links and "Write a script for this product".
+- **Opportunities**: double down / test / avoid / gap lines from the project's own numbers (hook, angle, audience, emotion, format, keyword lift; missing ads, platforms, transcripts, tags).
+- **Remix bank**: openers and closers of the project's winners (1.5x+) with their seconds from the local transcript (transcripts now keep up to 25 timed lines), remix recipes that stay on one product, and a clip list (file, in, out, role, line) to paste into an editor. Edit plans are for footage you own or have licensed.
+- **AI plan** (own key): 3 remixes from timed clips, 3 new ads, 3 A/B tests and searches; saved with the project.
+
 ## 3.6.0
 Winner signals and AI creative tools (from the competitor review in docs/COMPETITOR-GAP-20261107.md).
 - **Beat their creator's typical video**: each video vs the median of the same creator (3+ saved videos, or the median of their profile grid when you pick videos there in select mode; likes where views are hidden). Overview card, Library "Signals" column and sort.
