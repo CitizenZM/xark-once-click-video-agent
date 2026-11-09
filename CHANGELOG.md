@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.8.0
+Feature switches, AI cost control, and more research tools. Ad Studio does the cutting and rendering.
+- **Feature switches** (Settings → Features): Research and analysis, AI, Daily account scan, Viewer comments, Ad Studio bridge, My ads tracking. Downloading is always on. With Research off the dashboard shows only Library, Download and Settings, and the view rechecks stop. Every add-on is also checked in the background, not only hidden.
+- **AI key and cost** (Settings): the API key moved from Ideas to Settings and shows only when AI is on. "Test key" makes one tiny real call. Every AI button goes through one gate that checks the switch, the key and a monthly limit (default $10, 0 = none), shows the estimated cost before the call (optional), and records the real cost from the API's token counts (claude-sonnet-5-5, $2 / $10 per million tokens).
+- **Daily account scan**: once a day, re-scans up to 20 accounts you already scanned and notifies you about new videos at 1.5x+; new ones are marked "new" in the project. "Run the daily scan now" button.
+- **Viewer comments**: YouTube comments through engine; TikTok and Instagram from the open video page (popup → "Save comments on this page"; engine returns no TikTok comments). The project shows top questions, objections and recurring words, and the AI plan answers them.
+- **Find accounts by search**: YouTube Shorts search from the project. For TikTok and Instagram, the select bar has "Send to project": a creator's grid becomes an account scan with the views the page shows (this also gives Instagram view counts, which engine cannot read); a search or hashtag page lists its creators.
+- **Exports**: project CSV, and a printable report (open → print to PDF).
+- **Remix bank → editor**: "Download EDL" (CMX 3600, 30 fps) for Premiere / Resolve.
+- **Ad Studio bridge** (calls ~/Projects/ad-studio-20261104, nothing rebuilt here): "Make in Ad Studio" on a remix recipe or an AI plan's new ad uploads the saved reference video, the project's product link and the plan to Ad Studio's own `POST /api/jobs` (remix, or AI footage that Ad Studio asks you to approve). "Cut these clips into Ad Studio's library" sends the remix-bank seconds to a new local-only Ad Studio route, `POST /api/library/import`, which cuts them with its own ffmpeg settings into its stock library. It asks you to confirm you own or have licensed the footage. The helper only talks to http://localhost.
+- **My ads**: add your ads by hand or import a Meta / TikTok Ads Manager CSV. ROAS, CTR and CPA per ad, grouped by reference video, hook and format (groups under $20 are marked "too little spend"). The results go into the AI plan.
+
 ## 3.7.0
 Research projects (new **Projects** tab).
 - **Projects**: a named set of saved videos for one product or question (name + product/offer/audience). Add a whole collection, or tick videos in Library → "Add ticked to project". Every other tab can analyze one project (Analyze bar → Projects).
