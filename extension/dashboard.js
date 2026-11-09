@@ -226,7 +226,7 @@ async function applyFeatures() {
 $("#featList").addEventListener("change", async (e) => {
   const k = e.target.dataset.feat; if (!k) return;
   const { features = {}, aiKey = "" } = await chrome.storage.local.get(["features", "aiKey"]);
-  if (k === "ai" && e.target.checked && !aiKey) { $("#aiKeyMsg").textContent = "Save your API key below; AI turns on with it."; }
+  if (k === "ai" && e.target.checked && !aiKey) $("#aiKeyMsg").textContent = "Paste your API key below and press Save key.";
   await chrome.storage.local.set({ features: { ...features, [k]: e.target.checked } });
 });
 const setSetting = async (patch) => { const { settings = {} } = await chrome.storage.local.get("settings"); await chrome.storage.local.set({ settings: { ...settings, ...patch } }); };

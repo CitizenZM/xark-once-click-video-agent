@@ -40,7 +40,7 @@ export function initProjects(ctx) {
     const opp = opportunities(videos, lib), bank = remixBank(videos), recVids = recommendedVideos(p, lib);
     const prodRow = prods.find((x) => x.product === product);
     const fresh = new Set(p.fresh || []);
-    const known = new Set([...recs.fresh, ...recs.mine].map((r) => r.url).filter(Boolean)), scanned = new Set(p.scans.map((s) => s.account));
+    const known = new Set(recs.mine.map((r) => r.url).filter(Boolean)), scanned = new Set(p.scans.map((s) => s.account));
     const found = searchAccounts(p.finds || [], { known, scanned });
     const com = commentInsights(videos), ads = adStats(p.ads || [], lib);
     const ytCount = all.filter((v) => /youtube\.com|youtu\.be/.test(v.url) && !(v.comments && v.comments.length)).length;
