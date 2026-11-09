@@ -35,7 +35,7 @@ export function parseJson(text) {
 // for these short JSON tasks and leave room for the answer.
 export const REQUEST = (text) => ({ model: MODEL, max_tokens: 8000, output_config: { effort: "low" }, messages: [{ role: "user", content: text }] });
 
-export async function ask(key, text, fetchImpl = fetch) {
+export async function ask(key, text, fetchImpl = fetch, onUsage = null) {
   const r = await fetchImpl("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
@@ -43,6 +43,7 @@ export async function ask(key, text, fetchImpl = fetch) {
   });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((body.error && body.error.message) || `API error ${r.status}`);
+  if (onUsage && body.usage) onUsage(body.usage); // billed even when the answer is cut off
   if (body.stop_reason === "max_tokens") throw new Error("The answer was cut off (output limit reached). Try again with fewer videos.");
   return parseJson((body.content || []).filter((c) => c.type === "text").map((c) => c.text || "").join(""));
 }

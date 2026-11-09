@@ -3,6 +3,7 @@
 import { creatorKey, median, baselines, groupStats, keywordStats, keywordsOf, formatStats, profileOf, profileLink } from "./insights.js";
 import { dedupeKey } from "./urls.js";
 import { creatorBaselines, vsCreator, adRun, tagStats } from "./winners.js";
+import { cleanFind, cleanAd, MAX_FINDS, MAX_ADS } from "./research.js";
 
 export const MAX_PROJECTS = 50, MAX_VIDEOS = 1000, MAX_SCANS = 12, SCAN_ITEMS = 60, MAX_PLAN = 40000;
 const clip = (s, n) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -28,7 +29,12 @@ export function cleanProject(p) {
   const urls = [...new Set((Array.isArray(p.urls) ? p.urls : []).map(https).filter(Boolean))].slice(0, MAX_VIDEOS);
   const scans = (Array.isArray(p.scans) ? p.scans : []).map(cleanScan).filter(Boolean).slice(-MAX_SCANS);
   const plan = p.plan && typeof p.plan === "object" && JSON.stringify(p.plan).length <= MAX_PLAN ? p.plan : undefined;
-  return { id, name, product: clip(p.product, 300), created: num(p.created) || Date.now(), urls, scans, ...(plan ? { plan } : {}) };
+  const finds = (Array.isArray(p.finds) ? p.finds : []).map(cleanFind).filter(Boolean).slice(-MAX_FINDS);
+  const ads = (Array.isArray(p.ads) ? p.ads : []).map(cleanAd).filter(Boolean).slice(-MAX_ADS);
+  const productUrl = https(p.productUrl) || undefined, autoScanAt = num(p.autoScanAt);
+  const fresh = (Array.isArray(p.fresh) ? p.fresh : []).map(https).filter(Boolean).slice(0, 30); // new picks from the last daily scan
+  return { id, name, product: clip(p.product, 300), created: num(p.created) || Date.now(), urls, scans, finds, ads, fresh,
+    ...(productUrl ? { productUrl } : {}), ...(autoScanAt ? { autoScanAt } : {}), ...(plan ? { plan } : {}) };
 }
 
 export function projectVideos(lib, p) {
