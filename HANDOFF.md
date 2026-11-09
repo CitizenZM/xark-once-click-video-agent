@@ -85,3 +85,8 @@
 - 完成: v3.7.0 Research projects: recommended accounts (mentions, keyword-sharing, own creators), account scan via engine flat-playlist with stats, recommended videos 1.5x+, AI product/category/brand + product mode, opportunities, remix bank with timed clips + clip list, AI remix/new-ad/test plan
 - 验证: node --test 66 pass; host unittest 69 OK; new tests fail on old host/background; live scan @tiktok 5 items with views; preview ok no console errors; CI success cf6f79d
 - 下一步: Reload extension; create a project, Scan an account, Find products with AI, Make the plan with a real key
+
+### 2026-11-08 20:29 · claude-opus-5-5
+- 完成: v3.8.0: feature switches (research/AI/daily scan/comments/Ad Studio/my ads), AI key+Test key+monthly cap+cost estimate in Settings, daily account scan, comments (YouTube via engine, TikTok/IG from page), YouTube search + select-bar Send to project (IG views), CSV/report/EDL exports, own-ads CSV import with ROAS by reference/hook, Ad Studio bridge via its /api/jobs and new local-only /api/library/import
+- 验证: node 74 pass; host 74 OK; IL3 wiring tests fail on v3.7.0; live helper->Ad Studio import cut 2 clips, re-read via API, cleaned; CI success 2d5ed93
+- 下一步: Reload extension; Settings: save key + Test key; try Send to project on a TikTok search page; Make in Ad Studio on one recipe
