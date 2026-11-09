@@ -80,3 +80,8 @@
 - 完成: v3.6.0: creator-relative outliers, views/hour + 6h recheck, Meta ad run length, AI tags with lift, script from a reference video; Meta page likes no longer stored as ad likes
 - 验证: node --test 59 pass; python unittest 68 OK; wiring test fails on old background.js; preview renders all new cards/dialog with no console errors; CI success 1c34793
 - 下一步: Reload extension in Chrome; try select mode on a Meta Ad Library results page and a creator profile; test AI tags/script with a real key
+
+### 2026-11-08 17:47 · claude-opus-5-5
+- 完成: v3.7.0 Research projects: recommended accounts (mentions, keyword-sharing, own creators), account scan via engine flat-playlist with stats, recommended videos 1.5x+, AI product/category/brand + product mode, opportunities, remix bank with timed clips + clip list, AI remix/new-ad/test plan
+- 验证: node --test 66 pass; host unittest 69 OK; new tests fail on old host/background; live scan @tiktok 5 items with views; preview ok no console errors; CI success cf6f79d
+- 下一步: Reload extension; create a project, Scan an account, Find products with AI, Make the plan with a real key
