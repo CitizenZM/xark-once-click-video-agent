@@ -372,6 +372,9 @@ def handle(msg, on_pct=None):
     if kind == "stats":
         import stats
         return {"type": "stats", "ok": True, "results": stats.fetch_stats(msg.get("urls"), sys.modules[__name__])}
+    if kind in ("comments", "search", "adstudio"):
+        import research
+        return getattr(research, kind)(msg, sys.modules[__name__])
     if kind == "sync-library":
         import library_mirror
         return library_mirror.sync(msg.get("items"))
