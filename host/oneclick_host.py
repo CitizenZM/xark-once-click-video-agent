@@ -15,7 +15,7 @@ import media
 # User-level installs (pipx) first: the updater manages that copy, so it must be the one in use.
 PATH = os.pathsep.join(p for p in [os.path.expanduser("~/.local/bin"), "/opt/homebrew/bin", "/usr/local/bin",
                                    "/usr/bin", "/bin", os.environ.get("PATH", "")] if p)
-ENGINE_BIN = "engine"  # the only place that names the download engine
+ENGINE_BIN = "yt-dlp"  # the only place that names the download engine
 ENGINE = os.environ.get("ONECLICK_ENGINE") or shutil.which(ENGINE_BIN, path=PATH) or os.path.expanduser("~/.local/bin/" + ENGINE_BIN)
 OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneClick")
 COOKIE_HOSTS = ("instagram.com", "www.instagram.com")  # retry with Chrome cookies if the anonymous try fails

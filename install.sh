@@ -15,8 +15,8 @@ if [ -z "$SRC" ] || [ ! -f "$SRC/host/oneclick_host.py" ]; then
 fi
 need() { command -v "$1" >/dev/null 2>&1; }
 need python3 || { echo "python3 is required"; exit 1; }
-if ! need engine; then
-  if need pipx; then pipx install engine; elif need brew; then brew install engine; else python3 -m pip install --user -U engine; fi
+if ! need yt-dlp; then
+  if need pipx; then pipx install yt-dlp; elif need brew; then brew install yt-dlp; else python3 -m pip install --user -U yt-dlp; fi
 fi
 if ! need ffmpeg; then
   if need brew; then brew install ffmpeg; else echo "Please install ffmpeg (for example: sudo apt-get install ffmpeg)"; fi

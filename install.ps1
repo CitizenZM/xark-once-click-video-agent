@@ -5,7 +5,7 @@ $Repo = "https://github.com/CitizenZM/xark-once-click-video-agent"
 $src = if ($PSScriptRoot -and (Test-Path "$PSScriptRoot\host\oneclick_host.py")) { $PSScriptRoot } else { "$HOME\.oneclick-downloader" }
 if (-not (Test-Path "$src\host\oneclick_host.py")) { git clone --depth 1 $Repo $src }
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw "Python 3 is required: winget install Python.Python.3.12" }
-if (-not (Get-Command engine -ErrorAction SilentlyContinue)) { winget install --id engine.engine -e }
+if (-not (Get-Command yt-dlp -ErrorAction SilentlyContinue)) { winget install --id yt-dlp.yt-dlp -e }
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { winget install --id Gyan.FFmpeg -e }
 
 $ids = Get-Content "$src\host\EXTENSION_IDS" | Where-Object { $_ -and -not $_.StartsWith("#") }
