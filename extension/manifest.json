@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Xark Once Click Video Agent",
   "version": "3.8.0",
-  "description": "Save TikTok, Instagram and other videos in one click with local engine. Pick videos on a page, sort them into collections, and get AI recommendations from your own library.",
+  "description": "Save TikTok, Instagram and other videos in one click with local the engine. Pick videos on a page, sort them into collections, and get AI recommendations from your own library.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3c38ZNaC2YzRhljp8wRs+UkTA9MX2DJDGNItM3+BpkyN8IPq7Hj7snIUDH/okAiTjAivfiF4nZGALZm7ccOSQmnA9UOqOIGLvtdmt0WGS//sWGEkCXzgrAt1EZPWnsCeJFjmOJ5DpUZ1RhdBEOE/V/qtrCzDqlIJ8asQtX4cA4FQRB6RfLUgtr1zjbiafZkinCsBBdJDXujH8asZIYCrh9nlH++mtL4VJhgLf6wkirslW1zG9wOfcMQcbvFbdxsJssMB+6KoslqRR1sfwUBKK6TQVRIgt+TBFpvXE5L033EXOYo1wzNptnw8PAklcKNluPp//fcNteJNJ9VkYj3cEwIDAQAB",
   "permissions": [
     "nativeMessaging",

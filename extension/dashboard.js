@@ -26,11 +26,11 @@ async function renderSetup() {
   el.innerHTML = `<b>Helper</b> <span class="note">checking…</span>`;
   const r = await send({ type: "ping" });
   if (!r || r.error || r.type !== "pong") {
-    el.innerHTML = `<b class="bad">Helper not installed</b><p class="note">The extension needs a small local helper (it runs engine). Run this once in Terminal, then reload:</p><code>${esc(INSTALL)}</code> <button id="again" class="ghost">Check again</button>`;
+    el.innerHTML = `<b class="bad">Helper not installed</b><p class="note">The extension needs a small local helper (it runs the engine). Run this once in Terminal, then reload:</p><code>${esc(INSTALL)}</code> <button id="again" class="ghost">Check again</button>`;
     $("#again").onclick = renderSetup;
     return;
   }
-  el.innerHTML = `<b class="ok">Helper ready</b> <span class="note">engine ${esc(r.engine || "missing")} · ffmpeg ${r.ffmpeg ? "found" : "missing"} · saving to <code>${esc(r.outDir)}</code></span> <button id="upd" class="ghost">Update engine</button> <span id="updMsg" class="note"></span>`;
+  el.innerHTML = `<b class="ok">Helper ready</b> <span class="note">the engine ${esc(r.engine || "missing")} · ffmpeg ${r.ffmpeg ? "found" : "missing"} · saving to <code>${esc(r.outDir)}</code></span> <button id="upd" class="ghost">Update the engine</button> <span id="updMsg" class="note"></span>`;
   $("#upd").onclick = async () => { $("#updMsg").textContent = "updating…"; const u = await send({ type: "update" }); $("#updMsg").textContent = (u && (u.output || u.error)) || ""; renderSetup(); };
 }
 

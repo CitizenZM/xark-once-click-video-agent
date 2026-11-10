@@ -1,4 +1,4 @@
-"""F5 helper side: {type:"stats"} with a stub engine that prints a real `engine -J` document (host/fixtures/engine_J_tiktok.json)."""
+"""F5 helper side: {type:"stats"} with a stub engine that prints a real `-J` document (host/fixtures/engine_J_tiktok.json)."""
 import json, os, sys, tempfile, unittest
 os.environ.setdefault("ONECLICK_LOG", os.path.join(tempfile.gettempdir(), "oneclick-test.log"))  # never write tests into the real log
 
@@ -8,7 +8,7 @@ import stats  # noqa: E402
 
 FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "engine_J_tiktok.json")
 OK = "https://www.tiktok.com/@khaby.lame/video/7704740944427388191"
-# Stub: log "<epoch> <args>", then answer by URL. The fixture is a trimmed copy of a real `engine --skip-download -J` output.
+# Stub: log "<epoch> <args>", then answer by URL. The fixture is a trimmed copy of a real `--skip-download -J` output.
 BODY = '''
 log="$(dirname "$0")/calls"
 echo "$(perl -MTime::HiRes=time -e 'printf "%.3f", time') $*" >> "$log"
@@ -17,7 +17,7 @@ case "$last" in
   *bad*) echo "ERROR: [TikTok] 1: Private video" >&2; exit 1 ;;
   *list*) echo '{"_type":"playlist","id":"x","entries":[]}' ;;
   *nolikes*) python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["like_count"]=None; d.pop("comment_count"); print(json.dumps(d))' "@F@" ;;
-  *) tr -d '\n' < "@F@"; echo ;;  # engine -J prints one line
+  *) tr -d '\n' < "@F@"; echo ;;  # the engine -J prints one line
 esac
 '''.replace("@F@", FIXTURE)
 
@@ -34,7 +34,7 @@ def run(urls, gap="0", path_dir=None):
 
 
 class Stats(unittest.TestCase):
-    def test_fixture_is_a_real_yt_dlp_document(self):
+    def test_fixture_is_a_real_engine_document(self):
         with open(FIXTURE) as f:
             info = json.load(f)
         for k in ("id", "extractor_key", "view_count", "like_count", "comment_count", "webpage_url", "uploader_id", "formats"):
@@ -58,7 +58,7 @@ class Stats(unittest.TestCase):
         self.assertEqual((res[urls[1]]["ok"], res[urls[1]]["error"]), (False, "This video is private"))
         self.assertEqual(res[urls[2]]["error"], "invalid url"); self.assertEqual(res[urls[3]]["error"], "invalid url")
         self.assertFalse(res[urls[4]]["ok"]); self.assertIn("not a single video", res[urls[4]]["error"])
-        self.assertEqual(len(calls), 4)  # the two invalid URLs never reached engine
+        self.assertEqual(len(calls), 4)  # the two invalid URLs never reached the engine
 
     def test_missing_counters_are_null_not_zero(self):
         r, _ = run(["https://www.tiktok.com/@a/video/nolikes1"])

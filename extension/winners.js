@@ -4,7 +4,7 @@ import { creatorKey, median, baselines, groupStats } from "./insights.js";
 
 const H = 3600000, D = 86400000;
 
-// When the video was posted (ms). engine's timestamp is exact; a bare upload_date is only trusted once the video is
+// When the video was posted (ms). The engine's timestamp is exact; a bare upload_date is only trusted once the video is
 // 3+ days old at save time (taken as midday UTC, so the error stays under ~10%).
 export function postedAt(v) {
   if (Number(v.timestamp) > 0) return Number(v.timestamp) * 1000;

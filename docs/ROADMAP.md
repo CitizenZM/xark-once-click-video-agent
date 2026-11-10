@@ -7,7 +7,7 @@
 | 2 | In-extension setup check | Done: dashboard "Helper ready / not installed" card. |
 | 3 | Web Store publish + GitHub fallback | Prepared (zip, listing, privacy policy). Publishing needs the owner's developer account. |
 | 4 | Progress and queue | Done: live queue panel with per-video %, 3 parallel downloads, badge count. |
-| 5 | Auto-update engine | Done: weekly check plus one update-and-retry on 403. |
+| 5 | Auto-update the engine | Done: weekly check plus one update-and-retry on 403. |
 | 6 | Human-readable errors and retry | Done: plain-language errors, backoff retry for network errors. |
 | 7 | In-page download button | Done (opt-in). Verified in a browser with a stubbed extension API; not yet on live TikTok/Instagram pages. |
 | 8 | Options | Done: quality, file names, folder, skip duplicates, auto-update, button. |
@@ -35,5 +35,5 @@
 6. Latest N from a profile
 7. Library search, filter, sort, notes, delete
 8. Outlier scoring, like rate by platform
-9. Independent security review and fixes; portability (found Homebrew's older engine would have shadowed the pipx one)
+9. Independent security review and fixes; portability (found Homebrew's older the engine would have shadowed the pipx one)
 10. Regression, docs, release

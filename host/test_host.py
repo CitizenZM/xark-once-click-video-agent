@@ -1,4 +1,4 @@
-"""Wiring tests: drive the real host over the native-messaging protocol with a stub engine."""
+"""Wiring tests: drive the real host over the native-messaging protocol with a stub the engine."""
 import json, os, stat, struct, subprocess, sys, tempfile, unittest
 os.environ.setdefault("ONECLICK_LOG", os.path.join(tempfile.gettempdir(), "oneclick-test.log"))  # never write tests into the real log
 
@@ -116,7 +116,7 @@ class T(unittest.TestCase):
         for u in ("http://127.0.0.1:8080/x", "http://169.254.169.254/latest", "http://localhost/x", "http://192.168.1.5/x", "http://[::1]/x"):
             self.assertEqual(session([{"id": 1, "url": u}], env)[1]["error"], "invalid url", u)
             self.assertFalse(session([{"id": 2, "type": "expand", "url": u}], env)[2]["ok"], u)
-        self.assertFalse(os.path.exists(os.path.join(d, "args")))  # engine never ran
+        self.assertFalse(os.path.exists(os.path.join(d, "args")))  # the engine never ran
         session([{"id": 3, "url": "https://notinstagram.com/p/x"}], env)   # lookalike host: no cookie retry
         with open(os.path.join(d, "args")) as f:
             self.assertNotIn("cookies-from-browser", f.read())
@@ -157,7 +157,7 @@ class T(unittest.TestCase):
 
 
 def make_video(body_after, probe_json=None):
-    """Stub engine that writes a 20 KB file and reports it; optional stub ffprobe printing probe_json."""
+    """Stub the engine that writes a 20 KB file and reports it; optional stub ffprobe printing probe_json."""
     path, d = stub('echo "$@" > "$(dirname "$0")/args"; f="$(dirname "$0")/v.mp4"; head -c 20000 /dev/zero > "$f"; '
                    'echo \'{"id":"1","filepath":"\'"$f"\'"}\'' + body_after)
     probe = None
@@ -174,7 +174,7 @@ URL = "https://www.tiktok.com/@a/video/1"
 
 class Reliability(unittest.TestCase):
     def test_max_seconds_adds_match_filter_and_skip_is_reported_as_too_long(self):
-        path, d = stub('echo "$@" > "$(dirname "$0")/args"; true  # real engine is quiet here because of --print: no output at all ')
+        path, d = stub('echo "$@" > "$(dirname "$0")/args"; true  # real the engine is quiet here because of --print: no output at all ')
         r = session([{"id": 1, "url": URL, "maxSeconds": 180}], {"ONECLICK_ENGINE": path, "ONECLICK_OUT": d})[1]
         self.assertEqual((r["ok"], r.get("skipped")), (False, "too long"))
         self.assertIn("--match-filter duration <=? 180", open(os.path.join(d, "args")).read())
@@ -183,7 +183,7 @@ class Reliability(unittest.TestCase):
         self.assertNotIn("--match-filter", open(os.path.join(d, "args")).read())
         self.assertNotIn("skipped", r2)
         # no metadata and no length limit: nothing was saved, so it must not count as a success
-        self.assertEqual((r2["ok"], r2.get("error")), (False, "engine finished without saving a file"))
+        self.assertEqual((r2["ok"], r2.get("error")), (False, "The engine finished without saving a file"))
 
     def test_ffprobe_without_video_stream_is_incomplete(self):
         path, d, probe = make_video("", '{"streams":[{"codec_type":"audio"}],"format":{"duration":"5.0"}}')

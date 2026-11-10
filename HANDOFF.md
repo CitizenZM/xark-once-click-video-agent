@@ -2,7 +2,7 @@
 每次运行/更新后追加；新会话先读最后一条。
 
 ### 2026-11-06 13:20 · claude-sonnet-5-5
-- 完成: engine upgraded to 2026.10.26; built Chrome MV3 extension + native host + installer + tests
+- 完成: the engine upgraded to 2026.10.26; built Chrome MV3 extension + native host + installer + tests
 - 验证: test_host.py 4 OK; live host call produced h264/aac mp4
 - 下一步: Load extension unpacked in Chrome, test a real TikTok/IG URL
 
@@ -43,7 +43,7 @@
 
 ### 2026-11-06 17:51 · claude-opus-5-5
 - 完成: docs/GAP-DEV-PLAN.md: build+self-test plan for 10 gap features (F1-F10) with L1-L6 test layers; test/real/run.sh real-page harness (ego lite)
-- 验证: Feasibility checked: TikTok tile views via data-e2e=video-views, IG reels tile innerText views; engine has facebook:ads; brew openai-whisper broken (abseil dylib); harness first run blocked by ego notification prompt (space 12 handed to user)
+- 验证: Feasibility checked: TikTok tile views via data-e2e=video-views, IG reels tile innerText views; the engine has facebook:ads; brew openai-whisper broken (abseil dylib); harness first run blocked by ego notification prompt (space 12 handed to user)
 - 下一步: User dismisses ego notification prompt; rerun bash test/real/run.sh; then build v3.5 (F1+F3)
 
 ### 2026-11-06 18:46 · claude-opus-5-5
@@ -82,11 +82,11 @@
 - 下一步: Reload extension in Chrome; try select mode on a Meta Ad Library results page and a creator profile; test AI tags/script with a real key
 
 ### 2026-11-08 17:47 · claude-opus-5-5
-- 完成: v3.7.0 Research projects: recommended accounts (mentions, keyword-sharing, own creators), account scan via engine flat-playlist with stats, recommended videos 1.5x+, AI product/category/brand + product mode, opportunities, remix bank with timed clips + clip list, AI remix/new-ad/test plan
+- 完成: v3.7.0 Research projects: recommended accounts (mentions, keyword-sharing, own creators), account scan via the engine flat-playlist with stats, recommended videos 1.5x+, AI product/category/brand + product mode, opportunities, remix bank with timed clips + clip list, AI remix/new-ad/test plan
 - 验证: node --test 66 pass; host unittest 69 OK; new tests fail on old host/background; live scan @tiktok 5 items with views; preview ok no console errors; CI success cf6f79d
 - 下一步: Reload extension; create a project, Scan an account, Find products with AI, Make the plan with a real key
 
 ### 2026-11-08 20:29 · claude-opus-5-5
-- 完成: v3.8.0: feature switches (research/AI/daily scan/comments/Ad Studio/my ads), AI key+Test key+monthly cap+cost estimate in Settings, daily account scan, comments (YouTube via engine, TikTok/IG from page), YouTube search + select-bar Send to project (IG views), CSV/report/EDL exports, own-ads CSV import with ROAS by reference/hook, Ad Studio bridge via its /api/jobs and new local-only /api/library/import
+- 完成: v3.8.0: feature switches (research/AI/daily scan/comments/Ad Studio/my ads), AI key+Test key+monthly cap+cost estimate in Settings, daily account scan, comments (YouTube via the engine, TikTok/IG from page), YouTube search + select-bar Send to project (IG views), CSV/report/EDL exports, own-ads CSV import with ROAS by reference/hook, Ad Studio bridge via its /api/jobs and new local-only /api/library/import
 - 验证: node 74 pass; host 74 OK; IL3 wiring tests fail on v3.7.0; live helper->Ad Studio import cut 2 clips, re-read via API, cleaned; CI success 2d5ed93
 - 下一步: Reload extension; Settings: save key + Test key; try Send to project on a TikTok search page; Make in Ad Studio on one recipe

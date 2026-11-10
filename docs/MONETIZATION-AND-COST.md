@@ -45,7 +45,7 @@ All numbers were measured on this Mac on 2026-11-07. Token counts are estimates:
 
 | 操作 | 谁付钱 | 实测 / 估算 | 每次成本 |
 |---|---|---|---|
-| 下载 1 条视频（engine 本地） | 用户电脑 | 43 个文件，平均 **2.05 MB** | **$0**（无服务器、无带宽费） |
+| 下载 1 条视频（the engine 本地） | 用户电脑 | 43 个文件，平均 **2.05 MB** | **$0**（无服务器、无带宽费） |
 | 封面图 | 用户电脑 | 每张几十 KB | $0 |
 | 本地转写（whisper.cpp base.en） | 用户电脑 | 9 秒视频 **0.61 秒**完成 | $0 |
 | Dashboard 统计（Creators / Formats / Keywords / Lift） | 浏览器本地 | 纯 JS | $0 |

@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-command setup: engine + ffmpeg + the native helper, registered for Chrome-family browsers (macOS, Linux).
+# One-command setup: download engine + ffmpeg + the native helper, registered for Chrome-family browsers (macOS, Linux).
 #   curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash
 set -euo pipefail
 REPO="${ONECLICK_REPO:-https://github.com/CitizenZM/xark-once-click-video-agent}"
@@ -36,7 +36,7 @@ for root in "${ROOTS[@]}"; do
 import json, sys
 src, out = sys.argv[1], sys.argv[2]
 ids = [l.strip() for l in open(src + "/host/EXTENSION_IDS") if l.strip() and not l.startswith("#")]
-json.dump({"name": "com.barron.oneclick_dl", "description": "One-click engine downloader",
+json.dump({"name": "com.barron.oneclick_dl", "description": "One-click downloader",
            "path": src + "/host/oneclick_host.py", "type": "stdio",
            "allowed_origins": ["chrome-extension://%s/" % i for i in ids]}, open(out, "w"))
 PY

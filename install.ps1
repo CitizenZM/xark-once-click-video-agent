@@ -12,7 +12,7 @@ $ids = Get-Content "$src\host\EXTENSION_IDS" | Where-Object { $_ -and -not $_.St
 $origins = '"' + (($ids | ForEach-Object { "chrome-extension://$_/" }) -join '","') + '"'
 $bat = ("$src\host\oneclick_host.bat").Replace("\", "\\")
 $mf = "$src\host\com.barron.oneclick_dl.json"
-Set-Content -Path $mf -Encoding ascii -Value ('{"name":"com.barron.oneclick_dl","description":"One-click engine downloader","path":"' + $bat + '","type":"stdio","allowed_origins":[' + $origins + ']}')
+Set-Content -Path $mf -Encoding ascii -Value ('{"name":"com.barron.oneclick_dl","description":"One-click downloader","path":"' + $bat + '","type":"stdio","allowed_origins":[' + $origins + ']}')
 
 foreach ($k in "HKCU:\Software\Google\Chrome\NativeMessagingHosts", "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts", "HKCU:\Software\BraveSoftware\Brave-Browser\NativeMessagingHosts") {
   New-Item -Path "$k\com.barron.oneclick_dl" -Force | Out-Null

@@ -2,10 +2,10 @@
 
 Chrome extension that saves the video on the page (TikTok, Instagram, YouTube, X and 1000+ sites) with one click, downloads a whole page or a profile's latest videos, sorts what you save into collections, and turns it into a small research dashboard with optional AI recommendations.
 
-It runs [engine](https://github.com/engine/engine) on your own computer through a tiny local helper. Nothing is uploaded anywhere.
+It runs a local download engine on your own computer through a tiny local helper. Nothing is uploaded anywhere.
 
 ## Install (2 steps)
-1. **Helper** (installs engine + ffmpeg if missing, registers the helper)
+1. **Helper** (installs the engine + ffmpeg if missing, registers the helper)
    - macOS / Linux:
      ```bash
      curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash
@@ -24,9 +24,9 @@ Open the dashboard (right-click the toolbar icon → "Open library & insights").
 - **Paste links**: dashboard → Download.
 - **In-page button** (optional): Settings → turn on; asks for site access only then. Reload open tabs afterwards.
 - **Library**: search, filter, sort, notes with #tags, export CSV/JSON. **Insights**: platform split, length, creators, hashtags, outliers that beat their baseline, like rate by platform, and creators/hashtags/@mentions to study next (derived only from your own saved videos) plus links to the public ad libraries.
-- **Settings**: quality (best / 1080p / mp3), file-name style, download folder (inside your home folder), skip duplicates, auto-update engine.
+- **Settings**: quality (best / 1080p / mp3), file-name style, download folder (inside your home folder), skip duplicates, auto-update the engine.
 
-Files go to `~/Downloads/OneClick` by default. The helper log is `~/Library/Logs/oneclick-host.log` (macOS) or `~/.local/state/oneclick-host.log` (Linux). engine updates itself weekly, and once when a site starts refusing downloads.
+Files go to `~/Downloads/OneClick` by default. The helper log is `~/Library/Logs/oneclick-host.log` (macOS) or `~/.local/state/oneclick-host.log` (Linux). The engine updates itself weekly, and once when a site starts refusing downloads.
 
 ## Transcription (optional)
 
@@ -57,7 +57,7 @@ touch ~/.oneclick-dev                                              # dev: Chrome
 Layout: `extension/` (MV3, no build step) · `host/` (native messaging helper) · `docs/` (ROADMAP, SECURITY, WEBSTORE) · `CHANGELOG.md`.
 
 ## Responsible use
-Download only content you own or have permission to use, and respect each platform's terms and copyright law. This project is a thin wrapper around engine and ships no site-specific code.
+Download only content you own or have permission to use, and respect each platform's terms and copyright law. This project is a thin wrapper around the engine and ships no site-specific code.
 
 MIT licensed.
 

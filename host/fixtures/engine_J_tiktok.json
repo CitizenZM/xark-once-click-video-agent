@@ -60,7 +60,7 @@
   "version": "2026.10.26",
   "current_git_head": null,
   "release_git_head": "c91f8de0bfb3577894abad716eaaa01659e6bd14",
-  "repository": "engine/engine"
+  "repository": "engine"
  },
  "formats": [
   {

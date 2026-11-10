@@ -1,6 +1,6 @@
-"""Ad libraries, cover images, Stories: the helper's engine argument lists and the direct-link allowlist.
+"""Ad libraries, cover images, Stories: the helper's the engine argument lists and the direct-link allowlist.
 
-Stubs print what real engine 2026.10 prints (extractor progress lines, then the --print JSON line with `filepath`; the Stories error text
+Stubs print what real the engine 2026.10 prints (extractor progress lines, then the --print JSON line with `filepath`; the Stories error text
 is copied from a real run) so a stub cannot hide a mismatch with the real tool.
 """
 import json, os, stat, struct, subprocess, sys, tempfile, unittest
@@ -14,9 +14,9 @@ CC = "https://ads.tiktok.com/business/creativecenter/topads/7691369945884049416"
 CDN = "https://v16m-default.tiktokcdn.com/e9f4f19467/video/tos/alisg/tos-alisg-ve-0051c001-sg/oQnB/?a=0&mime_type=video_mp4&rc=ZjY5&l=2026110710281788681A"
 STORY = "https://www.instagram.com/stories/natgeo/3000000000000000000"
 
-# what engine prints for the fields we ask for (keys with no value are left out, like the real thing)
+# what the engine prints for the fields we ask for (keys with no value are left out, like the real thing)
 JSON_LINE = '{"id":"1624078592578665","title":"VIDEO by TJ Maxx","uploader":"TJ Maxx","extractor_key":"FacebookAds","webpage_url":"https://www.facebook.com/ads/library/?id=1624078592578665","thumbnail":"https://scontent-lax7-1.xx.fbcdn.net/v/t39.35426-6/825266615_n.jpg?_nc_cat=101","filepath":"%s"}'
-# records every call as one block of lines ending in --CALL--; creates the .jpg only when engine would (both flags present)
+# records every call as one block of lines ending in --CALL--; creates the .jpg only when the engine would (both flags present)
 STUB = r'''
 { printf '%s\n' "$@"; echo '--CALL--'; } >> "$(dirname "$0")/calls"
 echo "[facebook:ads] Extracting URL: $2"
@@ -85,7 +85,7 @@ class Covers(unittest.TestCase):
         self.assertEqual(args[args.index("--convert-thumbnails") + 1], "jpg")
         self.assertTrue(os.path.exists(out + "/ad.jpg"))        # the stub only writes it when both flags are there
         self.assertTrue(r["meta"]["thumbnail"].startswith("https://scontent-lax7-1.xx.fbcdn.net/"))
-        self.assertIn("thumbnail", args[args.index("--print") + 1])  # we ask engine for the field
+        self.assertIn("thumbnail", args[args.index("--print") + 1])  # we ask the engine for the field
         self.assertGreater(i, args.index("--no-playlist"))
 
     def test_cover_is_per_request_not_sticky(self):
@@ -168,7 +168,7 @@ class Direct(unittest.TestCase):
             self.assertEqual((r["ok"], r["error"]), (False, "invalid direct url"), bad)
         r = session({"id": 2, "url": "https://www.tiktok.com/@a/video/1", "direct": CDN}, env)  # a CDN link on a non-Creative-Center url
         self.assertEqual(r["error"], "invalid direct url")
-        self.assertEqual(calls(d), [])                               # engine was never started
+        self.assertEqual(calls(d), [])                               # the engine was never started
 
     def test_creative_center_page_without_direct_asks_to_play_first(self):
         path, d, out = ok_stub()
@@ -177,11 +177,11 @@ class Direct(unittest.TestCase):
 
 
 class Stories(unittest.TestCase):
-    # engine 2026.10.26, logged-out: exit 1 and this text (no "login required" in it)
+    # Engine 2026.10.26, logged-out: exit 1 and this text (no "login required" in it)
     UNREACHABLE = ("[instagram:story] Extracting URL: https://www.instagram.com/stories/natgeo/3000000000000000000/\n"
                    "[instagram:story] 3000000000000000000: Downloading webpage\n"
                    "ERROR: [instagram:story] 3000000000000000000: This content is unreachable. Use --cookies-from-browser or --cookies for the authentication. "
-                   "See  https://github.com/engine/engine/wiki/FAQ#how-do-i-pass-cookies-to-engine  for how to manually pass cookies")
+                   "See  https://github.com/the engine/the engine/wiki/FAQ#how-do-i-pass-cookies-to-the engine  for how to manually pass cookies")
 
     def body(self, out, succeed):
         ok = "echo '{\"id\":\"3000000000000000000\",\"extractor_key\":\"InstagramStory\",\"uploader_id\":\"natgeo\",\"filepath\":\"%s/s.mp4\"}'" % out

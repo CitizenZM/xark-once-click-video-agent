@@ -9,7 +9,7 @@ Round-9 independent review (a separate reviewer read the code cold; no high-seve
 | Unescaped numeric metadata in the dashboard; non-http(s) links | Numbers are coerced when stored and escaped when shown; links render only for http(s) |
 | `notinstagram.com` matched the Instagram cookie fallback | Exact host match |
 | Full URLs (with tokens) in the helper log and error list | Query strings removed (YouTube `?v=` kept); log file mode 0600, rotated at 1 MB |
-| `%` in a custom folder acted as a engine template | Escaped |
+| `%` in a custom folder acted as a the engine template | Escaped |
 | Bad input could leave a request unanswered | Helper always replies; extension times out after 20 minutes |
 | Any extension context could send privileged messages | Download, update, library and settings actions only from the extension's own pages; the content script may only act on its own page |
 | `unlimitedStorage` | Removed; library capped at 5000 entries |

@@ -174,8 +174,8 @@ async function run(j) {
   try {
     const send = () => call({ url: j.url, quality, folder, naming, ...(maxSeconds ? { maxSeconds } : {}), ...(cover ? { cover: true } : {}), ...(j.direct ? { direct: j.direct } : {}) }, (pct) => patchJob(j, { pct }));
     r = await send();
-    // an old engine is the usual cause of sudden 403s: update once an hour at most, then retry
-    if (!r.ok && /update engine/.test(r.error || "") && Date.now() - lastHeal > 3600000) {
+    // an old the engine is the usual cause of sudden 403s: update once an hour at most, then retry
+    if (!r.ok && /update the engine/.test(r.error || "") && Date.now() - lastHeal > 3600000) {
       lastHeal = Date.now();
       await call({ type: "update" }).catch(() => {});
       r = await send();
@@ -389,7 +389,7 @@ const projectNew = ({ name, product }) => locked(async () => {
   return { ok: true, project: p };
 });
 const projectDelete = (id) => locked(async () => { await chrome.storage.local.set({ projects: (await get("projects", [])).filter((p) => p.id !== id) }); return { ok: true }; });
-// Lists an account's recent videos with their numbers (the helper runs engine --flat-playlist: nothing is downloaded).
+// Lists an account's recent videos with their numbers (the helper runs the engine --flat-playlist: nothing is downloaded).
 async function projectScan({ id, url, limit }) {
   const r = await call({ type: "expand", url, limit: Math.min(Number(limit) || 30, SCAN_ITEMS), stats: true });
   if (!r.ok) return { error: r.error };

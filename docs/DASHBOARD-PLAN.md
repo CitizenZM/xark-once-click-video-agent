@@ -20,7 +20,7 @@ Clicking a creator, keyword or hashtag opens the Library filtered to those video
 2. ✅ **One global "Analyze" filter** (collection / platform / period) shared by all analysis tabs, so a client collection (e.g. "Protein refs") becomes its own report.
 3. ✅ **Sortable tables + lift badges** (green ≥1.5x, red <0.75x) — scan for winners without reading numbers.
 4. ✅ **Drill-down everywhere** — any creator/keyword/hashtag → filtered Library.
-5. ▶ **Thumbnail grid view for Library** (toggle table ↔ grid) using the thumbnail URL engine already returns; marketers think in visuals.
+5. ▶ **Thumbnail grid view for Library** (toggle table ↔ grid) using the thumbnail URL the engine already returns; marketers think in visuals.
 6. ▶ **Creator profile drawer** — side panel with all their saved videos, timeline of views, formats used, and a "watch their latest 10" button (uses the existing profile download).
 7. ▶ **Compare mode** — pick 2–3 creators or collections and see them side by side (median views, like rate, formats mix).
 8. ▶ **Empty states that teach** — when a tab has too little data, show the exact action ("save 3+ videos with captions").

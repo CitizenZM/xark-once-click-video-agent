@@ -15,7 +15,8 @@ import media
 # User-level installs (pipx) first: the updater manages that copy, so it must be the one in use.
 PATH = os.pathsep.join(p for p in [os.path.expanduser("~/.local/bin"), "/opt/homebrew/bin", "/usr/local/bin",
                                    "/usr/bin", "/bin", os.environ.get("PATH", "")] if p)
-engine = os.environ.get("ONECLICK_ENGINE") or shutil.which("engine", path=PATH) or os.path.expanduser("~/.local/bin/engine")
+ENGINE_BIN = "engine"  # the only place that names the download engine
+ENGINE = os.environ.get("ONECLICK_ENGINE") or shutil.which(ENGINE_BIN, path=PATH) or os.path.expanduser("~/.local/bin/" + ENGINE_BIN)
 OUT_DIR = os.environ.get("ONECLICK_OUT") or os.path.expanduser("~/Downloads/OneClick")
 COOKIE_HOSTS = ("instagram.com", "www.instagram.com")  # retry with Chrome cookies if the anonymous try fails
 WORKERS = 3
@@ -42,7 +43,7 @@ FRIENDLY = (
     ("private video", "This video is private"),
     ("unsupported url", "No downloadable video found on this page"),
     ("not available in your country", "Blocked in your region"),
-    ("http error 403", "Site refused the request (403): update engine from the dashboard"),
+    ("http error 403", "Site refused the request (403): update the engine from the dashboard"),
 )
 
 
@@ -111,10 +112,10 @@ def out_dir(folder):
 
 
 def run(url, opts, cookies=False, on_pct=None):
-    """Run engine, streaming progress. Returns (returncode, combined output)."""
+    """Run the engine, streaming progress. Returns (returncode, combined output)."""
     quality, folder = opts["quality"], opts["dir"]
     os.makedirs(folder, exist_ok=True)
-    cmd = [engine, "--no-playlist", "--no-warnings",
+    cmd = [ENGINE, "--no-playlist", "--no-warnings",
            "--windows-filenames",
            "-o", os.path.join(folder.replace("%", "%%"), NAMING[opts["naming"]] + ".%(ext)s"),
            "--print", "after_move:%(.{" + FIELDS + "})j"]
@@ -149,7 +150,7 @@ def run(url, opts, cookies=False, on_pct=None):
 
 def friendly(stderr):
     lines = (stderr or "").strip().splitlines()
-    last = lines[-1] if lines else "engine failed"
+    last = lines[-1] if lines else "download failed"
     for needle, text in FRIENDLY:
         if needle in (stderr or "").lower():
             return text
@@ -257,15 +258,15 @@ def download(msg, on_pct=None):
             if ok is False:
                 return {"ok": False, "error": "File is incomplete (failed check)"}
             return {"ok": True, "meta": meta, "verified": ok is True}
-    # --print puts engine in quiet mode, so a --match-filter skip prints nothing: exit 0 with no metadata line.
+    # --print puts the engine in quiet mode, so a --match-filter skip prints nothing: exit 0 with no metadata line.
     if opts["max_seconds"]:
         return {"ok": False, "skipped": "too long"}
-    return {"ok": False, "error": "engine finished without saving a file"}
+    return {"ok": False, "error": "The engine finished without saving a file"}
 
 
 def ping():
     try:
-        v = subprocess.run([engine, "--version"], capture_output=True, text=True, timeout=20,
+        v = subprocess.run([ENGINE, "--version"], capture_output=True, text=True, timeout=20,
                            env={**os.environ, "PATH": PATH}).stdout.strip() or None
     except Exception:
         v = None
@@ -288,7 +289,7 @@ def expand(msg):
     stats = msg.get("stats") is True
 
     def listing(cookies):
-        cmd = [engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", STATS_FMT if stats else "%(url)s"]
+        cmd = [ENGINE, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", STATS_FMT if stats else "%(url)s"]
         if cookies:
             cmd += ["--cookies-from-browser", "chrome"]
         return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=180, env={**os.environ, "PATH": PATH})
@@ -326,12 +327,12 @@ def scan_item(line):
 
 def update():
     pipx, brew = shutil.which("pipx", path=PATH), shutil.which("brew", path=PATH)
-    if engine.startswith(os.path.expanduser("~/.local/")) and pipx:
-        cmd = [pipx, "upgrade", "engine"]
-    elif brew and engine.startswith(("/opt/homebrew/", "/usr/local/")):
-        cmd = [brew, "upgrade", "engine"]
+    if ENGINE.startswith(os.path.expanduser("~/.local/")) and pipx:
+        cmd = [pipx, "upgrade", ENGINE_BIN]
+    elif brew and ENGINE.startswith(("/opt/homebrew/", "/usr/local/")):
+        cmd = [brew, "upgrade", ENGINE_BIN]
     else:
-        cmd = [engine, "-U"]
+        cmd = [ENGINE, "-U"]
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env={**os.environ, "PATH": PATH})
         out = (p.stdout + p.stderr).strip().splitlines()

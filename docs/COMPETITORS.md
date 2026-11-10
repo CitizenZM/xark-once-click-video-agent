@@ -37,7 +37,7 @@
 ## 3. 我们（Xark Once Click Video Agent）的位置
 
 **已有的差异化优势**
-- 本地 engine：支持 1000+ 网站，文件和数据都不经过任何服务器，无账号、免费、开源。
+- 本地 the engine：支持 1000+ 网站，文件和数据都不经过任何服务器，无账号、免费、开源。
 - 一键下载当前视频（也支持 TikTok For You），持久化队列（3 个并发），选择模式 + "+ Queue" + 右键加入队列。
 - 下载后能**分析自己的收藏**：按创作者、内容格式、关键词计算 Lift，生成有依据的创意 brief，并用你自己的 key 生成 AI 广告概念。竞品大多只分析别人主页上的数据，不分析你收藏的素材库。
 - Collections、去重、CSV/JSON 导出。
@@ -53,7 +53,7 @@
 | P2 | **播放增长曲线**（区分持续增长和一次性爆款） | FastMoss | 7 天和 30 天后自动重新抓取统计数据 |
 | P2 | **广告库来源**（Meta 广告库、TikTok Creative Center） | Foreplay、Swipekit | 在这两个页面支持选择模式和一键保存 |
 | P2 | **MCP 接口**（Claude 直接查询你的素材库） | Sort Feed、GetHookd | helper 已在本地，可以加一个 MCP server 读取 library |
-| P3 | 封面图、音频、Stories、图集 | Turbo、Mass Downloader | engine 参数 `--write-thumbnail` 等 |
+| P3 | 封面图、音频、Stories、图集 | Turbo、Mass Downloader | the engine 参数 `--write-thumbnail` 等 |
 | P3 | 团队分享页 | Foreplay | 把 Collection 导出成 Vercel 上的只读页面 |
 | — | 受众画像、联系邮箱 | FastMoss、CreatorDB | 需要第三方数据源，不建议自建 |
 

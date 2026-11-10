@@ -32,7 +32,7 @@ const byPerf = (a, b) => (b.view_count || 0) - (a.view_count || 0) || (b.like_co
 // Baselines for lift: median views of the library, and median likes of the videos that have no view count.
 export const baselines = (lib) => ({ views: median(lib.map((v) => v.view_count)), likes: median(lib.filter((v) => !(v.view_count > 0)).map((v) => v.like_count)) });
 
-// Videos that beat their baseline. Baseline is the creator's follower count when engine knows it
+// Videos that beat their baseline. Baseline is the creator's follower count when the engine knows it
 // (views / followers >= 1), otherwise the median views of the saved videos on that platform (>= 3x).
 export function outliers(lib, limit = 6) {
   const medByPlatform = {}, likeMedByPlatform = {};

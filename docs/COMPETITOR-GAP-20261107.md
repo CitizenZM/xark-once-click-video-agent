@@ -31,7 +31,7 @@ Priority = value for marketers × feasible locally (no server, no platform API).
 | P2 | **广告时长信号**：从 Meta Ad Library / TikTok Top Ads 页面保存时记录开始投放日期和是否在投 | Foreplay, Atria | ⚠️ 新数据源，页面结构易变 | M |
 | P2 | 镜头切分：ffmpeg 场景检测 → 每条视频的镜头数、平均镜头时长、前 3 秒切几刀 | Creative Center（近似） | ✅ ffmpeg 已在 | M |
 | P2 | 评论挖掘：抓已加载的评论 → AI 总结痛点、反对意见、想要的东西 | Exolyt, Atria | ✅ 自带 key | M |
-| P2 | 声音（sound）维度：记录 sound ID，按声音算 lift | Exolyt, Creative Center | ✅ engine 元数据 | S |
+| P2 | 声音（sound）维度：记录 sound ID，按声音算 lift | Exolyt, Creative Center | ✅ the engine 元数据 | S |
 | P3 | 封面墙 + 封面特征（有无人脸、文字、主色） | 1of10, vidIQ | ✅ 本地，较重 | M |
 | P3 | 画面 / 屏幕文字搜索（OCR + 图像向量） | Atria | ✅ 离线但重 | L |
 | P3 | 竞品账号追踪 + 每周摘要 | Foreplay, Atria, Exolyt | ⚠️ 浏览器开着才能跑；稳定投递需服务器 → 放 Cloud 层 | M |
@@ -46,7 +46,7 @@ Creator-relative outlier、Velocity（含 6h 复查）、AI 标签、一条参�
 
 ## 2c. 已完成（v3.7.0, 2026-11-08）
 
-Research projects：推荐账号（mentions / 共享关键词 / 项目内 creator）、账号扫描（engine flat-playlist，含播放/点赞/发布时间，不下载）、推荐视频（≥1.5x 该账号中位数）、产品识别（AI tags: product/category/brand）+ Product mode、机会清单、Remix bank（带秒数的开头/结尾 + 剪辑清单）、AI remix / 新广告 / 测试计划。
+Research projects：推荐账号（mentions / 共享关键词 / 项目内 creator）、账号扫描（the engine flat-playlist，含播放/点赞/发布时间，不下载）、推荐视频（≥1.5x 该账号中位数）、产品识别（AI tags: product/category/brand）+ Product mode、机会清单、Remix bank（带秒数的开头/结尾 + 剪辑清单）、AI remix / 新广告 / 测试计划。
 
 ## 3. 建议顺序
 

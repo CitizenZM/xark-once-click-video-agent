@@ -25,7 +25,7 @@ def comments(msg, h):
     url = msg.get("url", "")
     if not h.valid_url(url):
         return {"type": "comments", "ok": False, "error": "invalid url"}
-    cmd = [h.engine, "--skip-download", "--no-warnings", "--write-comments", "-j",
+    cmd = [h.ENGINE, "--skip-download", "--no-warnings", "--write-comments", "-j",
            "--extractor-args", "youtube:max_comments=%d,all,0,0;comment_sort=top" % MAX_COMMENTS, url]
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=180, env={**os.environ, "PATH": h.PATH})
@@ -53,7 +53,7 @@ def clean_comments(raw):
     return out[:MAX_COMMENTS]
 
 
-# ---------- search (YouTube only: engine has no TikTok / Instagram search; those use the select bar on the site) ----------
+# ---------- search (YouTube only: the engine has no TikTok / Instagram search; those use the select bar on the site) ----------
 SHORTS_FILTER = "EgIYAQ%253D%253D"  # YouTube "under 4 minutes"
 
 
@@ -68,7 +68,7 @@ def search(msg, h):
     url = "https://www.youtube.com/results?search_query=%s&sp=%s" % (quote_plus(q), SHORTS_FILTER)
     fmt = "%(.{url,title,view_count,duration,channel,channel_id,channel_url,uploader_id})j"
     try:
-        p = subprocess.run([h.engine, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", fmt, url],
+        p = subprocess.run([h.ENGINE, "--flat-playlist", "--no-warnings", "--playlist-end", str(limit), "--print", fmt, url],
                            capture_output=True, text=True, timeout=180, env={**os.environ, "PATH": h.PATH})
     except Exception as e:
         return {"type": "search", "ok": False, "error": str(e)}

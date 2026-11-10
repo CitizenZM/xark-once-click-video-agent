@@ -28,7 +28,7 @@ export function dedupeKey(url) {
   return url.replace(/[?#].*$/, "").replace(/\/$/, "");
 }
 
-// One canonical URL per video (engine accepts all of these forms).
+// One canonical URL per video (the engine accepts all of these forms).
 export function canonical(href) {
   let u;
   try { u = new URL(href); } catch { return null; }

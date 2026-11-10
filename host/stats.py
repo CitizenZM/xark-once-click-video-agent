@@ -1,4 +1,4 @@
-"""View-count lookups for the growth tracker: `engine --skip-download -J <url>` per URL, politely spaced."""
+"""View-count lookups for the growth tracker: `--skip-download -J <url>` runs of the engine per URL, politely spaced."""
 import json, os, subprocess, time
 
 MAX_URLS = 50
@@ -13,25 +13,25 @@ def gap_seconds():
 
 
 def parse_stats(stdout):
-    """The JSON object engine -J printed (the last line that starts with '{'), reduced to the three counters."""
+    """The JSON object the engine -J printed (the last line that starts with '{'), reduced to the three counters."""
     for line in reversed((stdout or "").strip().splitlines()):
         if line.startswith("{"):
             info = json.loads(line)
             if info.get("_type") == "playlist":  # a profile or playlist URL: no single video to count
                 raise ValueError("not a single video")
             return {k: info.get(k) if isinstance(info.get(k), (int, float)) else None for k in FIELDS}
-    raise ValueError("engine printed no JSON")
+    raise ValueError("the engine printed no JSON")
 
 
 def one(url, host, cookies=False):
-    cmd = [host.engine, "--skip-download", "--no-warnings", "--no-playlist", "-J"]
+    cmd = [host.ENGINE, "--skip-download", "--no-warnings", "--no-playlist", "-J"]
     if cookies:
         cmd += ["--cookies-from-browser", "chrome"]
     return subprocess.run(cmd + [url], capture_output=True, text=True, timeout=120, env={**os.environ, "PATH": host.PATH})
 
 
 def fetch_stats(urls, host):
-    """host = the oneclick_host module (engine, PATH, valid_url, COOKIE_HOSTS, friendly). Never raises."""
+    """host = the oneclick_host module (ENGINE, PATH, valid_url, COOKIE_HOSTS, friendly). Never raises."""
     from urllib.parse import urlparse
     results = []
     for i, url in enumerate((urls if isinstance(urls, list) else [])[:MAX_URLS]):
@@ -50,7 +50,7 @@ def fetch_stats(urls, host):
                 row["error"] = host.friendly(p.stderr)
             else:
                 row.update(parse_stats(p.stdout), ok=True)
-        except Exception as e:  # timeout, missing engine, bad JSON
+        except Exception as e:  # timeout, missing the engine, bad JSON
             row["error"] = str(e)[:300]
         results.append(row)
     return results

@@ -1,14 +1,14 @@
 # RUN-REPORT — one-click-downloader-20261106
-- 2026-11-06 13:20 `python3 host/test_host.py` → 4 tests OK (stub engine, protocol + retry + url validation)
+- 2026-11-06 13:20 `python3 host/test_host.py` → 4 tests OK (stub the engine, protocol + retry + url validation)
 - 2026-11-06 13:20 live host call, YouTube test video → ok, h264+aac mp4 in ~/Downloads/OneClick (engine 2026.10.26)
-- engine 2026.02.04 gave HTTP 403; fixed by `pipx upgrade engine`. Re-run that monthly: sites break old versions.
+- the engine 2026.02.04 gave HTTP 403; fixed by `pipx upgrade the engine`. Re-run that monthly: sites break old versions.
 - Not verified: Chrome load-unpacked click-through, TikTok/Instagram URLs (need user's Chrome / real post URL).
 - Assumptions: output ~/Downloads/OneClick; Instagram retries with --cookies-from-browser chrome; extension ID pinned via manifest key.
 
 ## v2.0.0 (2026-11-06 13:50)
 - `python3 host/test_host.py` → 6 OK (meta, friendly errors, IG cookie retry, URL validation, 6-job batch, ping)
 - `node --test test/extension.test.mjs` → 4 pass (urls, analyze, recommend, background wiring one-click + batch via mocked chrome/host port)
-- live host call (Chrome-style launch via registered manifest, minimal env): pong engine 2026.10.26; YouTube test video returned full metadata
+- live host call (Chrome-style launch via registered manifest, minimal env): pong the engine 2026.10.26; YouTube test video returned full metadata
 - dashboard rendered in in-app browser with stubbed chrome API: 10 cards, 0 console errors, Helper-ready card, KPIs, headlines OK
 - Not verified: extension loaded in real Chrome after reload; real TikTok/IG downloads; Windows; Web Store submission
 - Assumptions: output ~/Downloads/OneClick; batch cap 50; recommendations derive only from the user's library + 4 fixed public ad libraries (no invented accounts)
@@ -16,9 +16,9 @@
 ## 2026-11-06 v3.5.0 — all gap features (agent team)
 Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and merged by the coordinator.
 - Tests: `node --test test/*.test.mjs` 47 pass; `python3 -m unittest discover -s host -p "test_*.py"` 64 OK; CI success 032f6df; Vercel zip 3.5.0; tag v3.5.0.
-- Real checks: F1 sort/outliers on a real TikTok profile (16/16 views, 4 outliers, top 10 descending); F3 real TikTok download verified by ffprobe (h264+aac 26.3 s); skip-long on a real video (found and fixed: engine is silent under --print); F2 real 3m54s review transcribed in 5.1 s with correct hook; F5 live stats (views 454,900 → 456,600); F6 real Meta ad (720x1280, 53 s, cover 1080x1920) and Creative Center ad after playing; F7 MCP over stdio with fixture; dashboard merged UI in stub browser, no console errors.
+- Real checks: F1 sort/outliers on a real TikTok profile (16/16 views, 4 outliers, top 10 descending); F3 real TikTok download verified by ffprobe (h264+aac 26.3 s); skip-long on a real video (found and fixed: the engine is silent under --print); F2 real 3m54s review transcribed in 5.1 s with correct hook; F5 live stats (views 454,900 → 456,600); F6 real Meta ad (720x1280, 53 s, cover 1080x1920) and Creative Center ad after playing; F7 MCP over stdio with fixture; dashboard merged UI in stub browser, no console errors.
 - Integration issues found and fixed: F7 Python analysis copy drifted after F2 (parity test caught it, ported); the auto-sync hook rebased an unpushed merge mid-session (finished the rebase, now push right after each merge).
-- Not verified: real-page harness (ego lite notification prompt blocks it); 3.5.0 inside the user's Chrome (needs one reload); logged-in Instagram Stories; MCP inside a real Claude client; TikTok photo posts unsupported by engine.
+- Not verified: real-page harness (ego lite notification prompt blocks it); 3.5.0 inside the user's Chrome (needs one reload); logged-in Instagram Stories; MCP inside a real Claude client; TikTok photo posts unsupported by the engine.
 
 ## 2026-11-06 22:40 — real-Chrome check of 3.5.0
 - Helper log: `hello v3.5.0 dev=True` at 22:31:53, `sync-library ok`; `~/.oneclick/library.json` mode 600, 9 items; MCP `search_videos` returns them.
@@ -35,8 +35,8 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 - Tests: 49 node pass, 66 Python OK; zips rebuilt at 3.5.1.
 
 ## 2026-11-07 — 更新检查、Sonnet 测试、收费模式与成本
-- engine -U: up to date (2026.10.26)
-- Sonnet agent: `node --test test/*.test.mjs` 49/49 pass; `unittest discover` 66 OK; node --check 14 files OK; py_compile OK; manifest/CHANGELOG/zip all 3.5.1; CI last 3 runs success; engine -j TikTok returns id 7697307919943060767
+- the engine -U: up to date (2026.10.26)
+- Sonnet agent: `node --test test/*.test.mjs` 49/49 pass; `unittest discover` 66 OK; node --check 14 files OK; py_compile OK; manifest/CHANGELOG/zip all 3.5.1; CI last 3 runs success; the engine -j TikTok returns id 7697307919943060767
 - Re-verified by Opus: same counts
 - Cost: whisper base.en 9s clip in 0.61s; avg file 2.05 MB (43 files); AI click est. $0.010–0.031 (Sonnet 5.5), token count estimated at 3.2 chars/token (no API key for count_tokens)
 - Doc: docs/MONETIZATION-AND-COST.md
@@ -56,23 +56,23 @@ Built by 6 Sonnet agents in two waves (one worktree branch each), reviewed and m
 
 ## 2026-11-08 — v3.6.0：爆款信号 + AI 标签 + 参考视频写脚本 + 广告投放时长
 - 新增 `extension/winners.js`：views/hour（posted→save，及两次复查之间）、对比 creator 自己中位数（库内 ≥3 条或选择模式在主页读取的网格中位数，IG 用点赞）、Meta 广告投放天数（≥30 天标记）、AI 标签 lift。
-- 数据接线：select.js 读取 Meta 卡片 "Started running on"/Active/Inactive 与主页网格中位数 → background `cleanExtra` 校验 → 库条目 `ad_start/ad_end/ad_active/creator_median_views`；host 打印 engine `timestamp`；复查 6h/1/7/30 天，alarm 改为每小时。
-- 修 bug：engine 把 Meta 广告主页面点赞数填进 `like_count`，会污染点赞排名 → 改存 `page_like_count`。
+- 数据接线：select.js 读取 Meta 卡片 "Started running on"/Active/Inactive 与主页网格中位数 → background `cleanExtra` 校验 → 库条目 `ad_start/ad_end/ad_active/creator_median_views`；host 打印 the engine `timestamp`；复查 6h/1/7/30 天，alarm 改为每小时。
+- 修 bug：the engine 把 Meta 广告主页面点赞数填进 `like_count`，会污染点赞排名 → 改存 `page_like_count`。
 - AI（用户自己的 key）：`buildTagPrompt`/`applyTags`（hook 类型、角度、人群、情绪、卖点、CTA，每次 40 条，固定词表外归 other）；`buildScriptPrompt`（一条参考视频 → 新脚本、分镜、CTA、备选 hook）。
 - 验证：`node --test test/*.test.mjs` 59 pass 0 fail；`python3 -m unittest discover` 68 OK；新的 background 接线测试在旧 background.js 上失败（ad_start undefined）；预览（真实 9 条 IG + 11 条演示数据）三张新卡片、AI 标签表、Library Signals 列、脚本对话框均渲染，无 console error；AI 两个流程用 mock 的 API 返回走通真实 dashboard 代码。
 - 未验证：未用真实 API key 调用 Anthropic；未在真实 Meta Ad Library 页面跑选择模式（卡片文字格式按英文界面写，其他语言界面读不到日期）；TikTok Top Ads 无投放日期，不覆盖。MCP 服务器未加新信号。
 
 ## 2026-11-08 — v3.7.0：Research projects（研究项目）
-- 新增 `extension/projects.js`（纯函数）+ `extension/project-view.js`（Projects 标签页）：项目 = 名称 + 产品/优惠/人群 + 视频；推荐账号（新账号：项目视频里 @ 到的、库里其他共享 ≥2 个项目关键词的 creator；再列项目内 creator 按 lift 排序）；账号扫描（host `expand` 加 `stats:true`，engine `--flat-playlist` 打印 url/title/views/likes/duration/timestamp，不下载）；推荐视频（未保存、≥1.5x 该账号中位数，含每小时播放）；关键词 + 搜索链接；AI tags 新增 product/category/brand + Product mode；机会清单；Remix bank（带秒数的开头/结尾，转写现保留 25 条带时间的句子）+ 剪辑清单；AI 计划（3 个 remix、3 个新广告、3 个测试、搜索词，存到项目）。
+- 新增 `extension/projects.js`（纯函数）+ `extension/project-view.js`（Projects 标签页）：项目 = 名称 + 产品/优惠/人群 + 视频；推荐账号（新账号：项目视频里 @ 到的、库里其他共享 ≥2 个项目关键词的 creator；再列项目内 creator 按 lift 排序）；账号扫描（host `expand` 加 `stats:true`，the engine `--flat-playlist` 打印 url/title/views/likes/duration/timestamp，不下载）；推荐视频（未保存、≥1.5x 该账号中位数，含每小时播放）；关键词 + 搜索链接；AI tags 新增 product/category/brand + Product mode；机会清单；Remix bank（带秒数的开头/结尾，转写现保留 25 条带时间的句子）+ 剪辑清单；AI 计划（3 个 remix、3 个新广告、3 个测试、搜索词，存到项目）。
 - 其它 tab 可在 Analyze 栏选项目只看该项目；Library 可“Add ticked to project”。
 - 修 bug（预览发现）：hook 片段把跨过 3 秒的整句截进来（0–6s 半句）→ 只取 4.5 秒内结束的句子；remix 把 1.1x 的视频当赢家、配方混用不同产品 → 赢家门槛 1.5x（不足 2 条时取前 3），配方优先同一产品；`.row{display:flex}` 覆盖 `hidden` 导致 Analyze 栏在不该出现的 tab 显示 → `[hidden]{display:none!important}`。
-- 验证：`node --test test/*.test.mjs` 66 pass 0 fail；host unittest 全部 OK（新增 stats 扫描测试，旧 host 上 KeyError 'items' 失败）；background 项目接线测试在旧 background.js 上超时失败；真实 engine 扫描 @tiktok 返回 5 条含 views/likes/timestamp；预览：Projects 页、推荐账号/视频、关键词、产品、Product mode、机会、Remix bank、mock AI 计划及保存后按 order 还原、Analyze 选项目（8 of 30）均正常，无 console error。
-- 未验证：未用真实 API key 调用（标签含产品、AI 计划）；未在 Chrome 里装载新版本实际点 Scan（host 函数已用真实 engine 验证）；Instagram 主页 flat-playlist 可能无播放量（按点赞或顺序）。
+- 验证：`node --test test/*.test.mjs` 66 pass 0 fail；host unittest 全部 OK（新增 stats 扫描测试，旧 host 上 KeyError 'items' 失败）；background 项目接线测试在旧 background.js 上超时失败；真实 the engine 扫描 @tiktok 返回 5 条含 views/likes/timestamp；预览：Projects 页、推荐账号/视频、关键词、产品、Product mode、机会、Remix bank、mock AI 计划及保存后按 order 还原、Analyze 选项目（8 of 30）均正常，无 console error。
+- 未验证：未用真实 API key 调用（标签含产品、AI 计划）；未在 Chrome 里装载新版本实际点 Scan（host 函数已用真实 the engine 验证）；Instagram 主页 flat-playlist 可能无播放量（按点赞或顺序）。
 
 ## v3.8.0 (2026-11-08) — feature switches, AI cost gate, search/comments/ads, Ad Studio bridge
 - `node --test test/*.test.mjs` → 74 pass (8 new in test/research.test.mjs); `cd host && python3 -m unittest discover` → 74 OK (5 new in test_research.py)
 - IL3: research.test.mjs run against v3.7.0 background/dashboard (new pure modules copied in) → 3 wiring tests fail (switches CSS, direct ask() calls, background routes); host test_research on v3.7.0 → 4 failures + 1 error
-- Live: engine YouTube Shorts search returns channel + views; YouTube comments 14 returned; TikTok comments return 0 even with impersonation impersonation (injected into the engine pipx venv) → TikTok/Instagram comments read from the open page instead; Instagram profile listing is marked broken in engine → Instagram views come from the select bar
+- Live: YouTube Shorts search returns channel + views; YouTube comments 14 returned; TikTok comments return 0; read from the open page instead.
 - Live Ad Studio (rebuilt `pnpm --dir web build`, restarted launchd co.celldigital.ad-studio.web): helper ping ok (72 clips); helper → POST /api/library/import with an 8 s test video cut 2 clips (2.5 s hook, 2 s cta, portrait, rights own); re-read via GET /api/library showed both; test clips then removed (index 74 → 72). Remote base refused by the helper; a request with cf-connecting-ip gets 401 (password gate) and the route itself refuses non-local requests (403)
 - Ad Studio: `node --test pipeline/test_import.mjs` 2 pass; `tsc --noEmit` 0
 - Preview (scratchpad harness): all switches on → every new section renders with demo data, CSV / EDL / report export work, report contains top videos, comments, ads; Research off → only Library, Download, Settings visible, Analyze bar and AI key hidden

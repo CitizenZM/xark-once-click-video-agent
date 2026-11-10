@@ -1,4 +1,4 @@
-"""Ad-library sources and cover images: the extra engine arguments and the checks around them.
+"""Ad-library sources and cover images: the extra the engine arguments and the checks around them.
 
 Kept apart from oneclick_host.py so the allowlist and the argument lists can be tested on their own.
 """
@@ -39,7 +39,7 @@ def direct_ok(url, direct):
 
 
 def extra_args(opts):
-    """engine arguments for the optional features of one download."""
+    """Engine arguments for the optional features of one download."""
     args = []
     if opts.get("direct"):
         # The mp4 link is not on any site extractor, and the generic extractor would name the file after the signed URL
@@ -51,12 +51,12 @@ def extra_args(opts):
 
 
 def finish(meta, url, direct):
-    """Add the library fields that engine does not know about."""
+    """Add the library fields that the engine does not know about."""
     src = source_of(url)
     if src:
         meta["source"] = src
     if src == "meta-ads" and "like_count" in meta:
-        # engine fills like_count from the advertiser page's likes, not the ad's: keep it out of the like-based rankings.
+        # The engine fills like_count from the advertiser page's likes, not the ad's: keep it out of the like-based rankings.
         meta["page_like_count"] = meta.pop("like_count")
     if src == "tiktok-cc":
         meta["webpage_url"] = url

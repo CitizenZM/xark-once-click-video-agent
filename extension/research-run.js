@@ -23,7 +23,7 @@ export function setupResearch({ get, locked, call, projEdit, notify }) {
   });
 
   // A TikTok / Instagram / YouTube page sent from the select bar: a creator's own grid becomes a scan of that account
-  // (with the view counts the page shows, which engine cannot read on Instagram); a search or hashtag page becomes a find.
+  // (with the view counts the page shows, which the engine cannot read on Instagram); a search or hashtag page becomes a find.
   const pageScan = wrap("research", async ({ id, page, items }) => {
     const pageUrl = typeof page?.url === "string" ? page.url : "";
     const ok = (Array.isArray(items) ? items : []).filter((x) => x && videoUrls([x.url], 1).length).slice(0, SCAN_ITEMS);
@@ -47,7 +47,7 @@ export function setupResearch({ get, locked, call, projEdit, notify }) {
     if (hit) await chrome.storage.local.set({ library: next });
     return hit;
   });
-  // YouTube through engine; other platforms are read from the open page (comments-save) because engine cannot
+  // YouTube through the engine; other platforms are read from the open page (comments-save) because the engine cannot
   const fetchComments = wrap("comments", async ({ urls }) => {
     const todo = videoUrls(urls || [], 30); let done = 0, skipped = 0, failed = 0;
     for (const u of todo) {

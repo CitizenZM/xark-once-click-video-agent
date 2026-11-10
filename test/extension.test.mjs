@@ -113,7 +113,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
             if (m.url && m.url.includes("slow")) return setTimeout(() => { ls.forEach((f) => f({ id: m.id, type: "progress", pct: 40 })); setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok" } })), 400); }, 0);
             if (m.type === "expand") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "expanded", ok: true, urls: L.expandUrls || ["https://www.tiktok.com/@e/video/501", "https://www.tiktok.com/@e/video/502", "https://www.tiktok.com/@e/video/503"] })), 0);
             if (m.type === "update") { L.updates = (L.updates || 0) + 1; L.healed = true; return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "updated", ok: true, output: "upgraded" })), 0); }
-            if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update engine from the dashboard" })), 0);
+            if (m.url && m.url.includes("heal") && !L.healed) return setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: false, error: "Site refused the request (403): update the engine from the dashboard" })), 0);
             if (m.url && m.url.includes("hold") && L.hold) { L.held = (L.held || []).concat(m); L.release = () => { L.held.forEach((h) => ls.forEach((f) => f({ id: h.id, ok: true, meta: { webpage_url: h.url, extractor_key: "TikTok", file: "/h.mp4" } }))); L.held = []; }; return; }
             if (m.type === "hello") return setTimeout(() => ls.forEach((f) => f({ id: m.id, type: "hello", dev: !!L.dev })), 0);
             setTimeout(() => ls.forEach((f) => f({ id: m.id, ok: true, meta: { webpage_url: m.url, extractor_key: "TikTok", uploader: "Ana", file: "/x/" + m.id + ".mp4", ...(m.url.includes("instagram") ? { title: "Video by bo", description: "Great hook here\nmore text" } : {}) } })), 0);
@@ -169,7 +169,7 @@ test("background: one-click and batch reach the host and fill the library", asyn
   await L.click({ id: 1, url: "https://www.tiktok.com/@a/video/10" });
   assert.deepEqual([posted.at(-1).folder, posted.at(-1).naming], ["~/refs", "creator-id"]);
 
-  // self-heal: a 403 triggers one engine update and one retry, which then succeeds
+  // self-heal: a 403 triggers one the engine update and one retry, which then succeeds
   await L.click({ id: 1, url: "https://www.tiktok.com/@h/video/heal" });
   assert.equal(L.updates, 1); assert.equal(notes.at(-1).title, "Saved");
   // weekly auto-update: alarm registered; fires only when the last update is older than 7 days

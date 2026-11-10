@@ -11,7 +11,7 @@
 |---|---|---|---|
 | L1 单元 | 纯函数：URL、统计、排序、解析 | `node --test test/extension.test.mjs` | ✅ 11 个测试 |
 | L2 接线 | background.js 在 mock chrome + mock helper 下的真实消息流（队列、去重、收藏夹） | 同上（“background: …” 测试） | ✅ |
-| L3 Helper 协议 | Python helper 通过 native messaging 协议跑**桩 engine / 桩工具** | `python3 host/test_host.py` | ✅ 15 个测试，日志写临时文件 |
+| L3 Helper 协议 | Python helper 通过 native messaging 协议跑**桩 the engine / 桩工具** | `python3 host/test_host.py` | ✅ 15 个测试，日志写临时文件 |
 | L4 真实页面回归 | 在真实 TikTok/Instagram/YouTube 页面注入 detect.js + select.js，**真实鼠标**点 tile，检查识别数量、链接格式、页面没跳转 | `bash test/real/run.sh [名字过滤]`（ego lite） | ✅ 脚本已写；首跑被 ego 的通知权限弹窗打断，待重跑 |
 | L5 真实端到端 | 在你的 Chrome 里用扩展真下载 | 手动清单 + 读 helper 日志 + 读扩展存储（见 §0.2） | 手动 |
 | L6 视觉 | Dashboard/popup 用桩数据在浏览器里截图检查，0 console error | 拷贝 extension 到临时目录、注入桩 `chrome` 对象、本地 http 服务 | 手动步骤固定 |
@@ -46,7 +46,7 @@
 - `items()` 返回 `{url, el, views}`。
 - `select.js` 底部栏新增：**“按播放排序”**（在 tile 上显示名次 #1…#N）、**“标出爆款”**（views ≥ 页面中位数 × 2 的 tile 加绿色角标 “3.4x”）、**“选中前 10/25”**。
 - 无法读到播放数的页面：按钮置灰并提示“此页面没有显示播放数”。
-- 可选进阶（第二步）：helper 新消息 `{type:"page-stats", url}` 用 `engine --flat-playlist -J` 拿 TikTok 主页完整统计（不受“只排已加载帖子”限制）。
+- 可选进阶（第二步）：helper 新消息 `{type:"page-stats", url}` 用 `the engine --flat-playlist -J` 拿 TikTok 主页完整统计（不受“只排已加载帖子”限制）。
 
 **开发步骤**
 1. `parseCount` 放进 `urls.js`（可单测）并在 detect.js 复制一份（PATTERNS 同步测试同样覆盖它）。
@@ -112,12 +112,12 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 - 下载节奏：设置项“每条间隔 0/2/5 秒”与“并发 1/2/3”；`pump()` 读取。
 - 跳过长视频：设置“最长 N 分钟”→ helper 下载参数 `--match-filter "duration <= N*60"`，被过滤时返回 `skipped:"too long"`。
 - 文件校验：helper 下载后 `ffprobe` 检查有视频流、时长>0、大小>10KB，否则标错误“文件不完整”。
-- 限流识别：engine 输出含 429/“rate limit” → job 回到 queued 并全局延迟 60 秒（最多 3 次）。
+- 限流识别：the engine 输出含 429/“rate limit” → job 回到 queued 并全局延迟 60 秒（最多 3 次）。
 - 批次报告：同一次“Add to queue”生成 `batchId`；popup/dashboard 可导出该批 CSV（url、状态、原因、文件）。
 
 **自测**
 - L2：mock helper 让 job 挂起 → 暂停后新 job 不启动、继续后启动；并发设 1 时同时运行数始终 ≤1；间隔设置下两次 postMessage 时间差 ≥ 设定值（用假时钟或缩短到 50ms）。
-- L3：桩 engine 输出 429 → helper 返回可重试错误；桩 ffprobe 返回无视频流 → “文件不完整”；`--match-filter` 参数出现在调用里。
+- L3：桩 the engine 输出 429 → helper 返回可重试错误；桩 ffprobe 返回无视频流 → “文件不完整”；`--match-filter` 参数出现在调用里。
 - L5：真实批量 20 条（含 1 条私密、1 条超长），导出 CSV 与日志逐条对得上。
 
 **验收**：暂停后 0 个新任务启动；批次 CSV 行数 = 提交数；失败原因全部为可读文案。
@@ -142,12 +142,12 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 **用户故事**：区分“持续增长的常青内容”和“一夜爆款后停滞”。
 
 **设计**
-- Helper 新消息 `{type:"stats", urls:[...]}`：`engine --skip-download -J`（批量，限速）只取 `view_count/like_count/comment_count`。
+- Helper 新消息 `{type:"stats", urls:[...]}`：`the engine --skip-download -J`（批量，限速）只取 `view_count/like_count/comment_count`。
 - background 每日 alarm：挑选保存后第 1、7、30 天到期的视频（每天最多 50 条），结果追加到 `history:[{at, views, likes}]`。
 - Dashboard：Library 行内迷你折线；Overview 新卡片“增长最快”（7 天增量/初始值）。
 
 **自测**
-- L3：桩 engine `-J` 返回固定统计 → helper 正确解析与限速。
+- L3：桩 the engine `-J` 返回固定统计 → helper 正确解析与限速。
 - L2：假时钟推进 1/7/30 天，只有到期条目被请求，且每天 ≤50。
 - L1：增长率计算（0 初始值、缺失点）。
 - L5：手动把一条视频的 `at` 改到 8 天前（dashboard 隐藏调试按钮），触发 alarm 后出现第二个数据点。
@@ -158,7 +158,7 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 
 ## F6. 广告库来源（P2，对标 Foreplay / Swipekit）
 
-**可行性**：engine 自带 `facebook:ads` 提取器 ✔︎（Meta 广告库单条广告链接 `facebook.com/ads/library/?id=…`）；TikTok Creative Center **没有**提取器 → 读取页面 `<video src>` 直链交给 helper（engine 可下载直链 mp4）。
+**可行性**：the engine 自带 `facebook:ads` 提取器 ✔︎（Meta 广告库单条广告链接 `facebook.com/ads/library/?id=…`）；TikTok Creative Center **没有**提取器 → 读取页面 `<video src>` 直链交给 helper（the engine 可下载直链 mp4）。
 
 **设计**
 - PATTERNS 增加 `facebook.com/ads/library/?id=` ；detect.js 识别 Meta 广告库卡片（卡片内“查看广告详情”链接里的 id）与 Creative Center 卡片（`<video>` + 详情链接）。
@@ -166,7 +166,7 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 - Dashboard 过滤“只看广告 / 只看自然内容”，对比两者的格式与关键词 Lift。
 
 **自测**
-- L3：用真实公开广告 id 跑一次 `engine --simulate`（本地，非 CI）确认提取器可用。
+- L3：用真实公开广告 id 跑一次 `the engine --simulate`（本地，非 CI）确认提取器可用。
 - L4：cases.json 加 Meta 广告库搜索页、Creative Center Top Ads 页（未登录可访问的部分），断言识别 ≥6 张卡片。
 
 **风险**：广告库页面改版频繁；Creative Center 直链有时带过期签名 → 识别后立即下载，不延后。
@@ -191,10 +191,10 @@ mkdir -p ~/.oneclick/models && curl -L -o ~/.oneclick/models/ggml-base.en.bin ht
 
 ## F8. 封面、音频、Stories、图集（P3，对标 Turbo / Mass Downloader）
 
-- 封面：设置“同时保存封面”→ engine `--write-thumbnail --convert-thumbnails jpg`；dashboard Library 网格视图直接用本地封面（`file://` 不可用于扩展页面 → 用 engine 返回的远程 `thumbnail` URL 显示，本地文件留给用户）。
+- 封面：设置“同时保存封面”→ the engine `--write-thumbnail --convert-thumbnails jpg`；dashboard Library 网格视图直接用本地封面（`file://` 不可用于扩展页面 → 用 the engine 返回的远程 `thumbnail` URL 显示，本地文件留给用户）。
 - 音频：已有“Audio only (mp3)”，补“视频+音频各一份”。
-- Stories / Highlights：engine `instagram:story` 需登录 → 复用现有“匿名失败后读 Chrome cookies”逻辑；PATTERNS 加 `instagram.com/stories/`。
-- TikTok 图集（photo 帖子）：engine 支持情况 ? → 先 `--simulate` 实测，不支持则 detect.js 从页面读图片直链。
+- Stories / Highlights：the engine `instagram:story` 需登录 → 复用现有“匿名失败后读 Chrome cookies”逻辑；PATTERNS 加 `instagram.com/stories/`。
+- TikTok 图集（photo 帖子）：the engine 支持情况 ? → 先 `--simulate` 实测，不支持则 detect.js 从页面读图片直链。
 
 **自测**：L3 检查参数拼接；L5 各类型真实下载一条，`ls` 与 `ffprobe`/`file` 校验。
 

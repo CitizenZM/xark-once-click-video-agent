@@ -5,8 +5,8 @@ Feature switches, AI cost control, and more research tools. Ad Studio does the c
 - **Feature switches** (Settings → Features): Research and analysis, AI, Daily account scan, Viewer comments, Ad Studio bridge, My ads tracking. Downloading is always on. With Research off the dashboard shows only Library, Download and Settings, and the view rechecks stop. Every add-on is also checked in the background, not only hidden.
 - **AI key and cost** (Settings): the API key moved from Ideas to Settings and shows only when AI is on. "Test key" makes one tiny real call. Every AI button goes through one gate that checks the switch, the key and a monthly limit (default $10, 0 = none), shows the estimated cost before the call (optional), and records the real cost from the API's token counts (claude-sonnet-5-5, $2 / $10 per million tokens).
 - **Daily account scan**: once a day, re-scans up to 20 accounts you already scanned and notifies you about new videos at 1.5x+; new ones are marked "new" in the project. "Run the daily scan now" button.
-- **Viewer comments**: YouTube comments through engine; TikTok and Instagram from the open video page (popup → "Save comments on this page"; engine returns no TikTok comments). The project shows top questions, objections and recurring words, and the AI plan answers them.
-- **Find accounts by search**: YouTube Shorts search from the project. For TikTok and Instagram, the select bar has "Send to project": a creator's grid becomes an account scan with the views the page shows (this also gives Instagram view counts, which engine cannot read); a search or hashtag page lists its creators.
+- **Viewer comments**: YouTube comments through the engine; TikTok and Instagram from the open video page (popup → "Save comments on this page"; the engine returns no TikTok comments). The project shows top questions, objections and recurring words, and the AI plan answers them.
+- **Find accounts by search**: YouTube Shorts search from the project. For TikTok and Instagram, the select bar has "Send to project": a creator's grid becomes an account scan with the views the page shows (this also gives Instagram view counts, which the engine cannot read); a search or hashtag page lists its creators.
 - **Exports**: project CSV, and a printable report (open → print to PDF).
 - **Remix bank → editor**: "Download EDL" (CMX 3600, 30 fps) for Premiere / Resolve.
 - **Ad Studio bridge** (calls ~/Projects/ad-studio-20261104, nothing rebuilt here): "Make in Ad Studio" on a remix recipe or an AI plan's new ad uploads the saved reference video, the project's product link and the plan to Ad Studio's own `POST /api/jobs` (remix, or AI footage that Ad Studio asks you to approve). "Cut these clips into Ad Studio's library" sends the remix-bank seconds to a new local-only Ad Studio route, `POST /api/library/import`, which cuts them with its own ffmpeg settings into its stock library. It asks you to confirm you own or have licensed the footage. The helper only talks to http://localhost.
@@ -15,7 +15,7 @@ Feature switches, AI cost control, and more research tools. Ad Studio does the c
 ## 3.7.0
 Research projects (new **Projects** tab).
 - **Projects**: a named set of saved videos for one product or question (name + product/offer/audience). Add a whole collection, or tick videos in Library → "Add ticked to project". Every other tab can analyze one project (Analyze bar → Projects).
-- **Accounts to study next**: new accounts first (@-mentioned in the project's videos, or saved elsewhere in the library with 2+ of the project's keywords), then the project's own creators ranked by lift. **Scan** lists an account's last 30 videos with views, likes and post time through engine `--flat-playlist` (nothing is downloaded).
+- **Accounts to study next**: new accounts first (@-mentioned in the project's videos, or saved elsewhere in the library with 2+ of the project's keywords), then the project's own creators ranked by lift. **Scan** lists an account's last 30 videos with views, likes and post time through the engine `--flat-playlist` (nothing is downloaded).
 - **Videos to look at**: unsaved scan results at 1.5x+ of their own account's median, with views per hour; tick and download straight into the project.
 - **Keywords and products**: keywords with lift and search links (TikTok, Instagram tag, YouTube Shorts, Meta Ad Library). AI tags now also give product, category and brand (videos tagged before 3.7 are re-tagged once). **Product mode** narrows the whole page to one product, with Amazon/TikTok/Meta search links and "Write a script for this product".
 - **Opportunities**: double down / test / avoid / gap lines from the project's own numbers (hook, angle, audience, emotion, format, keyword lift; missing ads, platforms, transcripts, tags).
@@ -25,7 +25,7 @@ Research projects (new **Projects** tab).
 ## 3.6.0
 Winner signals and AI creative tools (from the competitor review in docs/COMPETITOR-GAP-20261107.md).
 - **Beat their creator's typical video**: each video vs the median of the same creator (3+ saved videos, or the median of their profile grid when you pick videos there in select mode; likes where views are hidden). Overview card, Library "Signals" column and sort.
-- **Views per hour**: views ÷ hours since posting (the helper now keeps engine's `timestamp`), then views gained between re-checks. Re-checks now also run 6 hours after saving (the check alarm is hourly). Overview card "Fastest right now", Library sort.
+- **Views per hour**: views ÷ hours since posting (the helper now keeps the engine's `timestamp`), then views gained between re-checks. Re-checks now also run 6 hours after saving (the check alarm is hourly). Overview card "Fastest right now", Library sort.
 - **Long-running ads**: select mode reads "Started running on …" and Active/Inactive from Meta Ad Library cards; the dashboard shows days running and flags 30+ days. TikTok Top Ads shows no run dates, so it is not covered. Meta ads no longer store the advertiser page's likes as the ad's likes (`page_like_count`).
 - **AI tags** (own key): hook type, angle, audience, emotion, selling point and CTA per video, 40 per click; Formats tab shows lift per label.
 - **Script like this** (own key): a Library row button writes a new script (hook, timed beats, CTA, alternative hooks) modelled on one reference video, for the product you type.
@@ -51,8 +51,8 @@ Built by a coordinated agent team (one branch per feature, merged and re-tested 
 - Covers (optional .jpg) and Instagram Stories (uses your Chrome login).
 - Export: Copy as table (paste into Google Sheets), .xlsx download, share a collection as a single HTML page.
 - Chrome Web Store build without YouTube.
-- Fixed: "skip longer than" was reported as a success with no file (engine is silent under --print); a run that saves no file is now an error.
-- Not supported: TikTok photo posts (engine: Unsupported URL).
+- Fixed: "skip longer than" was reported as a success with no file (the engine is silent under --print); a run that saves no file is now an error.
+- Not supported: TikTok photo posts (the engine: Unsupported URL).
 
 ## 3.4.0
 - Select mode: the whole video tile is now the click target (clicks no longer open the post on Instagram/TikTok); "+ Queue" on each tile adds that video at once. Tested with real mouse clicks on TikTok and Instagram keyword search.
@@ -102,7 +102,7 @@ Built by a coordinated agent team (one branch per feature, merged and re-tested 
 - Optional in-page download button (single video or whole feed) on TikTok, Instagram, YouTube and X. Off by default; asks for site access only when turned on.
 
 ## 2.4.0
-- Retry with backoff for network errors, weekly automatic engine update, one automatic update-and-retry when a site starts refusing downloads (403).
+- Retry with backoff for network errors, weekly automatic the engine update, one automatic update-and-retry when a site starts refusing downloads (403).
 
 ## 2.3.0
 - Settings: download folder (inside your home folder), file-name style, skip already-saved videos.

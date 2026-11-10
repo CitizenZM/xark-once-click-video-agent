@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Xark Once Click Video Agent</title>
-<meta name="description" content="Save TikTok, Instagram and YouTube videos in one click, sort them into collections, and get AI recommendations from your own library. Runs locally with engine.">
+<meta name="description" content="Save TikTok, Instagram and YouTube videos in one click, sort them into collections, and get AI recommendations from your own library. Runs locally on your computer.">
 <style>
 :root{--bg:#fff;--ink:#111827;--mute:#6b7280;--line:#e5e7eb;--card:#f9fafb;--blue:#2563eb;--code:#f3f4f6}
 @media (prefers-color-scheme:dark){:root{--bg:#0b1020;--ink:#f3f4f6;--mute:#9ca3af;--line:#27304a;--card:#111833;--code:#0f172a}}
@@ -38,12 +38,12 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:10px;paddi
   <div class="card"><h3>Collections</h3><p>Folders for your saved video links. Move in bulk, filter, copy a collection's links.</p></div>
   <div class="card"><h3>Dashboard</h3><p>Library, charts, outliers, creators and hashtags worth exploring, plus fixed public ad libraries.</p></div>
   <div class="card"><h3>AI assistant (optional)</h3><p>With your own Anthropic key: recommendations from your library and auto-sort into collections, only when you press the button.</p></div>
-  <div class="card"><h3>Local and private</h3><p>Downloads run on your computer with engine. No accounts, no analytics.</p></div>
+  <div class="card"><h3>Local and private</h3><p>Downloads run on your computer. No accounts, no analytics.</p></div>
 </div>
 
 <h2>Install in 2 steps</h2>
 <ol>
-  <li><b>Install the helper</b> (macOS or Linux). It sets up engine and ffmpeg and registers a small local program that Chrome talks to.
+  <li><b>Install the helper</b> (macOS or Linux). It sets up the download engine and ffmpeg and registers a small local program that Chrome talks to.
     <pre>curl -fsSL https://raw.githubusercontent.com/CitizenZM/xark-once-click-video-agent/main/install.sh | bash</pre>
     <span class="note">Windows: an experimental installer is in the GitHub repo (install.ps1), not yet tested on a real PC.</span></li>
   <li><b>Add the extension.</b> Download the zip above and unzip it. Open <code>chrome://extensions</code>, turn on Developer mode, click <i>Load unpacked</i> and choose the unzipped folder. Pin the icon.</li>
@@ -56,7 +56,7 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:10px;paddi
   <li>Instagram sometimes needs your Chrome login cookies; the helper reads them locally only when an anonymous try fails.</li>
   <li>The AI buttons send a capped summary of your saved videos to api.anthropic.com with your key. Nothing is sent otherwise. <a href="https://github.com/CitizenZM/xark-once-click-video-agent/blob/main/PRIVACY.md">Privacy</a>.</li>
 </ul>
-<footer>Xark · open source (MIT) · built on <a href="https://github.com/engine/engine">engine</a></footer>
+<footer>Xark · open source (MIT) · local-first</footer>
 </div>
 </body>
 </html>
