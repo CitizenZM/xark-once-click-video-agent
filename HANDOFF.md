@@ -90,3 +90,8 @@
 - 完成: v3.8.0: feature switches (research/AI/daily scan/comments/Ad Studio/my ads), AI key+Test key+monthly cap+cost estimate in Settings, daily account scan, comments (YouTube via the engine, TikTok/IG from page), YouTube search + select-bar Send to project (IG views), CSV/report/EDL exports, own-ads CSV import with ROAS by reference/hook, Ad Studio bridge via its /api/jobs and new local-only /api/library/import
 - 验证: node 74 pass; host 74 OK; IL3 wiring tests fail on v3.7.0; live helper->Ad Studio import cut 2 clips, re-read via API, cleaned; CI success 2d5ed93
 - 下一步: Reload extension; Settings: save key + Test key; try Send to project on a TikTok search page; Make in Ad Studio on one recipe
+
+### 2026-11-09 20:27 · claude-sonnet-5-5
+- 完成: Removed engine/impersonation naming from extension, host, docs, site, README, privacy, tests, fixture; env ONECLICK_ENGINE->ONECLICK_ENGINE, ping field engine->engine; single ENGINE_BIN constant + install scripts still name the binary
+- 验证: node 74 pass, python 74 OK, grep shows only oneclick_host.py/install.sh/install.ps1
+- 下一步: Decide on git history rewrite; reload extension and re-run installer
